@@ -72,37 +72,58 @@ Kiwi.onReady(function () {
     draw(); DB.subscribe(draw); setInterval(draw, 60000);
   })();
 
-  // ---------------------------------------------------------------- photo of the day
+  // ---------------------------------------------------------------- photo of the day + bonus photo
   (function () {
     if (!DB.user || !$('#photo-card')) return;
-    var T = window.KiwiTime;
+    var T = window.KiwiTime, DAY = 24 * 3600000;
     function when(at) {
       var today = T.dayKey(at, K.HZ) === K.todayKey();
       return (today ? 'Today' : T.fmtDay(at, K.HZ)) + ', ' + T.fmtTime(at, K.HZ);
     }
-    function draw() {
-      var ps = DB.photos || [];
-      $('#photo-card').hidden = !ps.length;
-      if (!ps.length) return;
-      var p = ps[0];
-      if ($('#photo-img').getAttribute('data-id') !== p.id) { $('#photo-img').src = p.data; $('#photo-img').setAttribute('data-id', p.id); }
-      $('#photo-cap').textContent = p.caption || '';
-      $('#photo-cap').hidden = !p.caption;
-      $('#photo-when').textContent = when(p.at);
-      $('#photo-more').hidden = ps.length < 2;
-    }
+    function setImg(el, p) { if (el.getAttribute('data-id') !== p.id) { el.src = p.data; el.setAttribute('data-id', p.id); } }
     function big(p) {
       K.modal('<img class="photo-big" src="' + p.data + '" alt="">' + (p.caption ? '<p class="desc" style="margin-top:10px">' + K.esc(p.caption) + '</p>' : '') +
-        '<div class="help">' + when(p.at) + ' (your time)</div>', 'photo-sheet');
+        '<div class="help">' + when(p.at) + '</div>', 'photo-sheet');
     }
-    $('#photo-open').addEventListener('click', function () { if (DB.photos[0]) big(DB.photos[0]); });
-    $('#photo-more').addEventListener('click', function () {
-      var sh = K.modal('<h3>📸 Photos from Chengxuan</h3><div class="photo-grid">' + DB.photos.map(function (p, i) {
-        return '<button type="button" data-pi="' + i + '"><img src="' + p.data + '" alt=""><span>' + K.esc(T.fmtDay(p.at, K.HZ)) + '</span></button>';
-      }).join('') + '</div>', 'photo-sheet');
-      sh.querySelector('.photo-grid').addEventListener('click', function (e) { var b = e.target.closest('[data-pi]'); if (b) big(DB.photos[+b.dataset.pi]); });
+    // Only the newest photo, and only if it's from the last 24 hours. No photo = no card.
+    function current(bonus) {
+      var p = (DB.photos || []).filter(function (x) { return !!x.bonus === bonus; })[0];
+      return p && (Date.now() - p.at < (bonus ? 3 : 1) * DAY) ? p : null;
+    }
+    function draw() {
+      var p = current(false);
+      $('#photo-card').hidden = !p;
+      if (p) {
+        setImg($('#photo-img'), p);
+        $('#photo-cap').textContent = p.caption || ''; $('#photo-cap').hidden = !p.caption;
+        $('#photo-when').textContent = when(p.at);
+      }
+      var bp = current(true);
+      $('#bonus-card').hidden = !bp;
+      if (bp) {
+        var open = !!(DB.her.unlockedBonus || {})[bp.id];
+        $('#bonus-locked').hidden = open; $('#bonus-open').hidden = !open;
+        if (open) { setImg($('#bonus-img'), bp); $('#bonus-cap').textContent = bp.caption || ''; $('#bonus-cap').hidden = !bp.caption; }
+      }
+    }
+    $('#photo-open').addEventListener('click', function () { var p = current(false); if (p) big(p); });
+    $('#bonus-view').addEventListener('click', function () { var p = current(true); if (p) big(p); });
+    $('#bonus-file').addEventListener('change', function (e) {
+      var f = e.target.files[0], bp = current(true); if (!f || !bp) return;
+      K.toast('Sending your photo… 📸');
+      K.compressPhoto(f).then(function (data) {
+        var id = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        return DB.addHerPhoto({ id: id, data: data, at: Date.now(), forBonus: bp.id }).then(function () {
+          var u = Object.assign({}, DB.her.unlockedBonus); u[bp.id] = id;
+          return DB.setHer({ unlockedBonus: u });
+        });
+      }).then(function () {
+        draw(); K.toast('Unlocked! 🎁💚');
+        var r = $('#bonus-card').getBoundingClientRect(); K.confetti({ x: r.left + r.width / 2, y: r.top + 80, count: 120 });
+      }).catch(function (err) { console.error(err); K.toast('Couldn\'t send that photo. Try another one'); });
+      e.target.value = '';
     });
-    draw(); DB.subscribe(draw);
+    draw(); DB.subscribe(draw); setInterval(draw, 60000);
   })();
   // ---------------------------------------------------------------- "add to home screen" tip (once, phones only)
   (function () {

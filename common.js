@@ -400,6 +400,28 @@
     });
   };
 
+  // Shrink a photo so it fits in the database (max ~700 KB as JPEG)
+  K.compressPhoto = function (file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var max = 1280, w = img.naturalWidth, h = img.naturalHeight, out = null;
+        for (var tries = 0; tries < 6 && !out; tries++) {
+          var k = Math.min(1, max / Math.max(w, h)), c = document.createElement('canvas');
+          c.width = Math.round(w * k); c.height = Math.round(h * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          for (var q = 0.85; q >= 0.45; q -= 0.1) { var d = c.toDataURL('image/jpeg', q); if (d.length < 700000) { out = d; break; } }
+          max = Math.round(max * 0.75);
+        }
+        URL.revokeObjectURL(url);
+        out ? resolve(out) : reject(new Error('too big'));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+      img.src = url;
+    });
+  };
+
+
   // ------------------------------------------------------------ modal (bottom sheet)
   var sheetBack = null, sheetTick = null;
   K.modal = function (html, cls, tick) {

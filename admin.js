@@ -243,37 +243,28 @@ Kiwi.onReady(function () {
       '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer">📷 Choose a photo<input type="file" id="ph-file" accept="image/*" hidden></label>' +
       '<img id="ph-preview" class="photo-big" hidden alt="">' +
       '<label class="help">Caption (optional)<input class="field" id="ph-cap" maxlength="200" placeholder="e.g. Committee room view 🇷🇺"></label>' +
+      '<label class="switch-row"><input type="checkbox" id="ph-bonus"> <span><b>🎁 Bonus photo</b><br><span class="help">Locked until she sends a photo of herself. Leave off for a normal photo of the day.</span></span></label>' +
       '<div class="btns"><button class="btn sm" id="ph-post">📤 Post photo</button></div></section>' +
       '<section class="card stack"><h3>Posted (' + ps.length + ')</h3>' +
       (ps.length ? '<div class="photo-grid">' + ps.map(function (p) {
-        return '<div class="ph-item"><img src="' + p.data + '" alt=""><span class="help">' + esc(K.herDateTime(p.at)) + (p.caption ? ' · ' + esc(p.caption) : '') + '</span><button class="btn sm danger" data-phdel="' + esc(p.id) + '">🗑️</button></div>';
-      }).join('') + '</div>' : '<p class="muted">No photos yet</p>') + '</section>';
+        var unlocked = Object.keys(DB.her.unlockedBonus || {}).indexOf(p.id) !== -1;
+        return '<div class="ph-item"><img src="' + p.data + '" alt="">' +
+          (p.bonus ? '<span class="tag' + (unlocked ? ' on' : '') + '">🎁 bonus' + (unlocked ? ' · unlocked' : ' · locked') + '</span>' : '<span class="tag">photo of the day</span>') +
+          '<span class="help">' + esc(K.herDateTime(p.at)) + (p.caption ? ' · ' + esc(p.caption) : '') + '</span>' +
+          '<div class="btns"><button class="btn sm ghost" data-phbonus="' + esc(p.id) + '">' + (p.bonus ? 'Make normal' : 'Make bonus 🎁') + '</button>' +
+          '<button class="btn sm danger" data-phdel="' + esc(p.id) + '">🗑️</button></div></div>';
+      }).join('') + '</div>' : '<p class="muted">No photos yet</p>') + '</section>' +
+      '<section class="card stack"><h3>📷 From her (' + (DB.herPhotos || []).length + ')</h3>' +
+      ((DB.herPhotos || []).length ? '<div class="photo-grid">' + DB.herPhotos.map(function (p) {
+        return '<div class="ph-item"><button type="button" class="photo-frame" data-herview="' + esc(p.id) + '"><img src="' + p.data + '" alt=""></button>' +
+          '<span class="help">' + esc(K.herDateTime(p.at)) + ' · ' + ago(p.at) + '</span><button class="btn sm danger" data-herdel="' + esc(p.id) + '">🗑️</button></div>';
+      }).join('') + '</div>' : '<p class="muted">She hasn\'t sent any photos yet. Post a bonus photo to ask for one 😉</p>') + '</section>';
   };
-  // Shrink a photo so it fits in the database (max ~700 KB as JPEG)
-  function compressPhoto(file) {
-    return new Promise(function (resolve, reject) {
-      var img = new Image(), url = URL.createObjectURL(file);
-      img.onload = function () {
-        var max = 1280, w = img.naturalWidth, h = img.naturalHeight, out = null;
-        for (var tries = 0; tries < 6 && !out; tries++) {
-          var k = Math.min(1, max / Math.max(w, h)), c = document.createElement('canvas');
-          c.width = Math.round(w * k); c.height = Math.round(h * k);
-          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-          for (var q = 0.85; q >= 0.45; q -= 0.1) { var d = c.toDataURL('image/jpeg', q); if (d.length < 700000) { out = d; break; } }
-          max = Math.round(max * 0.75);
-        }
-        URL.revokeObjectURL(url);
-        out ? resolve(out) : reject(new Error('too big'));
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
-      img.src = url;
-    });
-  }
   var pendingPhoto = null;
   panels.addEventListener('change', function (e) {
     if (e.target.id !== 'ph-file' || !e.target.files[0]) return;
     toast('Getting the photo ready…');
-    compressPhoto(e.target.files[0]).then(function (d) {
+    K.compressPhoto(e.target.files[0]).then(function (d) {
       pendingPhoto = d; var pv = $('#ph-preview'); pv.src = d; pv.hidden = false; toast('Ready. Add a caption and post 📤');
     }).catch(function () { pendingPhoto = null; toast('Couldn\'t read that photo. Try a JPG or PNG'); });
   });
@@ -357,7 +348,8 @@ Kiwi.onReady(function () {
   var photoCount = -1;
   DB.subscribe(function () {
     if (current === 'overview') render();
-    if (current === 'photos' && (DB.photos || []).length !== photoCount && !pendingPhoto) { photoCount = (DB.photos || []).length; render(); }
+    var pc = (DB.photos || []).length + ':' + (DB.herPhotos || []).length + ':' + Object.keys(DB.her.unlockedBonus || {}).length;
+    if (current === 'photos' && pc !== photoCount && !pendingPhoto) { photoCount = pc; render(); }
   });
 
   // ---------------------------------------------------------------- actions
@@ -491,9 +483,26 @@ Kiwi.onReady(function () {
     if (id === 'ph-post') {
       if (!pendingPhoto) return toast('Choose a photo first');
       b.disabled = true; b.textContent = 'Posting…';
-      DB.addPhoto({ id: 'p' + Date.now().toString(36) + uid(), data: pendingPhoto, caption: val('ph-cap'), at: Date.now() })
-        .then(function () { pendingPhoto = null; toast('Posted 📸 She\'ll see it on her Home'); render(); })
+      var isBonus = !!($('#ph-bonus') && $('#ph-bonus').checked);
+      DB.addPhoto({ id: 'p' + Date.now().toString(36) + uid(), data: pendingPhoto, caption: val('ph-cap'), at: Date.now(), bonus: isBonus })
+        .then(function () { pendingPhoto = null; toast(isBonus ? 'Bonus posted 🎁 She unlocks it with a selfie' : 'Posted 📸 She\'ll see it on her Home'); render(); })
         .catch(function (err) { console.error(err); b.disabled = false; b.textContent = '📤 Post photo'; toast('Couldn\'t post. Check your connection and try again'); });
+      return;
+    }
+    if (d.phbonus) {
+      var ph = (DB.photos || []).find(function (x) { return x.id === d.phbonus; }); if (!ph) return;
+      DB.updatePhoto(ph.id, { bonus: !ph.bonus }).then(function () { toast(ph.bonus ? 'Now a normal photo 📸' : 'Now a bonus photo 🎁'); render(); });
+      return;
+    }
+    if (d.herview) {
+      var hp = (DB.herPhotos || []).find(function (x) { return x.id === d.herview; });
+      if (hp) K.modal('<img class="photo-big" src="' + hp.data + '" alt=""><div class="help">' + esc(K.herDateTime(hp.at)) + ' Barcelona</div>', 'photo-sheet');
+      return;
+    }
+    if (d.herdel) {
+      K.confirm({ emoji: '🗑️', title: 'Delete her photo?', yes: 'Delete', danger: true }).then(function (ok) {
+        if (!ok) return; DB.deleteHerPhoto(d.herdel).then(function () { toast('Deleted'); render(); });
+      });
       return;
     }
     if (d.phdel) {

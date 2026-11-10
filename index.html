@@ -55,7 +55,21 @@
       <h2>📸 Chengxuan's photo of the day</h2>
       <button type="button" class="photo-frame" id="photo-open" aria-label="Open photo"><img id="photo-img" alt="Photo from Chengxuan"></button>
       <p class="photo-cap" id="photo-cap"></p>
-      <div class="mini-row"><span class="help" id="photo-when"></span><button type="button" class="btn sm ghost" id="photo-more">Older photos</button></div>
+      <span class="help" id="photo-when"></span>
+    </section>
+
+    <section class="card bonus-card" id="bonus-card" data-auth hidden>
+      <h2>🎁 Bonus photo</h2>
+      <div id="bonus-locked">
+        <div class="bonus-lock"><span>🔒</span></div>
+        <p class="desc" style="text-align:center;margin:10px 0">Send a photo of yourself to unlock it 📸</p>
+        <label class="btn big pink" style="cursor:pointer">📷 Send my photo<input type="file" id="bonus-file" accept="image/*" hidden></label>
+      </div>
+      <div id="bonus-open" hidden>
+        <button type="button" class="photo-frame" id="bonus-view" aria-label="Open bonus photo"><img id="bonus-img" alt="Bonus photo from Chengxuan"></button>
+        <p class="photo-cap" id="bonus-cap"></p>
+        <span class="help">Unlocked 💚 Thanks for your photo!</span>
+      </div>
     </section>
 
     <figure class="card quote">
