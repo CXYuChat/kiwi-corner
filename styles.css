@@ -532,3 +532,30 @@ select.field { appearance: none; -webkit-appearance: none; background-image: lin
 .mood-hist { font-size: 1.2rem; letter-spacing: 2px; }
 .toast { white-space: nowrap; max-width: calc(100% - 32px); }
 .has-tabs .toast { bottom: calc(100px + env(safe-area-inset-bottom)); }
+
+/* check-in + streak */
+.ck-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ck-row h2 { margin: 0; }
+.flame { display: flex; align-items: center; gap: 2px; font-size: 1.8rem; background: rgba(122, 82, 48, .06); border-radius: 18px; padding: 6px 12px; filter: grayscale(1); opacity: .6; }
+.flame b { font-size: 1.4rem; color: var(--brown); }
+.flame.lit { filter: none; opacity: 1; background: #fff3c4; }
+.checkin-card .btn.big { margin-top: 10px; }
+.btn.big.ghost { background: #fff; color: var(--brown); border: 2px solid rgba(122, 82, 48, .2); box-shadow: none; font-size: 1rem; }
+.ck-streak { background: #fff3c4; border-radius: 14px; padding: 8px 12px; margin: 10px 0 4px; text-align: center; }
+.checkin-sheet .moods { margin-top: 10px; }
+/* photo of the day */
+.photo-frame { display: block; width: 100%; border: 0; padding: 0; background: none; cursor: zoom-in; border-radius: 18px; overflow: hidden; }
+.photo-frame img { display: block; width: 100%; max-height: 60vh; object-fit: cover; border-radius: 18px; }
+.photo-cap { margin: 10px 0 4px; font-size: 1.05rem; }
+.photo-big { display: block; width: 100%; border-radius: 16px; max-height: 70vh; object-fit: contain; background: #000; }
+.photo-sheet { max-width: 640px; }
+.photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.photo-grid button { border: 0; padding: 0; background: none; cursor: pointer; font: inherit; display: grid; gap: 2px; }
+.photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
+.photo-grid span { font-size: .72rem; color: var(--muted); }
+
+.ph-item { display: grid; gap: 4px; }
+.ph-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
+.ph-item .btn { justify-self: start; }
+.toast { opacity: 0; pointer-events: none; transition: transform .3s cubic-bezier(.3, 1.4, .5, 1), opacity .25s; }
+.toast.show { opacity: 1; }

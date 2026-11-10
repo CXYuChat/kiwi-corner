@@ -12,6 +12,8 @@
     return {
       points: 0,
       pointsLog: [],
+      // Daily check-in points (she earns them herself). "since": only check-ins after this count for points.
+      checkinPoints: { on: true, perDay: 2, weekBonus: 10, since: 0 },
       // Nightly call points. "since" = only nights after this moment count.
       autoPoints: { on: true, amount: 15, time: '00:31', zone: 'Asia/Singapore', reason: 'For our call 📞💚', since: Date.UTC(2026, 10, 10, 17, 0), skipped: [] },
       quote: {
@@ -27,9 +29,9 @@
       featured: 'auto'
     };
   }
-  function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [], moods: [] }; }
+  function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [], moods: [], checkins: [] }; }
 
-  var state = defaultState(), her = defaultHer(), user = null, subs = [];
+  var state = defaultState(), her = defaultHer(), user = null, subs = [], photos = [];
   function fill(d, def) { var o = def(); if (d) Object.keys(d).forEach(function (k) { if (d[k] !== undefined) o[k] = d[k]; }); return o; }
   function emit() { subs.forEach(function (f) { try { f(state, her, user); } catch (e) { console.error(e); } }); }
 
@@ -50,7 +52,7 @@
         try { state = fill(JSON.parse(localStorage.getItem('kiwi-db-state') || 'null'), defaultState); } catch (e) { state = defaultState(); }
         try { her = fill(JSON.parse(localStorage.getItem('kiwi-db-her') || 'null'), defaultHer); } catch (e) { her = defaultHer(); }
       }
-      load();
+      load(); local.loadPhotos();
       var s = null; try { s = localStorage.getItem('kiwi-session'); } catch (e) { /* */ }
       var u = s && userByName(s);
       user = u ? Object.assign({ username: s }, u) : null;
@@ -67,7 +69,10 @@
     },
     logout: function () { try { localStorage.removeItem('kiwi-session'); } catch (e) { /* */ } user = null; return Promise.resolve(); },
     saveState: function () { localStorage.setItem('kiwi-db-state', JSON.stringify(state)); return Promise.resolve(); },
-    saveHer: function () { localStorage.setItem('kiwi-db-her', JSON.stringify(her)); return Promise.resolve(); }
+    saveHer: function () { localStorage.setItem('kiwi-db-her', JSON.stringify(her)); return Promise.resolve(); },
+    loadPhotos: function () { try { photos = JSON.parse(localStorage.getItem('kiwi-db-photos') || '[]'); } catch (e) { photos = []; } },
+    addPhoto: function (p) { local.loadPhotos(); photos = [p].concat(photos).slice(0, 30); localStorage.setItem('kiwi-db-photos', JSON.stringify(photos)); emit(); return Promise.resolve(); },
+    deletePhoto: function (id) { local.loadPhotos(); photos = photos.filter(function (x) { return x.id !== id; }); localStorage.setItem('kiwi-db-photos', JSON.stringify(photos)); emit(); return Promise.resolve(); }
   };
 
   // ------------------------------------------------------------------ firebase backend
@@ -83,6 +88,7 @@
       firebase.initializeApp(C.firebase);
       var db = firebase.firestore();
       fb.stateRef = db.collection('kiwi').doc('state');
+      fb.photosRef = db.collection('photos');
       fb.herRef = db.collection('kiwi').doc('her');
       return new Promise(function (resolve) {
         var first = true;
@@ -92,6 +98,10 @@
           var need = user ? 2 : 1, got = 0, done = function () { if (++got === need && first) { first = false; resolve(); } };
           if (!user) her = defaultHer();
           fb.unsub.push(fb.stateRef.onSnapshot(function (d) { state = fill(d.data(), defaultState); emit(); done(); }, function (e) { console.error(e); done(); }));
+          photos = [];
+          if (user) fb.unsub.push(fb.photosRef.orderBy('at', 'desc').limit(30).onSnapshot(function (q) {
+            photos = q.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); emit();
+          }, function (e) { console.error(e); }));
           if (user) fb.unsub.push(fb.herRef.onSnapshot(function (d) { her = fill(d.data(), defaultHer); emit(); done(); }, function (e) { console.error(e); done(); }));
         });
       });
@@ -105,7 +115,9 @@
     },
     logout: function () { return firebase.auth().signOut(); },
     saveState: function () { return fb.stateRef.set(JSON.parse(JSON.stringify(state))); },
-    saveHer: function () { return fb.herRef.set(JSON.parse(JSON.stringify(her))); }
+    saveHer: function () { return fb.herRef.set(JSON.parse(JSON.stringify(her))); },
+    addPhoto: function (p) { var id = p.id; var d = Object.assign({}, p); delete d.id; return fb.photosRef.doc(id).set(d); },
+    deletePhoto: function (id) { return fb.photosRef.doc(id).delete(); }
   };
 
   // Local test mode: only on this computer (localhost), opened once with ?demo=1. Never affects the real site.
@@ -126,6 +138,9 @@
     get state() { return state; },
     get her() { return her; },
     get user() { return user; },
+    get photos() { return photos; },
+    addPhoto: function (p) { return B.addPhoto(p); },
+    deletePhoto: function (id) { return B.deletePhoto(id); },
     defaults: { state: defaultState, her: defaultHer },
     subscribe: function (f) { subs.push(f); return function () { subs = subs.filter(function (x) { return x !== f; }); }; },
     login: function (n, p) { return B.login(n, p).then(function () { emit(); }); },

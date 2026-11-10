@@ -87,6 +87,7 @@ Kiwi.onReady(function () {
         '<div class="stat"><b>🧺 ' + (her.gameBest || 0) + '</b><span>kiwi game best</span></div>' +
       '</div>' +
       moodBox(her) +
+      '<p>🔥 Check-in streak: <b>' + K.streak() + (K.streak() === 1 ? ' day' : ' days') + '</b>' + (K.checkedInToday() ? ' · checked in today ✓' : ' · not checked in yet today') + ' <span class="muted">(best: ' + K.bestStreak() + ')</span></p>' +
       '<p>👀 Livina last visited: <b>' + ago(her.lastSeen) + '</b></p>' +
       '<p>⏳ Main countdown: <b>' + (f ? esc(f.emoji + ' ' + f.label) : 'none') + '</b></p>' +
       '<p>💌 Surprise: <b>' + (sp && sp.active ? esc(sp.title || 'untitled') + (her.seenSurprise === sp.id ? ' (seen ✓)' : ' (not opened yet)') : 'none showing') + '</b></p>' +
@@ -127,6 +128,14 @@ Kiwi.onReady(function () {
         }).join('') + '</ul>' : '') +
         ((ap.skipped || []).length ? '<div class="help">Skipped: ' + ap.skipped.slice(-6).map(function (k) { return k.slice(5) + ' <a href="#" data-apunskip="' + esc(k) + '">undo</a>'; }).join(', ') + '</div>' : '') +
       '</div>' +
+      (function () {
+        var c = Object.assign({ on: true, perDay: 2, weekBonus: 10 }, DB.state.checkinPoints || {});
+        return '<div class="item"><div class="item-head"><b>✅ Daily check-in points</b><span class="tag' + (c.on ? ' on' : '') + '">' + (c.on ? 'on' : 'off') + '</span></div>' +
+          '<p class="help" style="margin:0">She earns these herself each day she checks in, plus a bonus on every 7th day in a row.</p>' +
+          '<div class="row2"><label class="help">Points per check-in<input class="field" id="ck-per" type="number" inputmode="numeric" min="0" value="' + (+c.perDay || 0) + '"></label>' +
+          '<label class="help">7-day streak bonus<input class="field" id="ck-bonus" type="number" inputmode="numeric" min="0" value="' + (+c.weekBonus || 0) + '"></label></div>' +
+          '<div class="btns"><button class="btn sm" id="ck-save">💾 Save</button>' + (c.on ? '<button class="btn sm ghost" id="ck-off">⏸️ Turn off</button>' : '<button class="btn sm pink" id="ck-on">▶️ Turn on</button>') + '</div></div>';
+      })() +
       '<h3 style="margin-top:8px">History</h3>' +
       (log.length ? '<button class="btn sm ghost" id="pt-undo">↩️ Undo last</button>' : '') +
       '<ul class="log">' + (log.length ? log.map(function (l) {
@@ -227,6 +236,48 @@ Kiwi.onReady(function () {
     return '<section class="card stack"><h3>📬 Messages from her</h3>' + seg + help + (items || empty) + '</section>';
   };
 
+  P.photos = function () {
+    var ps = DB.photos || [];
+    return '<section class="card stack"><h3>📸 Post a photo of the day</h3>' +
+      '<p class="help" style="margin:0">It shows on her Home page. Only you two can see photos.</p>' +
+      '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer">📷 Choose a photo<input type="file" id="ph-file" accept="image/*" hidden></label>' +
+      '<img id="ph-preview" class="photo-big" hidden alt="">' +
+      '<label class="help">Caption (optional)<input class="field" id="ph-cap" maxlength="200" placeholder="e.g. Committee room view 🇷🇺"></label>' +
+      '<div class="btns"><button class="btn sm" id="ph-post">📤 Post photo</button></div></section>' +
+      '<section class="card stack"><h3>Posted (' + ps.length + ')</h3>' +
+      (ps.length ? '<div class="photo-grid">' + ps.map(function (p) {
+        return '<div class="ph-item"><img src="' + p.data + '" alt=""><span class="help">' + esc(K.herDateTime(p.at)) + (p.caption ? ' · ' + esc(p.caption) : '') + '</span><button class="btn sm danger" data-phdel="' + esc(p.id) + '">🗑️</button></div>';
+      }).join('') + '</div>' : '<p class="muted">No photos yet</p>') + '</section>';
+  };
+  // Shrink a photo so it fits in the database (max ~700 KB as JPEG)
+  function compressPhoto(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var max = 1280, w = img.naturalWidth, h = img.naturalHeight, out = null;
+        for (var tries = 0; tries < 6 && !out; tries++) {
+          var k = Math.min(1, max / Math.max(w, h)), c = document.createElement('canvas');
+          c.width = Math.round(w * k); c.height = Math.round(h * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          for (var q = 0.85; q >= 0.45; q -= 0.1) { var d = c.toDataURL('image/jpeg', q); if (d.length < 700000) { out = d; break; } }
+          max = Math.round(max * 0.75);
+        }
+        URL.revokeObjectURL(url);
+        out ? resolve(out) : reject(new Error('too big'));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+      img.src = url;
+    });
+  }
+  var pendingPhoto = null;
+  panels.addEventListener('change', function (e) {
+    if (e.target.id !== 'ph-file' || !e.target.files[0]) return;
+    toast('Getting the photo ready…');
+    compressPhoto(e.target.files[0]).then(function (d) {
+      pendingPhoto = d; var pv = $('#ph-preview'); pv.src = d; pv.hidden = false; toast('Ready. Add a caption and post 📤');
+    }).catch(function () { pendingPhoto = null; toast('Couldn\'t read that photo. Try a JPG or PNG'); });
+  });
+
   P.messages = function () {
     var st = DB.state, sp = st.surprise || {}, ov = st.statusOverride || {}, her = DB.her;
     var ovOn = ov.text && (!ov.until || Date.now() < ov.until);
@@ -303,7 +354,11 @@ Kiwi.onReady(function () {
   // Only the overview refreshes live; forms re-render after you press a button.
   function badge() { var n = (DB.her.messages || []).filter(function (m) { return !isArchived(m); }).length; $('#inbox-badge').textContent = n ? '(' + n + ')' : ''; }
   badge(); DB.subscribe(badge);
-  DB.subscribe(function () { if (current === 'overview') render(); });
+  var photoCount = -1;
+  DB.subscribe(function () {
+    if (current === 'overview') render();
+    if (current === 'photos' && (DB.photos || []).length !== photoCount && !pendingPhoto) { photoCount = (DB.photos || []).length; render(); }
+  });
 
   // ---------------------------------------------------------------- actions
   function val(id) { var el = $('#' + id); return el ? el.value.trim() : ''; }
@@ -426,6 +481,28 @@ Kiwi.onReady(function () {
       DB.setState({ autoPoints: cur }); toast(id === 'ap-off' ? 'Nightly points paused' : id === 'ap-on' ? 'Nightly points on 📞' : 'Saved 📞'); return render();
     }
 
+    if (id === 'ck-save' || id === 'ck-on' || id === 'ck-off') {
+      var ck = Object.assign({ on: true, perDay: 2, weekBonus: 10, since: 0 }, DB.state.checkinPoints || {});
+      if (id === 'ck-on') ck.on = true;
+      if (id === 'ck-off') ck.on = false;
+      if (id === 'ck-save') { ck.perDay = Math.max(0, Math.round(+val('ck-per') || 0)); ck.weekBonus = Math.max(0, Math.round(+val('ck-bonus') || 0)); }
+      DB.setState({ checkinPoints: ck }); toast(id === 'ck-off' ? 'Check-in points paused' : 'Saved ✅'); return render();
+    }
+    if (id === 'ph-post') {
+      if (!pendingPhoto) return toast('Choose a photo first');
+      b.disabled = true; b.textContent = 'Posting…';
+      DB.addPhoto({ id: 'p' + Date.now().toString(36) + uid(), data: pendingPhoto, caption: val('ph-cap'), at: Date.now() })
+        .then(function () { pendingPhoto = null; toast('Posted 📸 She\'ll see it on her Home'); render(); })
+        .catch(function (err) { console.error(err); b.disabled = false; b.textContent = '📤 Post photo'; toast('Couldn\'t post. Check your connection and try again'); });
+      return;
+    }
+    if (d.phdel) {
+      K.confirm({ emoji: '🗑️', title: 'Delete this photo?', text: 'It disappears from her site.', yes: 'Delete', danger: true }).then(function (ok) {
+        if (!ok) return; DB.deletePhoto(d.phdel).then(function () { toast('Photo deleted'); render(); });
+      });
+      return;
+    }
+
     if (id === 'q-save') { if (!val('q-text')) return toast('The quote is empty'); DB.setState({ quote: { text: val('q-text'), by: val('q-by') } }); toast('Quote saved 💬'); return render(); }
     if (id === 'q-reset') { DB.setState({ quote: DB.defaults.state().quote }); toast('Original quote back'); return render(); }
     if (id === 's-send') {
@@ -469,7 +546,7 @@ Kiwi.onReady(function () {
       }[d.reset];
       K.confirm({ emoji: R[0], title: R[1], text: R[2] + (d.reset === 'all' ? '' : ' This can\'t be undone.'), yes: 'Yes, reset', danger: true, typeWord: d.reset === 'all' ? 'RESET' : '' }).then(function (ok) {
         if (!ok) return;
-        if (d.reset === 'points') { DB.setState({ points: 0, pointsLog: [], autoPoints: Object.assign({}, DB.state.autoPoints, { since: T.now(), skipped: [] }) }); DB.setHer({ bought: {} }); }
+        if (d.reset === 'points') { DB.setState({ points: 0, pointsLog: [], autoPoints: Object.assign({}, DB.state.autoPoints, { since: T.now(), skipped: [] }), checkinPoints: Object.assign({}, DB.state.checkinPoints, { since: T.now() }) }); DB.setHer({ bought: {} }); }
         if (d.reset === 'miss') DB.setHer({ missCount: 0 });
         if (d.reset === 'game') DB.setHer({ gameBest: 0 });
         if (d.reset === 'rewrap') DB.setHer({ opened: {} });

@@ -10,6 +10,8 @@ service cloud.firestore {
     match /kiwi/state { allow read: if true; allow write: if isAdmin(); }
     // Miss-you count, high score, opened gifts, last seen: both can change them.
     match /kiwi/her   { allow read, write: if isAdmin() || isLivina(); }
+    // Photos of the day: only the two of you can see them; only the admin posts or deletes.
+    match /photos/{id} { allow read: if isAdmin() || isLivina(); allow write: if isAdmin(); }
     // Everything else is closed.
     match /{document=**} { allow read, write: if false; }
   }

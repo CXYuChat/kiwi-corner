@@ -52,43 +52,57 @@ Kiwi.onReady(function () {
   $('#hi-name').textContent = K.name();
   K.missButton();
 
-  // ---------------------------------------------------------------- mood check-in
+  // ---------------------------------------------------------------- daily check-in card
   (function () {
-    if (!DB.user || !$('#moods')) return;
-    var picked = null;
-    $('#mood-h').textContent = "How's your day, " + K.petName() + '? 🌤️';
-    $('#moods').innerHTML = K.MOODS.map(function (m) {
-      return '<button type="button" class="mood" data-mood="' + m[0] + '"><span class="e">' + m[1] + '</span><span>' + m[2] + '</span></button>';
-    }).join('');
-    function showNow() {
-      var last = K.lastMood();
-      document.querySelectorAll('.mood').forEach(function (b) { b.classList.toggle('on', !!last && b.dataset.mood === last.mood && T.dayKey(last.at, K.HZ) === T.dayKey(T.now(), K.HZ)); });
-      if (!last) { $('#mood-now').textContent = ''; return; }
-      var info = K.moodInfo(last.mood), today = T.dayKey(last.at, K.HZ) === T.dayKey(T.now(), K.HZ);
-      $('#mood-now').innerHTML = (today ? 'Today: ' : 'Last time (' + T.fmtDay(last.at, K.HZ) + '): ') + '<b>' + info[1] + ' ' + K.esc(info[2]) + '</b>' +
-        (last.note ? ' · "' + K.esc(last.note) + '"' : '') + (today ? ' · sent to Chengxuan ✓' : '');
-    }
+    if (!DB.user || !$('#checkin-card')) return;
     var T = window.KiwiTime;
-    $('#moods').addEventListener('click', function (e) {
-      var b = e.target.closest('[data-mood]'); if (!b) return;
-      picked = b.dataset.mood;
-      document.querySelectorAll('.mood').forEach(function (x) { x.classList.toggle('picked', x === b); });
-      $('#mood-note-wrap').hidden = false;
-      $('#mood-note').focus({ preventScroll: true });
-    });
-    function send() {
-      if (!picked) return;
-      var note = $('#mood-note').value.trim();
-      var list = (DB.her.moods || []).concat([{ mood: picked, note: note, at: Date.now() }]).slice(-60);
-      DB.setHer({ moods: list });
-      $('#mood-note').value = ''; $('#mood-note-wrap').hidden = true; picked = null;
-      document.querySelectorAll('.mood').forEach(function (x) { x.classList.remove('picked'); });
-      K.toast('Sent to Chengxuan 💚'); K.hop($('#mascot'));
-      var r = $('#mood-card').getBoundingClientRect(); K.confetti({ x: r.left + r.width / 2, y: r.top + 40, count: 40 });
+    function draw() {
+      var done = K.checkedInToday(), st = K.streak(), last = K.lastMood();
+      $('#ck-flame').querySelector('b').textContent = st;
+      $('#ck-flame').classList.toggle('lit', st > 0);
+      $('#ck-sub').textContent = done ? (st > 1 ? 'You\'re on a ' + st + '-day streak! 🔥' : 'Checked in today ✓') : (st ? 'Check in to keep your ' + st + '-day streak 🔥' : 'Check in every day to build a streak 🔥');
+      $('#ck-btn').textContent = done ? '✓ Checked in today · update mood' : 'Check in for today ✅';
+      $('#ck-btn').classList.toggle('ghost', done);
+      if (last && T.dayKey(last.at, K.HZ) === K.todayKey()) {
+        var info = K.moodInfo(last.mood);
+        $('#mood-now').innerHTML = 'Today you\'re feeling <b>' + info[1] + ' ' + K.esc(info[2]) + '</b>' + (last.note ? ' · "' + K.esc(last.note) + '"' : '');
+      } else $('#mood-now').textContent = '';
     }
-    $('#mood-send').addEventListener('click', send);
-    $('#mood-note').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); send(); } });
-    showNow(); DB.subscribe(showNow);
+    $('#ck-btn').addEventListener('click', function () { K.checkinModal(); });
+    draw(); DB.subscribe(draw); setInterval(draw, 60000);
+  })();
+
+  // ---------------------------------------------------------------- photo of the day
+  (function () {
+    if (!DB.user || !$('#photo-card')) return;
+    var T = window.KiwiTime;
+    function when(at) {
+      var today = T.dayKey(at, K.HZ) === K.todayKey();
+      return (today ? 'Today' : T.fmtDay(at, K.HZ)) + ', ' + T.fmtTime(at, K.HZ);
+    }
+    function draw() {
+      var ps = DB.photos || [];
+      $('#photo-card').hidden = !ps.length;
+      if (!ps.length) return;
+      var p = ps[0];
+      if ($('#photo-img').getAttribute('data-id') !== p.id) { $('#photo-img').src = p.data; $('#photo-img').setAttribute('data-id', p.id); }
+      $('#photo-cap').textContent = p.caption || '';
+      $('#photo-cap').hidden = !p.caption;
+      $('#photo-when').textContent = when(p.at);
+      $('#photo-more').hidden = ps.length < 2;
+    }
+    function big(p) {
+      K.modal('<img class="photo-big" src="' + p.data + '" alt="">' + (p.caption ? '<p class="desc" style="margin-top:10px">' + K.esc(p.caption) + '</p>' : '') +
+        '<div class="help">' + when(p.at) + ' (your time)</div>', 'photo-sheet');
+    }
+    $('#photo-open').addEventListener('click', function () { if (DB.photos[0]) big(DB.photos[0]); });
+    $('#photo-more').addEventListener('click', function () {
+      var sh = K.modal('<h3>📸 Photos from Chengxuan</h3><div class="photo-grid">' + DB.photos.map(function (p, i) {
+        return '<button type="button" data-pi="' + i + '"><img src="' + p.data + '" alt=""><span>' + K.esc(T.fmtDay(p.at, K.HZ)) + '</span></button>';
+      }).join('') + '</div>', 'photo-sheet');
+      sh.querySelector('.photo-grid').addEventListener('click', function (e) { var b = e.target.closest('[data-pi]'); if (b) big(DB.photos[+b.dataset.pi]); });
+    });
+    draw(); DB.subscribe(draw);
   })();
   // ---------------------------------------------------------------- "add to home screen" tip (once, phones only)
   (function () {

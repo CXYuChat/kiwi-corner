@@ -42,15 +42,20 @@
 
     <section class="card cd-card" id="big-cd"></section>
 
-    <section class="card mood-card" id="mood-card" data-auth>
-      <h2 id="mood-h">How's your day? 🌤️</h2>
-      <p class="muted" id="mood-sub">Tap one. Chengxuan sees it 💚</p>
-      <div class="moods" id="moods"></div>
-      <div class="mood-note" id="mood-note-wrap" hidden>
-        <input class="field" id="mood-note" maxlength="200" placeholder="Want to say why? (optional)">
-        <button type="button" class="btn sm" id="mood-send">Send 💚</button>
+    <section class="card checkin-card" id="checkin-card" data-auth>
+      <div class="ck-row">
+        <div><h2 id="ck-h">Daily check-in ✅</h2><div class="muted" id="ck-sub"></div></div>
+        <div class="flame" id="ck-flame" title="Your streak">🔥<b>0</b></div>
       </div>
       <div class="mood-now" id="mood-now"></div>
+      <button type="button" class="btn big" id="ck-btn">Check in for today ✅</button>
+    </section>
+
+    <section class="card photo-card" id="photo-card" data-auth hidden>
+      <h2>📸 Chengxuan's photo of the day</h2>
+      <button type="button" class="photo-frame" id="photo-open" aria-label="Open photo"><img id="photo-img" alt="Photo from Chengxuan"></button>
+      <p class="photo-cap" id="photo-cap"></p>
+      <div class="mini-row"><span class="help" id="photo-when"></span><button type="button" class="btn sm ghost" id="photo-more">Older photos</button></div>
     </section>
 
     <figure class="card quote">

@@ -211,10 +211,43 @@
     }
     return out;
   };
-  K.pointsLog = function () {
-    return (DB.state.pointsLog || []).concat(K.autoAwards()).sort(function (x, y) { return x.at - y.at; });
+  // ---- daily check-ins + streak (days are Barcelona days)
+  K.todayKey = function () { return T.dayKey(T.now(), HZ); };
+  K.checkinDays = function () {
+    var seen = {}, out = [];
+    (DB.her.checkins || []).forEach(function (c) { if (!seen[c.day]) { seen[c.day] = 1; out.push(c); } });
+    return out.sort(function (a, b) { return a.day < b.day ? -1 : 1; });
   };
-  K.earned = function () { return (DB.state.points || 0) + K.autoAwards().reduce(function (a, x) { return a + x.amt; }, 0); };
+  K.checkedInToday = function () { var t = K.todayKey(); return K.checkinDays().some(function (c) { return c.day === t; }); };
+  function prevDay(key) { var p = key.split('-').map(Number); var d = new Date(Date.UTC(p[0], p[1] - 1, p[2] - 1)); return d.toISOString().slice(0, 10); }
+  K.streak = function () {
+    var set = {}; K.checkinDays().forEach(function (c) { set[c.day] = 1; });
+    var d = K.todayKey(); if (!set[d]) d = prevDay(d);
+    var n = 0; while (set[d]) { n++; d = prevDay(d); }
+    return n;
+  };
+  K.bestStreak = function () {
+    var best = 0, run = 0, last = null;
+    K.checkinDays().forEach(function (c) { run = (last && prevDay(c.day) === last) ? run + 1 : 1; last = c.day; best = Math.max(best, run); });
+    return best;
+  };
+  // Points she earns by checking in: perDay each day, plus weekBonus on every 7th day in a row
+  K.checkinAwards = function () {
+    var cfg = Object.assign({ on: true, perDay: 2, weekBonus: 10, since: 0 }, DB.state.checkinPoints || {});
+    if (!cfg.on) return [];
+    var out = [], run = 0, last = null;
+    K.checkinDays().forEach(function (c) {
+      run = (last && prevDay(c.day) === last) ? run + 1 : 1; last = c.day;
+      if (c.at <= (+cfg.since || 0)) return;
+      if (+cfg.perDay) out.push({ amt: +cfg.perDay, reason: 'Daily check-in ✅', at: c.at, self: true });
+      if (+cfg.weekBonus && run % 7 === 0) out.push({ amt: +cfg.weekBonus, reason: run + '-day streak bonus 🔥', at: c.at + 1, self: true });
+    });
+    return out;
+  };
+  K.pointsLog = function () {
+    return (DB.state.pointsLog || []).concat(K.autoAwards(), K.checkinAwards()).sort(function (x, y) { return x.at - y.at; });
+  };
+  K.earned = function () { return (DB.state.points || 0) + K.autoAwards().concat(K.checkinAwards()).reduce(function (a, x) { return a + x.amt; }, 0); };
   // Points she can spend = points given (by hand + nightly) − points spent on presents
   K.spent = function () { var b = DB.her.bought || {}; return Object.keys(b).reduce(function (a, k) { return a + (+b[k] || 0); }, 0); };
   K.balance = function () { return Math.max(0, K.earned() - K.spent()); };
@@ -331,6 +364,41 @@
   ];
   K.moodInfo = function (id) { return K.MOODS.find(function (m) { return m[0] === id; }) || ['?', '💭', id]; };
   K.lastMood = function () { var m = DB.her.moods || []; return m.length ? m[m.length - 1] : null; };
+
+  // ------------------------------------------------------------ check-in pop-up (Livina)
+  K.checkinModal = function () {
+    var done = K.checkedInToday(), st = K.streak(), hour = T.parts(T.now(), HZ).h;
+    var greet = hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    var cfg = Object.assign({ on: true, perDay: 2, weekBonus: 10 }, DB.state.checkinPoints || {});
+    var nextRun = st + (done ? 0 : 1), bonusToday = !done && cfg.on && +cfg.weekBonus && nextRun % 7 === 0;
+    var sh = K.modal('<div class="em">' + (hour < 5 || hour >= 20 ? '🌙' : '☀️') + '</div>' +
+      '<h3>' + greet + ', ' + K.esc(K.petName()) + '!</h3>' +
+      '<p class="desc">' + (done ? 'You already checked in today ✓ Want to update how you\'re feeling?' : 'Check in for today. How\'s your day going?') + '</p>' +
+      '<div class="ck-streak">' + (st ? '🔥 <b>' + st + '-day streak</b>' + (done ? '' : '. Keep it going!') : '🔥 Start a streak today!') + '</div>' +
+      '<div class="moods">' + K.MOODS.map(function (m) { return '<button type="button" class="mood" data-mood="' + m[0] + '"><span class="e">' + m[1] + '</span><span>' + m[2] + '</span></button>'; }).join('') + '</div>' +
+      '<input class="field" id="ck-note" maxlength="300" placeholder="Anything you want to tell him? (optional)" style="margin-top:10px;font-size:1rem">' +
+      '<button type="button" class="btn big" id="ck-go" style="margin-top:12px">' + (done ? 'Update my mood 💚' : 'Check in ✅' + (cfg.on && +cfg.perDay ? ' (+' + (+cfg.perDay + (bonusToday ? +cfg.weekBonus : 0)) + ' ⭐)' : '')) + '</button>', 'checkin-sheet');
+    var picked = null;
+    sh.querySelector('.moods').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mood]'); if (!b) return;
+      picked = picked === b.dataset.mood ? null : b.dataset.mood;
+      sh.querySelectorAll('.mood').forEach(function (x) { x.classList.toggle('picked', x.dataset.mood === picked); });
+    });
+    sh.querySelector('#ck-go').addEventListener('click', function () {
+      var note = sh.querySelector('#ck-note').value.trim();
+      if (done && !picked && !note) { K.closeModal(); return; }
+      var patch = {}, now = Date.now();
+      if (!done) patch.checkins = (DB.her.checkins || []).concat([{ day: K.todayKey(), at: now }]).slice(-400);
+      if (picked || note) patch.moods = (DB.her.moods || []).concat([{ mood: picked || 'okay', note: note, at: now }]).slice(-60);
+      DB.setHer(patch);
+      K.closeModal();
+      if (!done) {
+        var ns = K.streak();
+        K.toast(bonusToday ? '🔥 ' + ns + '-day streak! Bonus +' + cfg.weekBonus + ' ⭐' : 'Checked in! ' + (cfg.on && +cfg.perDay ? '+' + cfg.perDay + ' ⭐ · ' : '') + '🔥 ' + ns + '-day streak');
+        K.confetti({ count: bonusToday ? 140 : 70 });
+      } else K.toast('Sent to Chengxuan 💚');
+    });
+  };
 
   // ------------------------------------------------------------ modal (bottom sheet)
   var sheetBack = null, sheetTick = null;
@@ -522,7 +590,7 @@
     if (noticeOpen || K.isModalOpen()) return;
     var seen = DB.her.seenPoints || 0;
     if (!seen) { DB.setHer({ seenPoints: Date.now() }); return; }   // first visit: start fresh
-    var fresh = K.pointsLog().filter(function (l) { return l.at > seen; });
+    var fresh = K.pointsLog().filter(function (l) { return l.at > seen && !l.self; });
     if (!fresh.length) return;
     noticeOpen = true;
     var total = fresh.reduce(function (a, l) { return a + l.amt; }, 0);
@@ -561,6 +629,12 @@
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });
         pointsNotice(); DB.subscribe(pointsNotice); setInterval(pointsNotice, 60000);
+        // Once a day, the first time she opens the site: the check-in pop-up (waits for other pop-ups to close)
+        var tries = 0, ckTimer = setInterval(function () {
+          if (++tries > 30 || K.checkedInToday() || K.store.get('kiwi-ck-prompt') === K.todayKey()) { clearInterval(ckTimer); return; }
+          if (K.isModalOpen() || document.querySelector('.confetti')) return;
+          clearInterval(ckTimer); K.store.set('kiwi-ck-prompt', K.todayKey()); K.checkinModal();
+        }, 1500);
       }
       readyFns.forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
       K.restoreDrafts();
