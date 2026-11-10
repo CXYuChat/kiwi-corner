@@ -12,11 +12,33 @@ Kiwi.onReady(function () {
   K.missButton();
 
   // ---------------------------------------------------------------- messages for him
+  // All messages live in one database record (Firebase caps a record at ~1 MB).
+  // If they ever get close, drop the oldest archived ones first, then the oldest overall.
+  function fitMessages(list) {
+    var LIMIT = 700000;
+    list = list.slice();
+    while (list.length > 1 && JSON.stringify(list).length > LIMIT) {
+      var i = list.findIndex(function (m) { return m.archived || m.reply; });
+      list.splice(i === -1 ? 0 : i, 1);
+    }
+    return list;
+  }
+  function words(s) { var m = String(s).trim().match(/\S+/g); return m ? m.length : 0; }
+  function showCount() {
+    var el = $('#msg-count'), t = $('#msg-text'); if (!el || !t) return;
+    var w = words(t.value), left = 30000 - t.value.length;
+    el.textContent = w ? w + (w === 1 ? ' word' : ' words') + (left < 2000 ? ' · ' + left + ' characters left' : '') : '';
+  }
+  if ($('#msg-text')) $('#msg-text').addEventListener('input', showCount);
+
   if (DB.user && $('#msg-form')) {
     var drawMsgs = function () {
       var list = (DB.her.messages || []).slice().reverse();
       $('#msg-list').innerHTML = list.length ? list.map(function (m) {
-        return '<div class="bubble-me">' + K.esc(m.text) + '<small>' + K.herDateTime(m.at) + (m.read ? ' · seen ✓' : '') + '</small></div>' +
+        var txt = m.text.length > 700
+          ? '<details class="msg-long"><summary><span>' + K.esc(m.text.slice(0, 600)) + '…</span><span class="more">Read all</span></summary>' + K.esc(m.text) + '</details>'
+          : K.esc(m.text);
+        return '<div class="bubble-me">' + txt + '<small>' + K.herDateTime(m.at) + (m.read ? ' · seen ✓' : '') + '</small></div>' +
           (m.reply ? '<div class="bubble-him"><b>Chengxuan 🥝</b>' + K.esc(m.reply) + '</div>' : '');
       }).join('') : '<p class="muted" style="text-align:center">No messages yet 💭</p>';
     };
@@ -24,7 +46,8 @@ Kiwi.onReady(function () {
     $('#msg-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var t = $('#msg-text').value.trim(); if (!t) return;
-      DB.setHer({ messages: (DB.her.messages || []).concat([{ id: Math.random().toString(36).slice(2, 9), text: t, at: Date.now() }]).slice(-200) });
+      DB.setHer({ messages: fitMessages((DB.her.messages || []).concat([{ id: Math.random().toString(36).slice(2, 9), text: t, at: Date.now() }])) });
+      showCount();
       $('#msg-text').value = '';
       K.confetti({ count: 40 });
     });

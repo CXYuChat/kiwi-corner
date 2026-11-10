@@ -51,6 +51,45 @@ Kiwi.onReady(function () {
 
   $('#hi-name').textContent = K.name();
   K.missButton();
+
+  // ---------------------------------------------------------------- mood check-in
+  (function () {
+    if (!DB.user || !$('#moods')) return;
+    var picked = null;
+    $('#mood-h').textContent = "How's your day, " + K.petName() + '? 🌤️';
+    $('#moods').innerHTML = K.MOODS.map(function (m) {
+      return '<button type="button" class="mood" data-mood="' + m[0] + '"><span class="e">' + m[1] + '</span><span>' + m[2] + '</span></button>';
+    }).join('');
+    function showNow() {
+      var last = K.lastMood();
+      document.querySelectorAll('.mood').forEach(function (b) { b.classList.toggle('on', !!last && b.dataset.mood === last.mood && T.dayKey(last.at, K.HZ) === T.dayKey(T.now(), K.HZ)); });
+      if (!last) { $('#mood-now').textContent = ''; return; }
+      var info = K.moodInfo(last.mood), today = T.dayKey(last.at, K.HZ) === T.dayKey(T.now(), K.HZ);
+      $('#mood-now').innerHTML = (today ? 'Today: ' : 'Last time (' + T.fmtDay(last.at, K.HZ) + '): ') + '<b>' + info[1] + ' ' + K.esc(info[2]) + '</b>' +
+        (last.note ? ' · "' + K.esc(last.note) + '"' : '') + (today ? ' · sent to Chengxuan ✓' : '');
+    }
+    var T = window.KiwiTime;
+    $('#moods').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mood]'); if (!b) return;
+      picked = b.dataset.mood;
+      document.querySelectorAll('.mood').forEach(function (x) { x.classList.toggle('picked', x === b); });
+      $('#mood-note-wrap').hidden = false;
+      $('#mood-note').focus({ preventScroll: true });
+    });
+    function send() {
+      if (!picked) return;
+      var note = $('#mood-note').value.trim();
+      var list = (DB.her.moods || []).concat([{ mood: picked, note: note, at: Date.now() }]).slice(-60);
+      DB.setHer({ moods: list });
+      $('#mood-note').value = ''; $('#mood-note-wrap').hidden = true; picked = null;
+      document.querySelectorAll('.mood').forEach(function (x) { x.classList.remove('picked'); });
+      K.toast('Sent to Chengxuan 💚'); K.hop($('#mascot'));
+      var r = $('#mood-card').getBoundingClientRect(); K.confetti({ x: r.left + r.width / 2, y: r.top + 40, count: 40 });
+    }
+    $('#mood-send').addEventListener('click', send);
+    $('#mood-note').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); send(); } });
+    showNow(); DB.subscribe(showNow);
+  })();
   // ---------------------------------------------------------------- "add to home screen" tip (once, phones only)
   (function () {
     var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;

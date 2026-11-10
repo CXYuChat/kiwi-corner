@@ -33,7 +33,8 @@
       <h2>Messages for him 💌</h2>
       <p class="muted">Write him anything: a thought, a rant, a love letter. He'll see it and can write back.</p>
       <form id="msg-form" class="form">
-        <textarea class="field" id="msg-text" maxlength="1000" placeholder="Dear Chengxuan…" required></textarea>
+        <textarea class="field" id="msg-text" maxlength="30000" placeholder="Dear Chengxuan…" required style="min-height:140px"></textarea>
+        <div class="help" id="msg-count" style="text-align:right;margin-top:-4px"></div>
         <button class="btn pink" type="submit">Send to him 💌</button>
       </form>
       <div class="chat" id="msg-list"></div>

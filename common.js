@@ -324,6 +324,14 @@
     });
   };
 
+  // ------------------------------------------------------------ moods (check-in)
+  K.MOODS = [
+    ['amazing', '😍', 'Amazing'], ['happy', '😊', 'Happy'], ['okay', '😐', 'Okay'], ['tired', '😴', 'Tired'],
+    ['stressed', '😤', 'Stressed'], ['sad', '😢', 'Sad'], ['sick', '🤒', 'Sick'], ['missing', '🥺', 'Missing you']
+  ];
+  K.moodInfo = function (id) { return K.MOODS.find(function (m) { return m[0] === id; }) || ['?', '💭', id]; };
+  K.lastMood = function () { var m = DB.her.moods || []; return m.length ? m[m.length - 1] : null; };
+
   // ------------------------------------------------------------ modal (bottom sheet)
   var sheetBack = null, sheetTick = null;
   K.modal = function (html, cls, tick) {
@@ -411,7 +419,7 @@
     });
     var showPts = function () {
       var el = K.$('#pts-count'); if (el) el.textContent = K.balance();
-      var un = K.$('#admin-unread'); if (un) { var n = (DB.her.messages || []).filter(function (m) { return !m.read; }).length; un.textContent = n ? ' ' + n + '📬' : ''; }
+      var un = K.$('#admin-unread'); if (un) { var n = (DB.her.messages || []).filter(function (m) { return !(m.archived === true || (m.archived !== false && m.reply)); }).length; un.textContent = n ? ' ' + n + '📬' : ''; }
     };
     showPts(); DB.subscribe(showPts); setInterval(showPts, 60000);
   }

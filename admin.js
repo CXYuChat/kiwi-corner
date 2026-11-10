@@ -63,6 +63,18 @@ Kiwi.onReady(function () {
   // ---------------------------------------------------------------- panels
   var P = {};
 
+  function moodBox(her) {
+    var ms = (her.moods || []).slice().reverse();
+    if (!ms.length) return '<div class="mood-admin"><b>💭 Her mood</b><span class="muted">She hasn\'t checked in yet</span></div>';
+    var now = ms[0], info = K.moodInfo(now.mood);
+    var hist = ms.slice(1, 7).map(function (m) { var i = K.moodInfo(m.mood); return '<span title="' + esc(i[2] + ' · ' + K.herDateTime(m.at) + (m.note ? ' · ' + m.note : '')) + '">' + i[1] + '</span>'; }).join(' ');
+    return '<div class="mood-admin"><b>💭 Her mood</b>' +
+      '<div class="mood-big">' + info[1] + ' <span>' + esc(info[2]) + '</span></div>' +
+      (now.note ? '<div class="mood-quote">"' + esc(now.note) + '"</div>' : '') +
+      '<div class="help">' + ago(now.at) + ' · ' + K.herDateTime(now.at) + ' Barcelona</div>' +
+      (hist ? '<div class="help">Before that: <span class="mood-hist">' + hist + '</span></div>' : '') + '</div>';
+  }
+
   P.overview = function () {
     var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
     var opened = gs.filter(function (g) { return g.opened; }).length, unlocked = gs.filter(function (g) { return g.unlocked; }).length;
@@ -74,11 +86,12 @@ Kiwi.onReady(function () {
         '<div class="stat"><b>🎁 ' + opened + '/' + gs.length + '</b><span>gifts opened (' + unlocked + ' unlocked)</span></div>' +
         '<div class="stat"><b>🧺 ' + (her.gameBest || 0) + '</b><span>kiwi game best</span></div>' +
       '</div>' +
+      moodBox(her) +
       '<p>👀 Livina last visited: <b>' + ago(her.lastSeen) + '</b></p>' +
       '<p>⏳ Main countdown: <b>' + (f ? esc(f.emoji + ' ' + f.label) : 'none') + '</b></p>' +
       '<p>💌 Surprise: <b>' + (sp && sp.active ? esc(sp.title || 'untitled') + (her.seenSurprise === sp.id ? ' (seen ✓)' : ' (not opened yet)') : 'none showing') + '</b></p>' +
       '<p>💭 New guesses/wishes: <b>' + ((her.guesses || []).filter(function (x) { return !x.verdict; }).length + (her.wishes || []).filter(function (x) { return !x.status; }).length) + '</b></p>' +
-      '<p>📬 Unread messages from her: <b>' + (her.messages || []).filter(function (m) { return !m.read; }).length + '</b></p>' +
+      '<p>📬 Messages waiting in your inbox: <b>' + (her.messages || []).filter(function (m) { return !isArchived(m); }).length + '</b></p>' +
       '<p>📣 Status update: <b>' + (ov && ov.text && (!ov.until || Date.now() < ov.until) ? esc(ov.text) : 'none (using schedule)') + '</b></p>' +
       '<div class="btns"><button class="btn sm" data-quick="10">+10 ⭐</button><button class="btn sm" data-quick="25">+25 ⭐</button>' +
       '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div>' +
@@ -178,17 +191,40 @@ Kiwi.onReady(function () {
       }).join('') : '<p class="muted">No wishes yet</p>') + '</section>';
   };
 
+  // Messages from her: Inbox (waiting for you) and Archive (replied, or archived by you).
+  var inboxView = 'inbox';
+  function isArchived(m) { return m.archived === true || (m.archived !== false && !!m.reply); }
   P.inbox = function () {
-    var ms = (DB.her.messages || []).slice().reverse();
-    return '<section class="card stack"><h3>📬 Messages from her</h3>' + (ms.length ? ms.map(function (m) {
-      return '<div class="item' + (m.read ? '' : ' unread') + '"><div class="item-head"><span class="help">' + K.herDateTime(m.at) + ' Barcelona · ' + ago(m.at) + '</span>' +
-        (m.read ? '<span class="tag">read</span>' : '<span class="tag on">new</span>') + '</div>' +
-        '<div style="white-space:pre-wrap;font-size:1.05rem">' + esc(m.text) + '</div>' +
-        '<label class="help">Your reply (she sees it under her message)<textarea class="field" data-replyto="' + esc(m.id) + '" placeholder="Write back…">' + esc(m.reply || '') + '</textarea></label>' +
-        '<div class="btns"><button class="btn sm" data-msg="reply" data-mid="' + esc(m.id) + '">💌 ' + (m.reply ? 'Update reply' : 'Reply') + '</button>' +
-        (m.read ? '' : '<button class="btn sm ghost" data-msg="read" data-mid="' + esc(m.id) + '">✓ Mark read</button>') +
-        '<button class="btn sm danger" data-msg="del" data-mid="' + esc(m.id) + '">🗑️</button></div></div>';
-    }).join('') : '<p class="muted">No messages yet</p>') + '</section>';
+    var all = (DB.her.messages || []).slice().reverse();
+    var inbox = all.filter(function (m) { return !isArchived(m); }), arch = all.filter(isArchived);
+    var list = inboxView === 'inbox' ? inbox : arch;
+    var seg = '<div class="seg" role="group" style="margin-bottom:4px">' +
+      '<button type="button" data-inboxview="inbox" aria-pressed="' + (inboxView === 'inbox') + '">📥 Inbox' + (inbox.length ? ' (' + inbox.length + ')' : '') + '</button>' +
+      '<button type="button" data-inboxview="archive" aria-pressed="' + (inboxView === 'archive') + '">🗄️ Archive' + (arch.length ? ' (' + arch.length + ')' : '') + '</button></div>';
+    var help = inboxView === 'inbox'
+      ? '<p class="help" style="margin:0">Replying sends your answer to her and moves the message to the Archive.</p>'
+      : '<p class="help" style="margin:0">Replied and archived messages. You can still edit a reply or move one back to the Inbox.</p>';
+    function body(m) {
+      var t = esc(m.text);
+      if (m.text.length <= 700) return '<div class="msg-text">' + t + '</div>';
+      return '<details class="msg-long"><summary><span class="msg-text">' + esc(m.text.slice(0, 600)) + '…</span><span class="more">Read all (' + m.text.trim().split(/\s+/).length + ' words)</span></summary><div class="msg-text">' + t + '</div></details>';
+    }
+    var items = list.map(function (m) {
+      var tag = !isArchived(m) ? (m.read ? '<span class="tag">read</span>' : '<span class="tag on">new</span>') : (m.reply ? '<span class="tag on">replied ✓</span>' : '<span class="tag">archived</span>');
+      return '<div class="item' + (!isArchived(m) && !m.read ? ' unread' : '') + '"><div class="item-head"><span class="help">' + K.herDateTime(m.at) + ' Barcelona · ' + ago(m.at) + '</span>' + tag + '</div>' +
+        body(m) +
+        '<label class="help">' + (m.reply ? 'Your reply (she sees it under her message)' : 'Reply (she sees it under her message)') +
+          '<textarea class="field" data-replyto="' + esc(m.id) + '" placeholder="Write back…">' + esc(m.reply || '') + '</textarea></label>' +
+        '<div class="btns">' +
+          (inboxView === 'inbox'
+            ? '<button class="btn sm" data-msg="reply" data-mid="' + esc(m.id) + '">💌 Reply &amp; archive</button>' +
+              '<button class="btn sm ghost" data-msg="archive" data-mid="' + esc(m.id) + '">🗄️ Archive</button>'
+            : '<button class="btn sm" data-msg="reply" data-mid="' + esc(m.id) + '">💌 ' + (m.reply ? 'Update reply' : 'Reply') + '</button>' +
+              '<button class="btn sm ghost" data-msg="unarchive" data-mid="' + esc(m.id) + '">📥 Back to Inbox</button>') +
+          '<button class="btn sm danger" data-msg="del" data-mid="' + esc(m.id) + '">🗑️</button></div></div>';
+    }).join('');
+    var empty = inboxView === 'inbox' ? '<p class="muted">All caught up 💚 Nothing waiting for a reply.</p>' : '<p class="muted">Nothing archived yet</p>';
+    return '<section class="card stack"><h3>📬 Messages from her</h3>' + seg + help + (items || empty) + '</section>';
   };
 
   P.messages = function () {
@@ -265,7 +301,7 @@ Kiwi.onReady(function () {
     render(); window.scrollTo({ top: 0 });
   });
   // Only the overview refreshes live; forms re-render after you press a button.
-  function badge() { var n = (DB.her.messages || []).filter(function (m) { return !m.read; }).length; $('#inbox-badge').textContent = n ? '(' + n + ')' : ''; }
+  function badge() { var n = (DB.her.messages || []).filter(function (m) { return !isArchived(m); }).length; $('#inbox-badge').textContent = n ? '(' + n + ')' : ''; }
   badge(); DB.subscribe(badge);
   DB.subscribe(function () { if (current === 'overview') render(); });
 
@@ -345,6 +381,7 @@ Kiwi.onReady(function () {
       var patch = {}; patch[key] = arr; DB.setHer(patch); toast(d.xdel ? 'Deleted' : 'Reply sent 💚'); return render();
     }
 
+    if (d.inboxview) { inboxView = d.inboxview; return render(); }
     if (d.msg) {
       var mid = d.mid, msgs = (DB.her.messages || []).slice();
       if (d.msg === 'del') {
@@ -355,8 +392,17 @@ Kiwi.onReady(function () {
       }
       var replyEl = panels.querySelector('[data-replyto="' + mid + '"]'), txt = replyEl ? replyEl.value.trim() : '';
       if (d.msg === 'reply' && !txt) return toast('Write a reply first');
-      msgs = msgs.map(function (m) { if (m.id !== mid) return m; var y = Object.assign({}, m, { read: true }); if (d.msg === 'reply') { y.reply = txt; y.replyAt = Date.now(); } return y; });
-      DB.setHer({ messages: msgs }); toast(d.msg === 'reply' ? 'Reply sent 💌' : 'Marked read'); return render();
+      msgs = msgs.map(function (m) {
+        if (m.id !== mid) return m;
+        var y = Object.assign({}, m, { read: true });
+        if (d.msg === 'reply') { y.reply = txt; y.replyAt = Date.now(); y.archived = true; }
+        if (d.msg === 'archive') y.archived = true;
+        if (d.msg === 'unarchive') y.archived = false;
+        return y;
+      });
+      DB.setHer({ messages: msgs });
+      toast({ reply: inboxView === 'inbox' ? 'Reply sent 💌 · moved to Archive' : 'Reply updated 💌', archive: 'Archived 🗄️', unarchive: 'Back in the Inbox 📥' }[d.msg] || 'Done');
+      return render();
     }
 
     // nightly call points

@@ -14,6 +14,7 @@ A gift site for Livina (Barcelona) from Chengxuan (Singapore). Plain HTML/CSS/JS
 - Write times as `"YYYY-MM-DDTHH:MM"` in `SCHEDULE.zone`; append `@Zone/Name` for another zone. status: `busy` | `text` | `free`; `estimated: true` = dashed; `tag: "mun"` = cap on mascot.
 - For a new week: replace `myBlocks`, update `zone`/`city`, `locations`, `coverage` (gaps inside count as free), `homeAt`, `messages`, and recompute `expectBothFree`.
 - Always run `node tests/run.js` after editing and make it pass.
+- Local test mode (never touches the real Firebase data): open `http://localhost:8765/login.html?demo=1`, set `localStorage['kiwi-session']` to `wifey` or `admin`; `?demo=0` turns it off. Only works on localhost.
 - Preview locally with `?now=2026-11-13T11:00@Asia/Kolkata` (only works on localhost/file://, so gifts can't be peeked at online).
 - Privacy: public site. No hotel names, flight numbers, school names, full names or emails.
 - Publish: bump `version.json` (e.g. "2026-11-12.1") so open copies auto-refresh, then commit and `git push` to `main`; GitHub Pages redeploys in ~1 minute.

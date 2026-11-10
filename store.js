@@ -27,7 +27,7 @@
       featured: 'auto'
     };
   }
-  function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [] }; }
+  function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [], moods: [] }; }
 
   var state = defaultState(), her = defaultHer(), user = null, subs = [];
   function fill(d, def) { var o = def(); if (d) Object.keys(d).forEach(function (k) { if (d[k] !== undefined) o[k] = d[k]; }); return o; }
@@ -108,11 +108,20 @@
     saveHer: function () { return fb.herRef.set(JSON.parse(JSON.stringify(her))); }
   };
 
-  var B = C.firebase ? fb : local;
+  // Local test mode: only on this computer (localhost), opened once with ?demo=1. Never affects the real site.
+  var demo = false;
+  try {
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+      if (/[?&]demo=1/.test(location.search)) sessionStorage.setItem('kiwi-demo', '1');
+      if (/[?&]demo=0/.test(location.search)) sessionStorage.removeItem('kiwi-demo');
+      demo = sessionStorage.getItem('kiwi-demo') === '1';
+    }
+  } catch (e) { /* */ }
+  var B = (C.firebase && !demo) ? fb : local;
   var ready = B.init().catch(function (e) { console.error('KiwiDB init failed', e); });
 
   window.KiwiDB = {
-    mode: C.firebase ? 'live' : 'demo',
+    mode: (C.firebase && !demo) ? 'live' : 'demo',
     ready: ready,
     get state() { return state; },
     get her() { return her; },
