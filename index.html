@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kiwi Corner 🥝</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="home">
+  <main class="wrap stack">
+    <div class="banner" id="banner" hidden data-auth></div>
+    <button type="button" class="surprise-btn" id="surprise-btn" hidden data-auth><span class="em">💌</span><span><b>You have a surprise!</b>Tap to open it</span></button>
+
+    <section class="card a2hs" id="a2hs" hidden>
+      <button type="button" class="a2hs-x" id="a2hs-x" aria-label="Hide">✕</button>
+      <div class="em">📱</div>
+      <div><b>Put Kiwi Corner on your home screen!</b><span id="a2hs-how"></span></div>
+    </section>
+
+    <section class="hero">
+      <div class="mascot" id="mascot" role="button" tabindex="0" aria-label="Tap the kiwi for a love note">
+        <div class="bubble" id="bubble" aria-live="polite"></div>
+        <div data-mascot></div>
+      </div>
+      <div class="tap-hint">psst, tap the kiwi 👆</div>
+      <h1>Hi <span id="hi-name">Livina</span> <span class="k">🥝</span></h1>
+      <p class="tagline">A little kiwi corner of the internet, made just for you.</p>
+      <a class="status-pill" id="status-pill" href="schedule.html"><span class="dot"></span><span id="status-pill-text">Checking what Chengxuan is up to…</span></a>
+    </section>
+
+    <section class="card cd-card" id="big-cd"></section>
+
+    <figure class="card quote">
+      <blockquote id="quote-text"></blockquote>
+      <figcaption id="quote-by"></figcaption>
+      <div class="slice-deco" data-slice></div>
+    </figure>
+
+    <section class="card miss" id="miss-card" data-auth>
+      <h2 id="miss-h">Missing him? 🥺</h2>
+      <button class="btn pink" id="miss-btn">I miss you 💚</button>
+      <div class="miss-count" id="miss-count">0</div>
+      <div class="muted" id="miss-label">times you've missed him</div>
+      <div class="miss-react" id="miss-react"></div>
+    </section>
+
+    <a class="card points-card" data-auth href="gifts.html" style="display:block;text-decoration:none;color:inherit">
+      <div class="mini-row"><div class="row"><span class="num" id="pts-big">0</span><span class="muted">kiwi points ⭐</span></div><span class="tag">Gifts →</span></div>
+      <div class="bar"><i id="pts-bar" style="width:0"></i></div>
+      <div class="help" id="pts-next"></div>
+    </a>
+
+    <a class="btn big" href="schedule.html">📅 See what Chengxuan is doing this week <span aria-hidden="true">→</span></a>
+  </main>
+  <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="home.js"></script>
+</body>
+</html>

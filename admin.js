@@ -1,0 +1,440 @@
+/* admin.js: Chengxuan's control panel. Every change saves straight away and Livina sees it live (in live mode). */
+Kiwi.onReady(function () {
+  'use strict';
+  var K = window.Kiwi, T = window.KiwiTime, DB = window.KiwiDB, $ = K.$, esc = K.esc, HZ = K.HZ;
+  var panels = $('#panels'), current = 'overview';
+  $('#demo-warn').hidden = DB.mode !== 'demo';
+
+  // ---------------------------------------------------------------- helpers
+  var toastEl = document.createElement('div'); toastEl.className = 'toast'; document.body.appendChild(toastEl);
+  var toastT;
+  function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function () { toastEl.classList.remove('show'); }, 2200); }
+  function uid() { return Math.random().toString(36).slice(2, 9); }
+  function ago(ts) {
+    if (!ts) return 'never';
+    var m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'just now'; if (m < 60) return m + ' min ago';
+    var h = Math.round(m / 60); if (h < 24) return h + 'h ago';
+    return Math.round(h / 24) + 'd ago';
+  }
+  function sgHint(v) {
+    if (!v) return '';
+    try { var e = T.parse(v, HZ); return '= ' + T.fmtDay(e, 'Asia/Singapore') + ', ' + T.fmtTime(e, 'Asia/Singapore') + ' Singapore time'; } catch (x) { return ''; }
+  }
+  function wireSgHints(root) {
+    root.querySelectorAll('input[type=datetime-local]').forEach(function (inp) {
+      var out = inp.parentNode.querySelector('.sg');
+      var upd = function () { if (out) out.textContent = sgHint(inp.value); };
+      inp.addEventListener('input', upd); upd();
+    });
+  }
+  function nextAutoAt(ap) {
+    var z = ap.zone || 'Asia/Singapore', hm = String(ap.time || '00:31').split(':'), now = T.now(), skipped = ap.skipped || [];
+    for (var i = 0; i < 400; i++) {
+      var p = T.parts(T.startOfDay(now, z) + 12 * T.HOUR + i * T.DAY, z), at = T.wall(p.y, p.m, p.d, +hm[0], +hm[1], z);
+      if (at > now && at > (+ap.since || 0) && skipped.indexOf(T.dayKey(at, z)) === -1) return at;
+    }
+    return null;
+  }
+  function nextAuto(ap) {
+    if (!ap.on) return 'off';
+    var at = nextAutoAt(ap); if (!at) return '—';
+    return T.fmtDay(at, 'Asia/Singapore') + ', ' + T.fmtTime(at, 'Asia/Singapore') + ' Singapore (' + K.herDateTime(at) + ' Barcelona)';
+  }
+  function nextAutoKey(ap) { var at = nextAutoAt(Object.assign({}, ap, { skipped: [] })); return at ? T.dayKey(at, ap.zone || 'Asia/Singapore') : ''; }
+  // Turn nights already awarded into normal points so later setting changes don't rewrite them
+  function bakeAuto() {
+    var aw = K.autoAwards(); if (!aw.length) return;
+    var add = aw.reduce(function (a, x) { return a + x.amt; }, 0);
+    DB.setState({ points: (DB.state.points || 0) + add, pointsLog: (DB.state.pointsLog || []).concat(aw.map(function (x) { return { amt: x.amt, reason: x.reason, at: x.at, auto: true }; })).slice(-200) });
+  }
+
+  function giftsMap() {
+    if (DB.state.gifts) return JSON.parse(JSON.stringify(DB.state.gifts));
+    var m = {}; (window.GIFTS || []).forEach(function (g, i) { var c = Object.assign({ order: i }, g); delete c.id; m[g.id] = c; }); return m;
+  }
+  function addPoints(amt, reason) {
+    amt = Math.round(+amt); if (amt < 0) amt = Math.max(amt, -K.balance()); if (!amt) return toast('She has no points to take');
+    var log = (DB.state.pointsLog || []).concat([{ amt: amt, reason: reason || '', at: Date.now() }]).slice(-200);
+    DB.setState({ points: (DB.state.points || 0) + amt, pointsLog: log });
+    toast((amt > 0 ? '+' : '') + amt + ' points ' + (amt > 0 ? 'sent 💚' : 'removed'));
+  }
+
+  // ---------------------------------------------------------------- panels
+  var P = {};
+
+  P.overview = function () {
+    var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
+    var opened = gs.filter(function (g) { return g.opened; }).length, unlocked = gs.filter(function (g) { return g.unlocked; }).length;
+    var sp = st.surprise, ov = st.statusOverride;
+    return '<section class="card stack">' +
+      '<div class="stat-grid">' +
+        '<div class="stat"><b>⭐ ' + K.balance() + '</b><span>points (' + K.spent() + ' spent)</span></div>' +
+        '<div class="stat"><b>🥺 ' + (her.missCount || 0) + '</b><span>times she missed you</span></div>' +
+        '<div class="stat"><b>🎁 ' + opened + '/' + gs.length + '</b><span>gifts opened (' + unlocked + ' unlocked)</span></div>' +
+        '<div class="stat"><b>🧺 ' + (her.gameBest || 0) + '</b><span>kiwi game best</span></div>' +
+      '</div>' +
+      '<p>👀 Livina last visited: <b>' + ago(her.lastSeen) + '</b></p>' +
+      '<p>⏳ Main countdown: <b>' + (f ? esc(f.emoji + ' ' + f.label) : 'none') + '</b></p>' +
+      '<p>💌 Surprise: <b>' + (sp && sp.active ? esc(sp.title || 'untitled') + (her.seenSurprise === sp.id ? ' (seen ✓)' : ' (not opened yet)') : 'none showing') + '</b></p>' +
+      '<p>💭 New guesses/wishes: <b>' + ((her.guesses || []).filter(function (x) { return !x.verdict; }).length + (her.wishes || []).filter(function (x) { return !x.status; }).length) + '</b></p>' +
+      '<p>📬 Unread messages from her: <b>' + (her.messages || []).filter(function (m) { return !m.read; }).length + '</b></p>' +
+      '<p>📣 Status update: <b>' + (ov && ov.text && (!ov.until || Date.now() < ov.until) ? esc(ov.text) : 'none (using schedule)') + '</b></p>' +
+      '<div class="btns"><button class="btn sm" data-quick="10">+10 ⭐</button><button class="btn sm" data-quick="25">+25 ⭐</button>' +
+      '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div>' +
+    '</section>';
+  };
+
+  P.points = function () {
+    var st = DB.state, log = K.pointsLog().slice(-25).reverse(), g = K.nextGift(), ap = st.autoPoints || DB.defaults.state().autoPoints, recent = K.autoAwards().slice(-7).reverse();
+    return '<section class="card stack">' +
+      '<div class="points-card"><div class="row"><span class="num">' + K.balance() + '</span><span class="muted">points she has</span></div>' +
+      '<div class="help">Given ' + (st.points || 0) + ' · spent on presents ' + K.spent() + '</div>' +
+      '<div class="help">' + (g && g.cost ? 'Next present she can buy: #' + g.n + ' (' + esc(g.name) + ') for ' + g.cost + ' ⭐' : 'No point-priced gifts left') + '</div></div>' +
+      '<div class="form"><label>Reason she\'ll see (optional)<input class="field" id="pt-reason" placeholder="e.g. for being the cutest 🥰" maxlength="120"></label></div>' +
+      '<div class="help">Give points</div>' +
+      '<div class="btns">' + [5, 10, 25, 50, 100].map(function (n) { return '<button class="btn sm" data-add="' + n + '">+' + n + '</button>'; }).join('') + '</div>' +
+      '<div class="help">Take points away</div>' +
+      '<div class="btns">' + [5, 10, 25, 50].map(function (n) { return '<button class="btn sm danger" data-add="-' + n + '">−' + n + '</button>'; }).join('') + '</div>' +
+      '<div class="row2"><label class="help">Custom amount (use − to remove)<input class="field" id="pt-custom" type="number" inputmode="numeric" placeholder="e.g. 15 or -5"></label>' +
+      '<div style="align-self:end"><button class="btn sm" id="pt-custom-go">Give</button></div></div>' +
+      '<div class="row2"><label class="help">Set exactly<input class="field" id="pt-set" type="number" inputmode="numeric" placeholder="' + K.balance() + '"></label>' +
+      '<div style="align-self:end"><button class="btn sm brown" id="pt-set-go">Set</button></div></div>' +
+      '<div class="item" style="border-color:var(--green)"><div class="item-head"><b>📞 Nightly call points</b><span class="tag' + (ap.on ? ' on' : '') + '">' + (ap.on ? 'on' : 'off') + '</span></div>' +
+        '<p class="help" style="margin:0">Every night at this time she gets these points. She just sees the reason, never that it\'s automatic.</p>' +
+        '<div class="row2"><label class="help">Points each night<input class="field" id="ap-amt" type="number" inputmode="numeric" min="1" value="' + (+ap.amount || 0) + '"></label>' +
+        '<label class="help">Time (Singapore)<input class="field" id="ap-time" type="time" value="' + esc(ap.time || '00:31') + '"></label></div>' +
+        '<label class="help">What she sees<input class="field" id="ap-reason" value="' + esc(ap.reason || '') + '" maxlength="80"></label>' +
+        '<div class="help">Next: ' + esc(nextAuto(ap)) + '</div>' +
+        '<div class="btns"><button class="btn sm" id="ap-save">💾 Save</button>' +
+          (ap.on ? '<button class="btn sm ghost" id="ap-off">⏸️ Turn off</button>' : '<button class="btn sm pink" id="ap-on">▶️ Turn on</button>') +
+          (ap.on ? '<button class="btn sm ghost" id="ap-skip">🙅 Skip next night</button>' : '') + '</div>' +
+        (recent.length ? '<div class="help">Recent nights:</div><ul class="log">' + recent.map(function (x) {
+          return '<li><span>' + esc(T.fmtDay(x.at, 'Asia/Singapore')) + ' · +' + x.amt + '</span><button class="btn sm ghost" data-apskip="' + esc(x.key) + '">Remove</button></li>';
+        }).join('') + '</ul>' : '') +
+        ((ap.skipped || []).length ? '<div class="help">Skipped: ' + ap.skipped.slice(-6).map(function (k) { return k.slice(5) + ' <a href="#" data-apunskip="' + esc(k) + '">undo</a>'; }).join(', ') + '</div>' : '') +
+      '</div>' +
+      '<h3 style="margin-top:8px">History</h3>' +
+      (log.length ? '<button class="btn sm ghost" id="pt-undo">↩️ Undo last</button>' : '') +
+      '<ul class="log">' + (log.length ? log.map(function (l) {
+        return '<li><span>' + (l.auto ? '📞 ' : '') + esc(l.reason || '(no reason)') + '<br><small class="muted">' + K.herDateTime(l.at) + ' Barcelona' + (l.auto ? ' · nightly' : '') + '</small></span><span class="amt' + (l.amt < 0 ? ' neg' : '') + '">' + (l.amt > 0 ? '+' : '') + l.amt + '</span></li>';
+      }).join('') : '<li class="muted">No points given yet</li>') + '</ul>' +
+    '</section>';
+  };
+
+  P.gifts = function () {
+    var map = giftsMap(), ids = Object.keys(map).sort(function (a, b) { return (map[a].order || 0) - (map[b].order || 0); });
+    var live = {}; K.gifts().forEach(function (g) { live[g.id] = g; });
+    return '<p class="help" style="margin:0 4px">She can <b>spend</b> points to unlock a gift (its price), or it unlocks for free on its date, or right away if you tap "Unlock now". Leave points at 0 for date-only, or the date empty for points-only. Dates are <b>Barcelona time</b>.</p>' +
+      ids.map(function (id) {
+        var g = map[id], L = live[id] || {};
+        var tag = L.opened ? '<span class="tag on">opened ✓</span>' : L.unlocked ? '<span class="tag on">unlocked (' + L.why + ')</span>' : '<span class="tag">🔒 locked</span>';
+        return '<section class="card item" data-gid="' + esc(id) + '">' +
+          '<div class="item-head"><b>' + esc((g.emoji || '🎁') + ' ' + (g.name || 'New gift')) + '</b>' + tag + '</div>' +
+          '<div class="form">' +
+            '<div class="row2"><label>Emoji<input class="field" data-k="emoji" value="' + esc(g.emoji || '') + '" maxlength="4"></label>' +
+            '<label>Price in points<input class="field" data-k="points" type="number" inputmode="numeric" min="0" value="' + (+g.points || 0) + '"></label></div>' +
+            '<label>What it is (shown after unwrapping)<input class="field" data-k="name" value="' + esc(g.name || '') + '"></label>' +
+            '<label>Hint (shown before)<input class="field" data-k="hint" value="' + esc(g.hint || '') + '"></label>' +
+            '<label>Message when opened<textarea class="field" data-k="message">' + esc(g.message || '') + '</textarea></label>' +
+            '<label>Opens on (Barcelona time)<input class="field" data-k="reveal" type="datetime-local" value="' + esc(g.reveal || '') + '"><span class="help sg"></span></label>' +
+            '<div class="row2"><label>Wrapping colour<input class="field" data-k="color" type="color" value="' + esc(g.color || '#8EE000') + '" style="height:46px;padding:4px"></label>' +
+            '<label>Ribbon colour<input class="field" data-k="ribbon" type="color" value="' + esc(g.ribbon || '#7A5230') + '" style="height:46px;padding:4px"></label></div>' +
+          '</div>' +
+          '<div class="btns">' +
+            '<button class="btn sm" data-g="save">💾 Save</button>' +
+            (g.forceOpen ? '<button class="btn sm ghost" data-g="lock">🔒 Lock again</button>' : '<button class="btn sm pink" data-g="unlock">✨ Unlock now</button>') +
+            (L.opened ? '<button class="btn sm ghost" data-g="rewrap">🎀 Re-wrap</button>' : '') +
+            '<button class="btn sm ghost" data-g="up">↑</button><button class="btn sm ghost" data-g="down">↓</button>' +
+            '<button class="btn sm danger" data-g="delete">🗑️</button>' +
+          '</div></section>';
+      }).join('') +
+      '<button class="btn big" id="gift-add">＋ Add a gift</button>';
+  };
+
+
+  var VERDICT = { yes: '✅ Correct', close: '🔥 Close', warm: '🙂 Warmer', no: '❌ Nope' };
+  var WISH = { noted: '💚 Noted', maybe: '🤔 Maybe', coming: '🎁 On its way', no: '🙈 Not this time' };
+  P.wishes = function () {
+    var her = DB.her, num = {}, name = {};
+    K.gifts().forEach(function (g) { num[g.id] = g.n; name[g.id] = g.name; });
+    var gs = (her.guesses || []).slice().reverse(), ws = (her.wishes || []).slice().reverse();
+    function btns(kind, x, map, cur) {
+      return '<div class="btns">' + Object.keys(map).map(function (k) {
+        return '<button class="btn sm ' + (cur === k ? '' : 'ghost') + '" data-reply="' + kind + '" data-xid="' + esc(x.id) + '" data-v="' + k + '">' + map[k] + '</button>';
+      }).join('') + '<button class="btn sm danger" data-xdel="' + kind + '" data-xid="' + esc(x.id) + '">🗑️</button></div>';
+    }
+    return '<section class="card stack"><h3>🤔 Her guesses</h3><p class="help">Your reply shows next to her guess. Add a note if you like, and optional points for a good guess.</p>' +
+      '<div class="row2"><label class="help">Note with your next reply<input class="field" id="x-note" placeholder="e.g. haha nice try 😏" maxlength="100"></label>' +
+      '<label class="help">Points with your next reply<input class="field" id="x-pts" type="number" inputmode="numeric" placeholder="0"></label></div>' +
+      (gs.length ? gs.map(function (x) {
+        return '<div class="item"><div class="item-head"><b>#' + (num[x.giftId] || '?') + ': "' + esc(x.text) + '"</b><span class="tag' + (x.verdict ? ' on' : '') + '">' + (x.verdict ? VERDICT[x.verdict] : 'new') + '</span></div>' +
+          '<div class="help">Really: ' + esc(name[x.giftId] || 'deleted gift') + ' · ' + ago(x.at) + (x.note ? ' · your note: ' + esc(x.note) : '') + '</div>' + btns('guess', x, VERDICT, x.verdict) + '</div>';
+      }).join('') : '<p class="muted">No guesses yet</p>') + '</section>' +
+      '<section class="card stack"><h3>💭 Her wish list</h3>' +
+      (ws.length ? ws.map(function (x) {
+        return '<div class="item"><div class="item-head"><b>' + esc(x.text) + '</b><span class="tag' + (x.status ? ' on' : '') + '">' + (x.status ? WISH[x.status] : 'new') + '</span></div>' +
+          '<div class="help">' + ago(x.at) + (x.note ? ' · your note: ' + esc(x.note) : '') + '</div>' + btns('wish', x, WISH, x.status) + '</div>';
+      }).join('') : '<p class="muted">No wishes yet</p>') + '</section>';
+  };
+
+  P.inbox = function () {
+    var ms = (DB.her.messages || []).slice().reverse();
+    return '<section class="card stack"><h3>📬 Messages from her</h3>' + (ms.length ? ms.map(function (m) {
+      return '<div class="item' + (m.read ? '' : ' unread') + '"><div class="item-head"><span class="help">' + K.herDateTime(m.at) + ' Barcelona · ' + ago(m.at) + '</span>' +
+        (m.read ? '<span class="tag">read</span>' : '<span class="tag on">new</span>') + '</div>' +
+        '<div style="white-space:pre-wrap;font-size:1.05rem">' + esc(m.text) + '</div>' +
+        '<label class="help">Your reply (she sees it under her message)<textarea class="field" data-replyto="' + esc(m.id) + '" placeholder="Write back…">' + esc(m.reply || '') + '</textarea></label>' +
+        '<div class="btns"><button class="btn sm" data-msg="reply" data-mid="' + esc(m.id) + '">💌 ' + (m.reply ? 'Update reply' : 'Reply') + '</button>' +
+        (m.read ? '' : '<button class="btn sm ghost" data-msg="read" data-mid="' + esc(m.id) + '">✓ Mark read</button>') +
+        '<button class="btn sm danger" data-msg="del" data-mid="' + esc(m.id) + '">🗑️</button></div></div>';
+    }).join('') : '<p class="muted">No messages yet</p>') + '</section>';
+  };
+
+  P.messages = function () {
+    var st = DB.state, sp = st.surprise || {}, ov = st.statusOverride || {}, her = DB.her;
+    var ovOn = ov.text && (!ov.until || Date.now() < ov.until);
+    return '<section class="card stack"><h3>💬 Quote on her home page</h3><div class="form">' +
+        '<label>Quote<textarea class="field" id="q-text">' + esc(st.quote.text) + '</textarea></label>' +
+        '<label>Who said it<input class="field" id="q-by" value="' + esc(st.quote.by) + '"></label></div>' +
+        '<div class="btns"><button class="btn sm" id="q-save">💾 Save quote</button><button class="btn sm ghost" id="q-reset">Back to the original</button></div></section>' +
+      '<section class="card stack"><h3>💌 Surprise message</h3><p class="help">Shows as a "You have a surprise!" envelope on her home page. Opening it sets off confetti.</p><div class="form">' +
+        '<div class="row2"><label>Emoji<input class="field" id="s-emoji" value="' + esc(sp.emoji || '💌') + '" maxlength="4"></label><span></span></div>' +
+        '<label>Title<input class="field" id="s-title" value="' + esc(sp.title || '') + '" placeholder="e.g. Open me 🥰"></label>' +
+        '<label>Message<textarea class="field" id="s-text" placeholder="Write anything…">' + esc(sp.text || '') + '</textarea></label></div>' +
+        '<p class="help">' + (sp.active ? 'Showing now · ' + (her.seenSurprise === sp.id ? 'she opened it ✓' : 'not opened yet') : 'Not showing') + '</p>' +
+        '<div class="btns"><button class="btn sm pink" id="s-send">✨ Send surprise</button>' + (sp.active ? '<button class="btn sm ghost" id="s-hide">Hide it</button>' : '') + '</div></section>' +
+      '<section class="card stack"><h3>📣 Live status update</h3><p class="help">Replaces the "Right now Chengxuan is…" text for a while, e.g. "Just landed! 🛬".</p><div class="form">' +
+        '<label>Status<input class="field" id="o-text" value="' + esc(ovOn ? ov.text : '') + '" placeholder="e.g. Just landed safe! 🛬" maxlength="80"></label>' +
+        '<label>Show for<select class="field" id="o-dur"><option value="1">1 hour</option><option value="3" selected>3 hours</option><option value="6">6 hours</option><option value="24">1 day</option><option value="0">Until I clear it</option></select></label></div>' +
+        '<p class="help">' + (ovOn ? 'Showing now' + (ov.until ? ' until ' + K.herDateTime(ov.until) + ' Barcelona' : '') : 'Not showing (using the schedule)') + '</p>' +
+        '<div class="btns"><button class="btn sm" id="o-save">📣 Show status</button>' + (ovOn ? '<button class="btn sm ghost" id="o-clear">Clear</button>' : '') + '</div></section>' +
+      '<section class="card stack"><h3>🏷️ Home page banner</h3><div class="form"><label>Short line at the top of her home page (empty = hidden)<input class="field" id="b-text" value="' + esc(st.banner || '') + '" maxlength="90" placeholder="e.g. Good luck on your exam today! 📚💚"></label></div>' +
+        '<div class="btns"><button class="btn sm" id="b-save">💾 Save banner</button></div></section>';
+  };
+
+  P.countdowns = function () {
+    var st = DB.state, all = K.countdowns(), f = st.featured || 'auto';
+    var opts = [['auto', '✨ Automatic (most important)']].concat([['leave', '✈️ Leaving'], ['both', '💚 Next both free'], ['home', '🏡 Home'], ['gift-next', '🎁 Next present']])
+      .concat((st.countdowns || []).map(function (c) { return [c.id, (c.emoji || '⭐') + ' ' + c.label]; }));
+    return '<section class="card stack"><h3>⭐ Main (big) countdown</h3><p class="help">The big countdown on her Home and Week pages. If the one you pick has already passed, it falls back to automatic.</p>' +
+        '<select class="field" id="feat">' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === f ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>' +
+        '<div class="btns"><button class="btn sm" id="feat-save">💾 Save</button></div></section>' +
+      '<section class="card stack"><h3>＋ Add your own countdown</h3><div class="form">' +
+        '<div class="row2"><label>Emoji<input class="field" id="c-emoji" value="✈️" maxlength="4"></label><span></span></div>' +
+        '<label>Label<input class="field" id="c-label" placeholder="e.g. Next video call" maxlength="60"></label>' +
+        '<label>When (Barcelona time)<input class="field" id="c-at" type="datetime-local"><span class="help sg"></span></label></div>' +
+        '<div class="btns"><button class="btn sm" id="c-add">＋ Add countdown</button></div></section>' +
+      '<section class="card stack"><h3>Your countdowns</h3>' +
+        ((st.countdowns || []).length ? (st.countdowns || []).map(function (c) {
+          return '<div class="item-head"><span>' + esc((c.emoji || '⭐') + ' ' + c.label) + '<br><small class="muted">' + esc(K.herDateTime(T.parse(c.at, HZ))) + ' Barcelona</small></span><button class="btn sm danger" data-cdel="' + esc(c.id) + '">🗑️</button></div>';
+        }).join('') : '<p class="muted">None yet</p>') +
+        '<p class="help">Automatic ones (leaving, both free, home, presents) come from the schedule and gifts. Right now she sees ' + all.length + ' countdowns in the Timers tab.</p></section>';
+  };
+
+  P.notes = function () {
+    return '<section class="card stack"><h3>📝 Love notes</h3><p class="help">One note per line. The kiwi says a random one when she taps it.</p>' +
+      '<textarea class="field" id="n-text" style="min-height:320px">' + esc(K.notes().join('\n')) + '</textarea>' +
+      '<div class="btns"><button class="btn sm" id="n-save">💾 Save notes</button><button class="btn sm ghost" id="n-reset">Back to the original 20</button></div></section>';
+  };
+
+  P.reset = function () {
+    var rows = [
+      ['points', '⭐ Reset points to 0', 'Clears her points and the points history.'],
+      ['miss', '🥺 Reset "missed you" counter', 'Sets the miss-you count back to 0.'],
+      ['game', '🧺 Reset game high score', 'Sets the kiwi game best back to 0.'],
+      ['rewrap', '🎀 Re-wrap all gifts', 'Every unlocked gift goes back to "Tap to unwrap!".'],
+      ['messages', '💌 Clear surprise, status and banner', 'Removes the surprise envelope, live status and banner.'],
+      ['gifts', '🎁 Restore gifts from gifts.js', 'Throws away gift edits made here and uses the file again.'],
+      ['all', '🧨 Reset the whole website', 'Everything above, plus quote, notes and countdowns back to the defaults.']
+    ];
+    return '<section class="card stack"><p class="help">Each button asks before doing anything.</p>' + rows.map(function (r) {
+      return '<div class="item"><div class="item-head"><b>' + r[1] + '</b></div><p class="help" style="margin:0">' + r[2] + '</p><div><button class="btn sm ' + (r[0] === 'all' ? 'danger' : 'brown') + '" data-reset="' + r[0] + '">Reset</button></div></div>';
+    }).join('') + '</section>';
+  };
+
+  // ---------------------------------------------------------------- render + tabs
+  function render() {
+    panels.innerHTML = '<div class="panel stack">' + P[current]() + '</div>';
+    wireSgHints(panels);
+  }
+  $('#admin-tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-tab]'); if (!b) return;
+    current = b.dataset.tab;
+    document.querySelectorAll('[data-tab]').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
+    render(); window.scrollTo({ top: 0 });
+  });
+  // Only the overview refreshes live; forms re-render after you press a button.
+  function badge() { var n = (DB.her.messages || []).filter(function (m) { return !m.read; }).length; $('#inbox-badge').textContent = n ? '(' + n + ')' : ''; }
+  badge(); DB.subscribe(badge);
+  DB.subscribe(function () { if (current === 'overview') render(); });
+
+  // ---------------------------------------------------------------- actions
+  function val(id) { var el = $('#' + id); return el ? el.value.trim() : ''; }
+  function saveGifts(map, msg) { DB.setState({ gifts: map }); toast(msg || 'Saved 🎁'); render(); }
+
+  panels.addEventListener('click', function (e) {
+    var un = e.target.closest('[data-apunskip]');
+    if (un) {
+      e.preventDefault();
+      var ap2 = Object.assign({}, DB.state.autoPoints); ap2.skipped = (ap2.skipped || []).filter(function (k) { return k !== un.dataset.apunskip; });
+      DB.setState({ autoPoints: ap2 }); toast('Night restored'); return render();
+    }
+    var b = e.target.closest('button'); if (!b) return;
+    var d = b.dataset, id = b.id;
+
+    if (d.quick) { addPoints(+d.quick, ''); render(); return; }
+    if (d.add) { addPoints(+d.add, val('pt-reason')); render(); return; }
+    if (id === 'pt-custom-go') { if (!val('pt-custom')) return toast('Type an amount first'); addPoints(+val('pt-custom'), val('pt-reason')); render(); return; }
+    if (id === 'pt-set-go') {
+      var n = Math.max(0, Math.round(+val('pt-set'))); if (val('pt-set') === '' || isNaN(n)) return toast('Type a number first');
+      var diff = n - K.balance(); if (diff) addPoints(diff, val('pt-reason') || 'Points adjusted'); render(); return;
+    }
+    if (id === 'pt-undo') {
+      var log = (DB.state.pointsLog || []).slice(), last = log.pop(); if (!last) return;
+      DB.setState({ points: Math.max(0, (DB.state.points || 0) - last.amt), pointsLog: log }); toast('Undone ↩️'); render(); return;
+    }
+
+    if (d.g) {
+      var card = b.closest('[data-gid]'), gid = card.dataset.gid, map = giftsMap(), g = map[gid] || {};
+      if (d.g === 'save') {
+        card.querySelectorAll('[data-k]').forEach(function (inp) { g[inp.dataset.k] = inp.dataset.k === 'points' ? Math.max(0, +inp.value || 0) : inp.value.trim(); });
+        if (!g.reveal) delete g.reveal;
+        map[gid] = g; return saveGifts(map, 'Gift saved 🎁');
+      }
+      if (d.g === 'unlock') { g.forceOpen = true; map[gid] = g; return saveGifts(map, 'Unlocked! She can unwrap it now ✨'); }
+      if (d.g === 'lock') { delete g.forceOpen; map[gid] = g; return saveGifts(map, 'Locked again 🔒'); }
+      if (d.g === 'rewrap') { var op = Object.assign({}, DB.her.opened); delete op[gid]; DB.setHer({ opened: op }); toast('Re-wrapped 🎀'); return render(); }
+      if (d.g === 'up' || d.g === 'down') {
+        var ids = Object.keys(map).sort(function (a, b2) { return (map[a].order || 0) - (map[b2].order || 0); });
+        var i = ids.indexOf(gid), j = d.g === 'up' ? i - 1 : i + 1; if (j < 0 || j >= ids.length) return;
+        ids.splice(j, 0, ids.splice(i, 1)[0]); ids.forEach(function (k, n2) { map[k].order = n2; });
+        return saveGifts(map, 'Order saved');
+      }
+      if (d.g === 'delete') {
+        K.confirm({ emoji: '🗑️', title: 'Delete "' + (g.name || 'this gift') + '"?', text: 'It disappears from her Gifts page.', yes: 'Delete', danger: true }).then(function (ok) {
+          if (!ok) return; delete map[gid]; saveGifts(map, 'Gift deleted');
+        });
+        return;
+      }
+    }
+    if (id === 'gift-add') {
+      var m = giftsMap(), ord = Object.keys(m).length;
+      m['g' + uid()] = { order: ord, emoji: '🎁', name: '', hint: 'Something special is on its way…', message: '', points: 0, color: '#ff8fa3', ribbon: '#8EE000' };
+      return saveGifts(m, 'New gift added. Fill it in and press Save');
+    }
+
+
+    if (d.reply || d.xdel) {
+      var key = (d.reply || d.xdel) === 'guess' ? 'guesses' : 'wishes', arr = (DB.her[key] || []).slice();
+      if (d.xdel) {
+        K.confirm({ emoji: '🗑️', title: 'Delete this?', yes: 'Delete', danger: true }).then(function (ok) {
+          if (!ok) return;
+          var p2 = {}; p2[key] = (DB.her[key] || []).filter(function (x) { return x.id !== d.xid; }); DB.setHer(p2); toast('Deleted'); render();
+        });
+        return;
+      }
+      else {
+        var note = val('x-note'), pts = Math.round(+val('x-pts') || 0);
+        arr = arr.map(function (x) {
+          if (x.id !== d.xid) return x;
+          var y = Object.assign({}, x); y[key === 'guesses' ? 'verdict' : 'status'] = d.v; if (note) y.note = note; return y;
+        });
+        if (pts) addPoints(pts, key === 'guesses' ? 'Great guess! 🤔' : 'For your wish 💭');
+      }
+      var patch = {}; patch[key] = arr; DB.setHer(patch); toast(d.xdel ? 'Deleted' : 'Reply sent 💚'); return render();
+    }
+
+    if (d.msg) {
+      var mid = d.mid, msgs = (DB.her.messages || []).slice();
+      if (d.msg === 'del') {
+        K.confirm({ emoji: '🗑️', title: 'Delete this message?', text: 'It disappears for both of you.', yes: 'Delete', danger: true }).then(function (ok) {
+          if (!ok) return; DB.setHer({ messages: (DB.her.messages || []).filter(function (m) { return m.id !== mid; }) }); toast('Deleted'); render();
+        });
+        return;
+      }
+      var replyEl = panels.querySelector('[data-replyto="' + mid + '"]'), txt = replyEl ? replyEl.value.trim() : '';
+      if (d.msg === 'reply' && !txt) return toast('Write a reply first');
+      msgs = msgs.map(function (m) { if (m.id !== mid) return m; var y = Object.assign({}, m, { read: true }); if (d.msg === 'reply') { y.reply = txt; y.replyAt = Date.now(); } return y; });
+      DB.setHer({ messages: msgs }); toast(d.msg === 'reply' ? 'Reply sent 💌' : 'Marked read'); return render();
+    }
+
+    // nightly call points
+    if (id === 'ap-save' || id === 'ap-on' || id === 'ap-off' || id === 'ap-skip' || d.apskip) {
+      var cur = Object.assign({}, DB.defaults.state().autoPoints, DB.state.autoPoints || {});
+      if (id === 'ap-skip' || d.apskip) {
+        var key2 = d.apskip || nextAutoKey(cur);
+        cur.skipped = (cur.skipped || []).filter(function (k) { return k !== key2; }).concat([key2]).slice(-60);
+        DB.setState({ autoPoints: cur }); toast(d.apskip ? 'Removed that night' : 'Next night skipped'); return render();
+      }
+      // Lock in nights already given (so changing the amount or time never rewrites the past), then apply the change
+      bakeAuto();
+      cur = Object.assign({}, DB.state.autoPoints, { since: T.now() });
+      if (id === 'ap-on') cur.on = true;
+      if (id === 'ap-off') cur.on = false;
+      if (id === 'ap-save') {
+        var amt2 = Math.round(+val('ap-amt')); if (!amt2 || amt2 < 1) return toast('Points must be at least 1');
+        if (!/^\d{2}:\d{2}$/.test(val('ap-time'))) return toast('Pick a time');
+        cur.amount = amt2; cur.time = val('ap-time'); cur.reason = val('ap-reason') || 'For our call 📞💚';
+      }
+      DB.setState({ autoPoints: cur }); toast(id === 'ap-off' ? 'Nightly points paused' : id === 'ap-on' ? 'Nightly points on 📞' : 'Saved 📞'); return render();
+    }
+
+    if (id === 'q-save') { if (!val('q-text')) return toast('The quote is empty'); DB.setState({ quote: { text: val('q-text'), by: val('q-by') } }); toast('Quote saved 💬'); return render(); }
+    if (id === 'q-reset') { DB.setState({ quote: DB.defaults.state().quote }); toast('Original quote back'); return render(); }
+    if (id === 's-send') {
+      if (!val('s-text') && !val('s-title')) return toast('Write a title or message first');
+      DB.setState({ surprise: { id: uid(), emoji: val('s-emoji') || '💌', title: val('s-title'), text: val('s-text'), active: true } });
+      toast('Surprise sent 💌'); return render();
+    }
+    if (id === 's-hide') { DB.setState({ surprise: Object.assign({}, DB.state.surprise, { active: false }) }); toast('Surprise hidden'); return render(); }
+    if (id === 'o-save') {
+      if (!val('o-text')) return toast('Type a status first');
+      var hrs = +val('o-dur'); DB.setState({ statusOverride: { text: val('o-text'), until: hrs ? Date.now() + hrs * 3600000 : 0 } });
+      toast('Status is live 📣'); return render();
+    }
+    if (id === 'o-clear') { DB.setState({ statusOverride: null }); toast('Status cleared'); return render(); }
+    if (id === 'b-save') { DB.setState({ banner: val('b-text') }); toast(val('b-text') ? 'Banner saved 🏷️' : 'Banner hidden'); return render(); }
+
+    if (id === 'feat-save') { DB.setState({ featured: val('feat') }); toast('Main countdown saved ⭐'); return render(); }
+    if (id === 'c-add') {
+      if (!val('c-label') || !val('c-at')) return toast('Add a label and a date');
+      DB.setState({ countdowns: (DB.state.countdowns || []).concat([{ id: 'c-' + uid(), emoji: val('c-emoji') || '⭐', label: val('c-label'), at: val('c-at') }]) });
+      toast('Countdown added ⏳'); return render();
+    }
+    if (d.cdel) { DB.setState({ countdowns: (DB.state.countdowns || []).filter(function (c) { return c.id !== d.cdel; }) }); toast('Countdown deleted'); return render(); }
+
+    if (id === 'n-save') {
+      var lines = $('#n-text').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!lines.length) return toast('Add at least one note');
+      DB.setState({ notes: lines }); toast(lines.length + ' notes saved 📝'); return render();
+    }
+    if (id === 'n-reset') { DB.setState({ notes: null }); toast('Original notes back'); return render(); }
+
+    if (d.reset) {
+      var R = {
+        points:   ['⭐', 'Reset her points to 0?', 'Her points, the points history and what she has spent all go back to 0. Opened presents stay open.'],
+        miss:     ['🥺', 'Reset the "missed you" counter?', 'The miss-you count goes back to 0.'],
+        game:     ['🧺', 'Reset the game high score?', 'Her kiwi game best goes back to 0.'],
+        rewrap:   ['🎀', 'Re-wrap all gifts?', 'Every opened present goes back to "Tap to unwrap!".'],
+        messages: ['💌', 'Clear surprise, status and banner?', 'They disappear from her site.'],
+        gifts:    ['🎁', 'Restore gifts from gifts.js?', 'All gift edits made here are thrown away.'],
+        all:      ['🧨', 'Reset the WHOLE website?', 'Points, gifts, messages, notes, countdowns, guesses, wishes and counters all go back to the start. This can\'t be undone.']
+      }[d.reset];
+      K.confirm({ emoji: R[0], title: R[1], text: R[2] + (d.reset === 'all' ? '' : ' This can\'t be undone.'), yes: 'Yes, reset', danger: true, typeWord: d.reset === 'all' ? 'RESET' : '' }).then(function (ok) {
+        if (!ok) return;
+        if (d.reset === 'points') { DB.setState({ points: 0, pointsLog: [], autoPoints: Object.assign({}, DB.state.autoPoints, { since: T.now(), skipped: [] }) }); DB.setHer({ bought: {} }); }
+        if (d.reset === 'miss') DB.setHer({ missCount: 0 });
+        if (d.reset === 'game') DB.setHer({ gameBest: 0 });
+        if (d.reset === 'rewrap') DB.setHer({ opened: {} });
+        if (d.reset === 'messages') DB.setState({ surprise: null, statusOverride: null, banner: '' });
+        if (d.reset === 'gifts') DB.setState({ gifts: null });
+        if (d.reset === 'all') { DB.resetState(); DB.resetHer(); }
+        toast('Done 🧹'); render();
+      });
+      return;
+    }
+  });
+
+  render();
+});

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gifts 🥝</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="gifts">
+  <main class="wrap stack">
+    <div class="card member-only" style="text-align:center">🔑 <a href="login.html?next=gifts.html">Log in</a> to see points, unlock presents, guess and make wishes.</div>
+    <section class="card points-card" data-auth>
+      <div class="row"><span class="num" id="pts-big">0</span><span class="muted">kiwi points ⭐</span></div>
+      <div class="bar"><i id="pts-bar" style="width:0"></i></div>
+      <div class="help" id="pts-next"></div>
+    </section>
+    <section>
+      <h2>Your presents 🎁</h2>
+      <p class="muted">Spend your points to unlock a present, or wait for its day and it opens for free. No peeking!</p>
+      <div class="gifts" id="gifts"></div>
+    </section>
+    <section class="card" data-auth>
+      <h2>Guess a present 🤔</h2>
+      <p class="muted">Think you know what one is? Guess! Chengxuan will tell you if you're close (but never spoil it 🤐).</p>
+      <form id="guess-form" class="form">
+        <label>Which present?<select class="field" id="g-which"></select></label>
+        <label>Your guess<input class="field" id="g-text" maxlength="80" placeholder="e.g. a cute plushie?" required></label>
+        <button class="btn" type="submit">Send guess 🤔</button>
+      </form>
+      <ul class="log" id="guess-list"></ul>
+    </section>
+    <section class="card" data-auth>
+      <h2>Wish list 💭</h2>
+      <p class="muted">Want something? Ask for it here and he'll see it.</p>
+      <form id="wish-form" class="form">
+        <label>I wish for…<textarea class="field" id="w-text" maxlength="200" placeholder="e.g. matching kiwi socks 🧦" required></textarea></label>
+        <button class="btn pink" type="submit">Send wish 💭</button>
+      </form>
+      <ul class="log" id="wish-list"></ul>
+    </section>
+    <section class="card" data-auth>
+      <h2>How you got your points ⭐</h2>
+      <ul class="log" id="pts-log"></ul>
+    </section>
+  </main>
+  <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="gifts-page.js"></script>
+  <script src="guesses.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+rules_version = '2';
+// Paste this into Firebase console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function isAdmin()  { return request.auth != null && request.auth.token.email == 'admin@mywifelivina.com'; }
+    function isLivina() { return request.auth != null && request.auth.token.email == 'livina@mywifelivina.com'; }
+
+    // Points, gifts, quote, surprise, countdowns: only the admin can change them.
+    // Anyone can read it (so visitors see gifts, notes and countdowns); only the admin writes.
+    match /kiwi/state { allow read: if true; allow write: if isAdmin(); }
+    // Miss-you count, high score, opened gifts, last seen: both can change them.
+    match /kiwi/her   { allow read, write: if isAdmin() || isLivina(); }
+    // Everything else is closed.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fun 🥝</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="fun">
+  <main class="wrap stack">
+    <section class="card" style="text-align:center">
+      <h2>Love note jar 💌</h2>
+      <div class="mascot" id="mascot" role="button" tabindex="0" aria-label="Tap the kiwi for a love note" style="width:150px;margin:96px auto 0">
+        <div class="bubble" id="bubble" aria-live="polite" style="left:50%;translate:-50% 0;transform-origin:bottom center;width:max-content;max-width:min(270px,78vw)"></div>
+        <div data-mascot></div>
+      </div>
+      <p class="muted">Tap the kiwi for a note 👆</p>
+    </section>
+
+    <section class="card" data-auth id="msg-card">
+      <h2>Messages for him 💌</h2>
+      <p class="muted">Write him anything: a thought, a rant, a love letter. He'll see it and can write back.</p>
+      <form id="msg-form" class="form">
+        <textarea class="field" id="msg-text" maxlength="1000" placeholder="Dear Chengxuan…" required></textarea>
+        <button class="btn pink" type="submit">Send to him 💌</button>
+      </form>
+      <div class="chat" id="msg-list"></div>
+    </section>
+
+    <section class="card miss" data-auth>
+      <h2 id="miss-h">Missing him? 🥺</h2>
+      <button class="btn pink" id="miss-btn">I miss you 💚</button>
+      <div class="miss-count" id="miss-count">0</div>
+      <div class="muted" id="miss-label">times you've missed him</div>
+      <div class="miss-react" id="miss-react"></div>
+    </section>
+
+    <section class="card">
+      <h2>Catch the kiwis 🧺</h2>
+      <p class="muted">Drag the bowl (or use ← →). Golden kiwis are worth 3! Best: <b id="best">0</b></p>
+      <div class="game">
+        <canvas id="game" aria-label="Catch the kiwis game"></canvas>
+        <div class="game-hud"><span>🥝 <b id="score">0</b></span><span>⏱ <b id="timer">30</b>s</span></div>
+        <div class="game-over show" id="game-overlay">
+          <div>
+            <div class="big-score" id="game-score" hidden></div>
+            <p id="game-msg">Catch as many kiwis as you can in 30 seconds!</p>
+            <button class="btn" id="game-start">Play 🥝</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="fun.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Log in 🥝</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="login">
+  <div class="login-wrap">
+    <div class="login-card" id="card">
+      <div class="mascot" style="width:150px;margin:-6px auto 2px"><div data-mascot></div></div>
+      <h1>Hi there 🥝</h1>
+      <p>Log in to your kiwi corner</p>
+      <form id="form" autocomplete="on">
+        <label for="u">Username</label>
+        <input class="field" id="u" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        <label for="p">Password</label>
+        <input class="field" id="p" name="password" type="password" inputmode="numeric" autocomplete="current-password" required>
+        <button class="btn" type="submit" id="go" style="margin-top:6px">Log in 💚</button>
+      </form>
+      <p class="login-msg" id="msg" aria-live="polite"></p>
+      <p class="demo-note"><a href="index.html">Just looking? Continue without logging in →</a></p>
+      <p class="demo-note" id="demo" hidden>Demo mode: this login only works on this device for now.</p>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script>
+    (function () {
+      var K = Kiwi, DB = KiwiDB;
+      var next = new URLSearchParams(location.search).get('next') || 'index.html';
+      if (!/^[\w.-]+\.html(\?[^#]*)?$/.test(next)) next = 'index.html';
+      K.onReady(function () {
+        document.documentElement.classList.remove('locked');
+        if (DB.user) { location.replace(DB.user.role === 'admin' && next === 'index.html' ? 'admin.html' : next); return; }
+        K.$('#demo').hidden = DB.mode !== 'demo';
+        var wrong = ['Hmm, that\'s not it 🤔', 'Nope! Try again, cutie 💚', 'Still not quite… 👀'], n = 0;
+        K.$('#form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = K.$('#go'); btn.disabled = true; btn.textContent = 'Checking… 🥝';
+          DB.login(K.$('#u').value, K.$('#p').value).then(function () {
+            K.$('#msg').textContent = 'Yay! Welcome in 💚';
+            K.confetti({ count: 120 });
+            setTimeout(function () { location.replace(DB.user.role === 'admin' && next === 'index.html' ? 'admin.html' : next); }, 900);
+          }).catch(function () {
+            K.$('#msg').textContent = wrong[n++ % wrong.length];
+            var c = K.$('#card'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+            btn.disabled = false; btn.textContent = 'Log in 💚';
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

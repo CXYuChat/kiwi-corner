@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Kiwi Tests</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #FFF8E7; color: #3a2a1c; padding: 16px; max-width: 760px; margin: auto; }
+    li { margin: 4px 0; } pre { background: #fff; padding: 8px; border-radius: 8px; white-space: pre-wrap; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>🥝 Schedule checks</h1>
+  <p id="sum"></p>
+  <ul id="out"></ul>
+  <script src="../schedule.js"></script>
+  <script src="../time.js"></script>
+  <script src="check.js"></script>
+  <script>
+    var r = runKiwiTests(), bad = r.filter(function (x) { return !x.pass; }).length;
+    document.getElementById('sum').textContent = bad ? bad + ' check(s) failed' : 'All ' + r.length + ' checks passed 🥝';
+    document.getElementById('out').innerHTML = r.map(function (x) {
+      return '<li>' + (x.pass ? '✅ ' : '❌ ') + x.name.replace(/</g, '&lt;') + (x.pass ? '' : '<pre>' + x.detail.replace(/</g, '&lt;') + '</pre>') + '</li>';
+    }).join('');
+  </script>
+</body>
+</html>
