@@ -21,19 +21,9 @@
 <body data-page="admin">
   <main class="wrap stack">
     <h2 style="margin:4px 4px 0">🔧 Admin</h2>
-    <div class="warn" id="demo-warn" hidden>⚠️ <b>Demo mode:</b> changes are saved on this device only. Connect Firebase (PUBLISHING.md, step 6) so they reach Livina's phone.</div>
-    <div class="admin-tabs" role="tablist" id="admin-tabs">
-      <button role="tab" data-tab="overview" aria-selected="true">📊 Overview</button>
-      <button role="tab" data-tab="points">⭐ Points</button>
-      <button role="tab" data-tab="gifts">🎁 Gifts</button>
-      <button role="tab" data-tab="wishes">💭 Guesses &amp; wishes</button>
-      <button role="tab" data-tab="inbox">📬 From her <span id="inbox-badge"></span></button>
-      <button role="tab" data-tab="messages">💌 To her</button>
-      <button role="tab" data-tab="photos">📸 Photos</button>
-      <button role="tab" data-tab="countdowns">⏳ Countdowns</button>
-      <button role="tab" data-tab="notes">📝 Love notes</button>
-      <button role="tab" data-tab="reset">🧹 Reset</button>
-    </div>
+    <div class="warn" id="demo-warn" hidden>🧪 <b>Test mode:</b> changes stay on this computer only and never reach her real site.</div>
+    <nav class="admin-groups" id="admin-groups" aria-label="Admin sections"></nav>
+    <div class="admin-tabs" role="tablist" id="admin-tabs"></div>
     <div id="panels"></div>
   </main>
   <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>

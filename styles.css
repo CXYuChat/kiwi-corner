@@ -568,3 +568,20 @@ select.field { appearance: none; -webkit-appearance: none; background-image: lin
 .bonus-lock span { background: rgba(255, 255, 255, .8); width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .1); }
 .switch-row { display: flex; gap: 10px; align-items: flex-start; background: #fff0f3; border: 2px solid #ffd9e2; border-radius: 14px; padding: 10px 12px; cursor: pointer; }
 .switch-row input { width: 20px; height: 20px; margin-top: 2px; accent-color: #ff8fa3; flex: none; }
+
+.tag.pend { background: #fff3c4; color: #6b4e00; }
+.ph-item.pending img { outline: 3px solid #f2c230; outline-offset: -3px; }
+
+/* admin layout */
+.admin-groups { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; position: sticky; top: 62px; z-index: 41; background: var(--cream); padding: 4px 0 6px; }
+.admin-groups button { font: inherit; font-size: .82rem; font-weight: 600; border: 2px solid rgba(122, 82, 48, .14); background: #fff; color: var(--brown); border-radius: 16px; padding: 8px 2px; cursor: pointer; position: relative; line-height: 1.2; }
+.admin-groups button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.admin-tabs { top: 112px; }
+.nbadge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: #ff5a5f; color: #fff; font-size: .72rem; font-weight: 700; line-height: 18px; text-align: center; }
+.admin-groups .nbadge { position: absolute; top: -6px; right: -4px; }
+.needs { border-color: #f2c230; }
+.need-row { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 8px; width: 100%; text-align: left; font: inherit; border: 0; background: #fff8d6; border-radius: 14px; padding: 10px 12px; cursor: pointer; color: var(--ink); }
+.need-row .em { font-size: 1.3rem; }
+.need-row .go { font-size: 1.4rem; color: var(--brown); }
+.quick { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (min-width: 700px) { .admin-groups button { font-size: .95rem; } }

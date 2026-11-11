@@ -13,7 +13,7 @@
       points: 0,
       pointsLog: [],
       // Daily check-in points (she earns them herself). "since": only check-ins after this count for points.
-      checkinPoints: { on: true, perDay: 2, weekBonus: 10, since: 0 },
+      checkinPoints: { on: true, perDay: 5, extra: 1, extraMax: 5, weekBonus: 10, since: 0 },
       // Nightly call points. "since" = only nights after this moment count.
       autoPoints: { on: true, amount: 15, time: '00:31', zone: 'Asia/Singapore', reason: 'For our call 📞💚', since: Date.UTC(2026, 10, 10, 17, 0), skipped: [] },
       quote: {
@@ -76,6 +76,7 @@
     },
     updatePhoto: function (id, patch) { local.loadPhotos(); photos = photos.map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; }); localStorage.setItem('kiwi-db-photos', JSON.stringify(photos)); emit(); return Promise.resolve(); },
     addHerPhoto: function (p) { local.loadPhotos(); herPhotos = [p].concat(herPhotos).slice(0, 30); localStorage.setItem('kiwi-db-herphotos', JSON.stringify(herPhotos)); emit(); return Promise.resolve(); },
+    updateHerPhoto: function (id, patch) { local.loadPhotos(); herPhotos = herPhotos.map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; }); localStorage.setItem('kiwi-db-herphotos', JSON.stringify(herPhotos)); emit(); return Promise.resolve(); },
     deleteHerPhoto: function (id) { local.loadPhotos(); herPhotos = herPhotos.filter(function (x) { return x.id !== id; }); localStorage.setItem('kiwi-db-herphotos', JSON.stringify(herPhotos)); emit(); return Promise.resolve(); },
     addPhoto: function (p) { local.loadPhotos(); photos = [p].concat(photos).slice(0, 30); localStorage.setItem('kiwi-db-photos', JSON.stringify(photos)); emit(); return Promise.resolve(); },
     deletePhoto: function (id) { local.loadPhotos(); photos = photos.filter(function (x) { return x.id !== id; }); localStorage.setItem('kiwi-db-photos', JSON.stringify(photos)); emit(); return Promise.resolve(); }
@@ -130,7 +131,8 @@
     deletePhoto: function (id) { return fb.photosRef.doc(id).delete(); },
     updatePhoto: function (id, patch) { return fb.photosRef.doc(id).set(patch, { merge: true }); },
     addHerPhoto: function (p) { var id = p.id; var d = Object.assign({}, p); delete d.id; return fb.herPhotosRef.doc(id).set(d); },
-    deleteHerPhoto: function (id) { return fb.herPhotosRef.doc(id).delete(); }
+    deleteHerPhoto: function (id) { return fb.herPhotosRef.doc(id).delete(); },
+    updateHerPhoto: function (id, patch) { return fb.herPhotosRef.doc(id).set(patch, { merge: true }); }
   };
 
   // Local test mode: only on this computer (localhost), opened once with ?demo=1. Never affects the real site.
@@ -158,6 +160,7 @@
     get herPhotos() { return herPhotos; },
     addHerPhoto: function (p) { return B.addHerPhoto(p); },
     deleteHerPhoto: function (id) { return B.deleteHerPhoto(id); },
+    updateHerPhoto: function (id, patch) { return B.updateHerPhoto(id, patch); },
     defaults: { state: defaultState, her: defaultHer },
     subscribe: function (f) { subs.push(f); return function () { subs = subs.filter(function (x) { return x !== f; }); }; },
     login: function (n, p) { return B.login(n, p).then(function () { emit(); }); },

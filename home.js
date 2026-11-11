@@ -61,8 +61,10 @@ Kiwi.onReady(function () {
       $('#ck-flame').querySelector('b').textContent = st;
       $('#ck-flame').classList.toggle('lit', st > 0);
       $('#ck-sub').textContent = done ? (st > 1 ? 'You\'re on a ' + st + '-day streak! 🔥' : 'Checked in today ✓') : (st ? 'Check in to keep your ' + st + '-day streak 🔥' : 'Check in every day to build a streak 🔥');
-      $('#ck-btn').textContent = done ? '✓ Checked in today · update mood' : 'Check in for today ✅';
-      $('#ck-btn').classList.toggle('ghost', done);
+      var cfg = K.checkinCfg(), left = Math.max(0, +cfg.extraMax - K.extrasToday()), more = done && cfg.on && +cfg.extra && left > 0;
+      $('#ck-btn').textContent = !done ? 'Check in for today ✅' + (cfg.on && +cfg.perDay ? ' (+' + cfg.perDay + ' ⭐)' : '')
+        : more ? 'Check in again (+' + cfg.extra + ' ⭐) · ' + left + ' left today' : '✓ All done today · update mood';
+      $('#ck-btn').classList.toggle('ghost', done && !more);
       if (last && T.dayKey(last.at, K.HZ) === K.todayKey()) {
         var info = K.moodInfo(last.mood);
         $('#mood-now').innerHTML = 'Today you\'re feeling <b>' + info[1] + ' ' + K.esc(info[2]) + '</b>' + (last.note ? ' · "' + K.esc(last.note) + '"' : '');
@@ -102,8 +104,22 @@ Kiwi.onReady(function () {
       $('#bonus-card').hidden = !bp;
       if (bp) {
         var open = !!(DB.her.unlockedBonus || {})[bp.id];
+        var mine = (DB.herPhotos || []).filter(function (h) { return h.forBonus === bp.id; }).sort(function (a, b) { return b.at - a.at; });
+        var last = mine[0], status = open ? 'approved' : last ? (last.status || 'pending') : 'none';
         $('#bonus-locked').hidden = open; $('#bonus-open').hidden = !open;
-        if (open) { setImg($('#bonus-img'), bp); $('#bonus-cap').textContent = bp.caption || ''; $('#bonus-cap').hidden = !bp.caption; }
+        $('#bonus-btn').hidden = status === 'pending';
+        $('#bonus-msg').textContent = status === 'pending' ? 'Photo sent! Waiting for Chengxuan to approve it ⏳'
+          : status === 'rejected' ? 'Hmm, that one wasn\'t approved 🙈 Try another photo of you!'
+          : 'Send a photo of yourself to unlock it 📸';
+        $('#bonus-btn-text').textContent = status === 'rejected' ? '📷 Send another photo' : '📷 Send my photo';
+        if (open) {
+          setImg($('#bonus-img'), bp); $('#bonus-cap').textContent = bp.caption || ''; $('#bonus-cap').hidden = !bp.caption;
+          // celebrate once, the first time she sees it unlocked
+          if (K.store.get('kiwi-bonus-seen') !== bp.id) {
+            K.store.set('kiwi-bonus-seen', bp.id); K.toast('Approved! Bonus unlocked 🎁💚');
+            setTimeout(function () { var r = $('#bonus-card').getBoundingClientRect(); K.confetti({ x: r.left + r.width / 2, y: r.top + 80, count: 120 }); }, 300);
+          }
+        }
       }
     }
     $('#photo-open').addEventListener('click', function () { var p = current(false); if (p) big(p); });
@@ -113,13 +129,9 @@ Kiwi.onReady(function () {
       K.toast('Sending your photo… 📸');
       K.compressPhoto(f).then(function (data) {
         var id = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        return DB.addHerPhoto({ id: id, data: data, at: Date.now(), forBonus: bp.id }).then(function () {
-          var u = Object.assign({}, DB.her.unlockedBonus); u[bp.id] = id;
-          return DB.setHer({ unlockedBonus: u });
-        });
+        return DB.addHerPhoto({ id: id, data: data, at: Date.now(), forBonus: bp.id, status: 'pending' });
       }).then(function () {
-        draw(); K.toast('Unlocked! 🎁💚');
-        var r = $('#bonus-card').getBoundingClientRect(); K.confetti({ x: r.left + r.width / 2, y: r.top + 80, count: 120 });
+        draw(); K.toast('Sent! Waiting for Chengxuan to approve ⏳');
       }).catch(function (err) { console.error(err); K.toast('Couldn\'t send that photo. Try another one'); });
       e.target.value = '';
     });

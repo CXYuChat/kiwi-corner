@@ -75,11 +75,25 @@ Kiwi.onReady(function () {
       (hist ? '<div class="help">Before that: <span class="mood-hist">' + hist + '</span></div>' : '') + '</div>';
   }
 
+  function needsYou() {
+    var t = todo(), rows = [];
+    if (t.photos) rows.push(['photos', '📸', t.photos + ' photo' + (t.photos > 1 ? 's' : '') + ' from her to approve']);
+    if (t.inbox) rows.push(['inbox', '📬', t.inbox + ' message' + (t.inbox > 1 ? 's' : '') + ' waiting for a reply']);
+    if (t.wishes) rows.push(['wishes', '💭', t.wishes + ' new guess' + (t.wishes > 1 ? 'es/wishes' : '/wish')]);
+    return '<section class="card stack needs"><h3>✋ Needs you</h3>' + (rows.length ? rows.map(function (r) {
+      return '<button type="button" class="need-row" data-goto="' + r[0] + '"><span class="em">' + r[1] + '</span><span>' + r[2] + '</span><span class="go">›</span></button>';
+    }).join('') : '<p class="muted" style="margin:0">All caught up 💚</p>') + '</section>' +
+    '<section class="card stack"><h3>⚡ Quick actions</h3><div class="quick">' +
+      '<button type="button" class="btn sm" data-quick="10">+10 ⭐</button><button type="button" class="btn sm" data-quick="25">+25 ⭐</button>' +
+      '<button type="button" class="btn sm ghost" data-goto="photos">📸 Post a photo</button><button type="button" class="btn sm ghost" data-goto="messages">💌 Send a surprise</button>' +
+      '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
+  }
+
   P.overview = function () {
     var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
     var opened = gs.filter(function (g) { return g.opened; }).length, unlocked = gs.filter(function (g) { return g.unlocked; }).length;
     var sp = st.surprise, ov = st.statusOverride;
-    return '<section class="card stack">' +
+    return needsYou() + '<section class="card stack"><h3>💚 Her</h3>' +
       '<div class="stat-grid">' +
         '<div class="stat"><b>⭐ ' + K.balance() + '</b><span>points (' + K.spent() + ' spent)</span></div>' +
         '<div class="stat"><b>🥺 ' + (her.missCount || 0) + '</b><span>times she missed you</span></div>' +
@@ -94,8 +108,7 @@ Kiwi.onReady(function () {
       '<p>💭 New guesses/wishes: <b>' + ((her.guesses || []).filter(function (x) { return !x.verdict; }).length + (her.wishes || []).filter(function (x) { return !x.status; }).length) + '</b></p>' +
       '<p>📬 Messages waiting in your inbox: <b>' + (her.messages || []).filter(function (m) { return !isArchived(m); }).length + '</b></p>' +
       '<p>📣 Status update: <b>' + (ov && ov.text && (!ov.until || Date.now() < ov.until) ? esc(ov.text) : 'none (using schedule)') + '</b></p>' +
-      '<div class="btns"><button class="btn sm" data-quick="10">+10 ⭐</button><button class="btn sm" data-quick="25">+25 ⭐</button>' +
-      '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div>' +
+
     '</section>';
   };
 
@@ -129,11 +142,13 @@ Kiwi.onReady(function () {
         ((ap.skipped || []).length ? '<div class="help">Skipped: ' + ap.skipped.slice(-6).map(function (k) { return k.slice(5) + ' <a href="#" data-apunskip="' + esc(k) + '">undo</a>'; }).join(', ') + '</div>' : '') +
       '</div>' +
       (function () {
-        var c = Object.assign({ on: true, perDay: 2, weekBonus: 10 }, DB.state.checkinPoints || {});
+        var c = K.checkinCfg();
         return '<div class="item"><div class="item-head"><b>✅ Daily check-in points</b><span class="tag' + (c.on ? ' on' : '') + '">' + (c.on ? 'on' : 'off') + '</span></div>' +
-          '<p class="help" style="margin:0">She earns these herself each day she checks in, plus a bonus on every 7th day in a row.</p>' +
-          '<div class="row2"><label class="help">Points per check-in<input class="field" id="ck-per" type="number" inputmode="numeric" min="0" value="' + (+c.perDay || 0) + '"></label>' +
+          '<p class="help" style="margin:0">She earns these herself: the first check-in each day, extra check-ins from her Home (up to a daily limit), and a bonus on every 7th day in a row.</p>' +
+          '<div class="row2"><label class="help">First check-in of the day<input class="field" id="ck-per" type="number" inputmode="numeric" min="0" value="' + (+c.perDay || 0) + '"></label>' +
           '<label class="help">7-day streak bonus<input class="field" id="ck-bonus" type="number" inputmode="numeric" min="0" value="' + (+c.weekBonus || 0) + '"></label></div>' +
+          '<div class="row2"><label class="help">Each extra check-in<input class="field" id="ck-extra" type="number" inputmode="numeric" min="0" value="' + (+c.extra || 0) + '"></label>' +
+          '<label class="help">Max extra check-ins a day<input class="field" id="ck-max" type="number" inputmode="numeric" min="0" value="' + (+c.extraMax || 0) + '"></label></div>' +
           '<div class="btns"><button class="btn sm" id="ck-save">💾 Save</button>' + (c.on ? '<button class="btn sm ghost" id="ck-off">⏸️ Turn off</button>' : '<button class="btn sm pink" id="ck-on">▶️ Turn on</button>') + '</div></div>';
       })() +
       '<h3 style="margin-top:8px">History</h3>' +
@@ -255,9 +270,15 @@ Kiwi.onReady(function () {
           '<button class="btn sm danger" data-phdel="' + esc(p.id) + '">🗑️</button></div></div>';
       }).join('') + '</div>' : '<p class="muted">No photos yet</p>') + '</section>' +
       '<section class="card stack"><h3>📷 From her (' + (DB.herPhotos || []).length + ')</h3>' +
+      '<p class="help" style="margin:0">Approve to unlock the bonus for her. Reject to take points away (she can send another).</p>' +
       ((DB.herPhotos || []).length ? '<div class="photo-grid">' + DB.herPhotos.map(function (p) {
-        return '<div class="ph-item"><button type="button" class="photo-frame" data-herview="' + esc(p.id) + '"><img src="' + p.data + '" alt=""></button>' +
-          '<span class="help">' + esc(K.herDateTime(p.at)) + ' · ' + ago(p.at) + '</span><button class="btn sm danger" data-herdel="' + esc(p.id) + '">🗑️</button></div>';
+        var st = p.status || 'pending';
+        var tag = st === 'approved' ? '<span class="tag on">✅ approved</span>' : st === 'rejected' ? '<span class="tag">❌ rejected' + (p.penalty ? ' · −' + p.penalty + ' ⭐' : '') + '</span>' : '<span class="tag pend">⏳ waiting for you</span>';
+        return '<div class="ph-item' + (st === 'pending' ? ' pending' : '') + '"><button type="button" class="photo-frame" data-herview="' + esc(p.id) + '"><img src="' + p.data + '" alt=""></button>' + tag +
+          '<span class="help">' + esc(K.herDateTime(p.at)) + ' · ' + ago(p.at) + '</span>' +
+          '<div class="btns">' + (st !== 'approved' ? '<button class="btn sm" data-herok="' + esc(p.id) + '">✅ Approve</button>' : '') +
+          (st === 'pending' ? '<button class="btn sm pink" data-herno="' + esc(p.id) + '">❌ Reject</button>' : '') +
+          '<button class="btn sm danger" data-herdel="' + esc(p.id) + '">🗑️</button></div></div>';
       }).join('') + '</div>' : '<p class="muted">She hasn\'t sent any photos yet. Post a bonus photo to ask for one 😉</p>') + '</section>';
   };
   var pendingPhoto = null;
@@ -333,22 +354,54 @@ Kiwi.onReady(function () {
 
   // ---------------------------------------------------------------- render + tabs
   function render() {
+    renderNav();
     panels.innerHTML = '<div class="panel stack">' + P[current]() + '</div>';
     wireSgHints(panels);
   }
-  $('#admin-tabs').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-tab]'); if (!b) return;
-    current = b.dataset.tab;
-    document.querySelectorAll('[data-tab]').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
-    render(); window.scrollTo({ top: 0 });
+  // ---- navigation: 5 groups, each with its own tabs
+  var GROUPS = [
+    { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
+    { id: 'her', label: '💬 Her', tabs: [['inbox', '📬 Messages'], ['photos', '📸 Photos'], ['wishes', '💭 Guesses & wishes']] },
+    { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'more', label: '⚙️ More', tabs: [['reset', '🧹 Reset']] }
+  ];
+  function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
+  // Things waiting for you, per tab
+  function todo() {
+    var her = DB.her;
+    return {
+      inbox: (her.messages || []).filter(function (m) { return !isArchived(m); }).length,
+      photos: (DB.herPhotos || []).filter(function (p) { return (p.status || 'pending') === 'pending'; }).length,
+      wishes: (her.guesses || []).filter(function (x) { return !x.verdict; }).length + (her.wishes || []).filter(function (x) { return !x.status; }).length
+    };
+  }
+  function renderNav() {
+    var t = todo(), g = groupOf(current);
+    function dot(n) { return n ? ' <span class="nbadge">' + n + '</span>' : ''; }
+    $('#admin-groups').innerHTML = GROUPS.map(function (x) {
+      var n = x.tabs.reduce(function (a, tb) { return a + (t[tb[0]] || 0); }, 0);
+      return '<button type="button" data-group="' + x.id + '" aria-pressed="' + (x === g) + '">' + x.label + dot(n) + '</button>';
+    }).join('');
+    $('#admin-tabs').innerHTML = g.tabs.length > 1 ? g.tabs.map(function (tb) {
+      return '<button role="tab" data-tab="' + tb[0] + '" aria-selected="' + (tb[0] === current) + '">' + esc(tb[1]) + dot(t[tb[0]]) + '</button>';
+    }).join('') : '';
+    $('#admin-tabs').hidden = g.tabs.length < 2;
+  }
+  function go(tab) { current = tab; render(); window.scrollTo({ top: 0 }); }
+  $('#admin-groups').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-group]'); if (!b) return;
+    var g = GROUPS.find(function (x) { return x.id === b.dataset.group; });
+    var t = todo(), first = g.tabs.find(function (tb) { return t[tb[0]]; });   // open the tab that needs you, if any
+    go((first || g.tabs[0])[0]);
   });
+  $('#admin-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) go(b.dataset.tab); });
   // Only the overview refreshes live; forms re-render after you press a button.
-  function badge() { var n = (DB.her.messages || []).filter(function (m) { return !isArchived(m); }).length; $('#inbox-badge').textContent = n ? '(' + n + ')' : ''; }
-  badge(); DB.subscribe(badge);
+  DB.subscribe(function () { renderNav(); });
   var photoCount = -1;
   DB.subscribe(function () {
     if (current === 'overview') render();
-    var pc = (DB.photos || []).length + ':' + (DB.herPhotos || []).length + ':' + Object.keys(DB.her.unlockedBonus || {}).length;
+    var pc = (DB.photos || []).length + ':' + (DB.herPhotos || []).map(function (h) { return h.status || 'p'; }).join('') + ':' + Object.keys(DB.her.unlockedBonus || {}).length;
     if (current === 'photos' && pc !== photoCount && !pendingPhoto) { photoCount = pc; render(); }
   });
 
@@ -366,6 +419,7 @@ Kiwi.onReady(function () {
     var b = e.target.closest('button'); if (!b) return;
     var d = b.dataset, id = b.id;
 
+    if (d.goto) { go(d.goto); return; }
     if (d.quick) { addPoints(+d.quick, ''); render(); return; }
     if (d.add) { addPoints(+d.add, val('pt-reason')); render(); return; }
     if (id === 'pt-custom-go') { if (!val('pt-custom')) return toast('Type an amount first'); addPoints(+val('pt-custom'), val('pt-reason')); render(); return; }
@@ -474,10 +528,10 @@ Kiwi.onReady(function () {
     }
 
     if (id === 'ck-save' || id === 'ck-on' || id === 'ck-off') {
-      var ck = Object.assign({ on: true, perDay: 2, weekBonus: 10, since: 0 }, DB.state.checkinPoints || {});
+      var ck = K.checkinCfg();
       if (id === 'ck-on') ck.on = true;
       if (id === 'ck-off') ck.on = false;
-      if (id === 'ck-save') { ck.perDay = Math.max(0, Math.round(+val('ck-per') || 0)); ck.weekBonus = Math.max(0, Math.round(+val('ck-bonus') || 0)); }
+      if (id === 'ck-save') { ck.perDay = Math.max(0, Math.round(+val('ck-per') || 0)); ck.weekBonus = Math.max(0, Math.round(+val('ck-bonus') || 0)); ck.extra = Math.max(0, Math.round(+val('ck-extra') || 0)); ck.extraMax = Math.max(0, Math.round(+val('ck-max') || 0)); }
       DB.setState({ checkinPoints: ck }); toast(id === 'ck-off' ? 'Check-in points paused' : 'Saved ✅'); return render();
     }
     if (id === 'ph-post') {
@@ -492,6 +546,29 @@ Kiwi.onReady(function () {
     if (d.phbonus) {
       var ph = (DB.photos || []).find(function (x) { return x.id === d.phbonus; }); if (!ph) return;
       DB.updatePhoto(ph.id, { bonus: !ph.bonus }).then(function () { toast(ph.bonus ? 'Now a normal photo 📸' : 'Now a bonus photo 🎁'); render(); });
+      return;
+    }
+    if (d.herok) {
+      var hpOk = (DB.herPhotos || []).find(function (x) { return x.id === d.herok; }); if (!hpOk) return;
+      DB.updateHerPhoto(hpOk.id, { status: 'approved' });
+      if (hpOk.forBonus) { var ub = Object.assign({}, DB.her.unlockedBonus); ub[hpOk.forBonus] = hpOk.id; DB.setHer({ unlockedBonus: ub }); }
+      toast('Approved ✅ Her bonus photo is unlocked'); return render();
+    }
+    if (d.herno) {
+      var hpNo = (DB.herPhotos || []).find(function (x) { return x.id === d.herno; }); if (!hpNo) return;
+      var sh = K.modal('<div class="em">❌</div><h3>Reject this photo?</h3>' +
+        '<p class="desc">The bonus stays locked and she can send another one.</p>' +
+        '<label class="help">Points to take away<input class="field" id="rej-pts" type="number" inputmode="numeric" min="0" value="15"></label>' +
+        '<label class="help" style="margin-top:8px;display:block">What she sees<input class="field" id="rej-why" maxlength="80" value="Photo not approved 🙈"></label>' +
+        '<div class="btns" style="margin-top:14px"><button type="button" class="btn danger" id="rej-go">Reject</button><button type="button" class="btn ghost" id="rej-cancel">Cancel</button></div>', 'confirm');
+      sh.querySelector('#rej-cancel').addEventListener('click', K.closeModal);
+      sh.querySelector('#rej-go').addEventListener('click', function () {
+        var n = Math.max(0, Math.round(+sh.querySelector('#rej-pts').value || 0)), why = sh.querySelector('#rej-why').value.trim() || 'Photo not approved 🙈';
+        var take = Math.min(n, K.balance());
+        DB.updateHerPhoto(hpNo.id, { status: 'rejected', penalty: take });
+        if (take > 0) addPoints(-take, why);
+        K.closeModal(); toast(take ? 'Rejected · −' + take + ' ⭐' : 'Rejected'); render();
+      });
       return;
     }
     if (d.herview) {

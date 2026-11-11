@@ -62,13 +62,13 @@
       <h2>🎁 Bonus photo</h2>
       <div id="bonus-locked">
         <div class="bonus-lock"><span>🔒</span></div>
-        <p class="desc" style="text-align:center;margin:10px 0">Send a photo of yourself to unlock it 📸</p>
-        <label class="btn big pink" style="cursor:pointer">📷 Send my photo<input type="file" id="bonus-file" accept="image/*" hidden></label>
+        <p class="desc" id="bonus-msg" style="text-align:center;margin:10px 0">Send a photo of yourself to unlock it 📸</p>
+        <label class="btn big pink" id="bonus-btn" style="cursor:pointer"><span id="bonus-btn-text">📷 Send my photo</span><input type="file" id="bonus-file" accept="image/*" hidden></label>
       </div>
       <div id="bonus-open" hidden>
         <button type="button" class="photo-frame" id="bonus-view" aria-label="Open bonus photo"><img id="bonus-img" alt="Bonus photo from Chengxuan"></button>
         <p class="photo-cap" id="bonus-cap"></p>
-        <span class="help">Unlocked 💚 Thanks for your photo!</span>
+        <span class="help">Unlocked 💚 Chengxuan loved your photo!</span>
       </div>
     </section>
 

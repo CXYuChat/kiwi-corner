@@ -232,15 +232,24 @@
     return best;
   };
   // Points she earns by checking in: perDay each day, plus weekBonus on every 7th day in a row
+  K.checkinCfg = function () { return Object.assign({ on: true, perDay: 5, extra: 1, extraMax: 5, weekBonus: 10, since: 0 }, DB.state.checkinPoints || {}); };
+  // How many extra check-ins (after the first) she has done today
+  K.extrasToday = function () { var t = K.todayKey(); return Math.max(0, (DB.her.checkins || []).filter(function (c) { return c.day === t; }).length - 1); };
   K.checkinAwards = function () {
-    var cfg = Object.assign({ on: true, perDay: 2, weekBonus: 10, since: 0 }, DB.state.checkinPoints || {});
+    var cfg = K.checkinCfg();
     if (!cfg.on) return [];
-    var out = [], run = 0, last = null;
-    K.checkinDays().forEach(function (c) {
+    var out = [], run = 0, last = null, extras = {};
+    K.checkinDays().forEach(function (c) {          // first check-in of each day (+ streak bonus)
       run = (last && prevDay(c.day) === last) ? run + 1 : 1; last = c.day;
       if (c.at <= (+cfg.since || 0)) return;
       if (+cfg.perDay) out.push({ amt: +cfg.perDay, reason: 'Daily check-in ✅', at: c.at, self: true });
       if (+cfg.weekBonus && run % 7 === 0) out.push({ amt: +cfg.weekBonus, reason: run + '-day streak bonus 🔥', at: c.at + 1, self: true });
+    });
+    var firsts = {}; K.checkinDays().forEach(function (c) { firsts[c.day] = c.at; });
+    (DB.her.checkins || []).slice().sort(function (a, b) { return a.at - b.at; }).forEach(function (c) {   // extra check-ins
+      if (c.at === firsts[c.day] || c.at <= (+cfg.since || 0) || !+cfg.extra) return;
+      extras[c.day] = (extras[c.day] || 0) + 1;
+      if (extras[c.day] <= +cfg.extraMax) out.push({ amt: +cfg.extra, reason: 'Extra check-in 💚', at: c.at, self: true });
     });
     return out;
   };
@@ -369,15 +378,17 @@
   K.checkinModal = function () {
     var done = K.checkedInToday(), st = K.streak(), hour = T.parts(T.now(), HZ).h;
     var greet = hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    var cfg = Object.assign({ on: true, perDay: 2, weekBonus: 10 }, DB.state.checkinPoints || {});
+    var cfg = K.checkinCfg();
     var nextRun = st + (done ? 0 : 1), bonusToday = !done && cfg.on && +cfg.weekBonus && nextRun % 7 === 0;
+    var extrasLeft = Math.max(0, +cfg.extraMax - K.extrasToday()), extraPts = done && cfg.on && +cfg.extra && extrasLeft > 0;
     var sh = K.modal('<div class="em">' + (hour < 5 || hour >= 20 ? '🌙' : '☀️') + '</div>' +
       '<h3>' + greet + ', ' + K.esc(K.petName()) + '!</h3>' +
-      '<p class="desc">' + (done ? 'You already checked in today ✓ Want to update how you\'re feeling?' : 'Check in for today. How\'s your day going?') + '</p>' +
+      '<p class="desc">' + (done ? (extraPts ? 'Checking in again? Tell him how you\'re doing 💚' : 'You\'ve done all your check-ins today ✓ You can still update how you\'re feeling.') : 'Check in for today. How\'s your day going?') + '</p>' +
       '<div class="ck-streak">' + (st ? '🔥 <b>' + st + '-day streak</b>' + (done ? '' : '. Keep it going!') : '🔥 Start a streak today!') + '</div>' +
       '<div class="moods">' + K.MOODS.map(function (m) { return '<button type="button" class="mood" data-mood="' + m[0] + '"><span class="e">' + m[1] + '</span><span>' + m[2] + '</span></button>'; }).join('') + '</div>' +
       '<input class="field" id="ck-note" maxlength="300" placeholder="Anything you want to tell him? (optional)" style="margin-top:10px;font-size:1rem">' +
-      '<button type="button" class="btn big" id="ck-go" style="margin-top:12px">' + (done ? 'Update my mood 💚' : 'Check in ✅' + (cfg.on && +cfg.perDay ? ' (+' + (+cfg.perDay + (bonusToday ? +cfg.weekBonus : 0)) + ' ⭐)' : '')) + '</button>', 'checkin-sheet');
+      '<button type="button" class="btn big" id="ck-go" style="margin-top:12px">' + (done ? (extraPts ? 'Check in again ✅ (+' + cfg.extra + ' ⭐)' : 'Update my mood 💚') : 'Check in ✅' + (cfg.on && +cfg.perDay ? ' (+' + (+cfg.perDay + (bonusToday ? +cfg.weekBonus : 0)) + ' ⭐)' : '')) + '</button>' +
+      (done && extraPts ? '<p class="help" style="text-align:center;margin-top:6px">' + extrasLeft + ' extra check-in' + (extrasLeft === 1 ? '' : 's') + ' with points left today</p>' : ''), 'checkin-sheet');
     var picked = null;
     sh.querySelector('.moods').addEventListener('click', function (e) {
       var b = e.target.closest('[data-mood]'); if (!b) return;
@@ -386,9 +397,9 @@
     });
     sh.querySelector('#ck-go').addEventListener('click', function () {
       var note = sh.querySelector('#ck-note').value.trim();
-      if (done && !picked && !note) { K.closeModal(); return; }
+      if (done && !extraPts && !picked && !note) { K.closeModal(); return; }
       var patch = {}, now = Date.now();
-      if (!done) patch.checkins = (DB.her.checkins || []).concat([{ day: K.todayKey(), at: now }]).slice(-400);
+      if (!done || extraPts) patch.checkins = (DB.her.checkins || []).concat([{ day: K.todayKey(), at: now }]).slice(-1500);
       if (picked || note) patch.moods = (DB.her.moods || []).concat([{ mood: picked || 'okay', note: note, at: now }]).slice(-60);
       DB.setHer(patch);
       K.closeModal();
@@ -396,7 +407,8 @@
         var ns = K.streak();
         K.toast(bonusToday ? '🔥 ' + ns + '-day streak! Bonus +' + cfg.weekBonus + ' ⭐' : 'Checked in! ' + (cfg.on && +cfg.perDay ? '+' + cfg.perDay + ' ⭐ · ' : '') + '🔥 ' + ns + '-day streak');
         K.confetti({ count: bonusToday ? 140 : 70 });
-      } else K.toast('Sent to Chengxuan 💚');
+      } else if (extraPts) { K.toast('Checked in again! +' + cfg.extra + ' ⭐'); K.confetti({ count: 40 }); }
+      else K.toast('Sent to Chengxuan 💚');
     });
   };
 

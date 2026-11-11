@@ -13,7 +13,7 @@ service cloud.firestore {
     // Photos of the day: only the two of you can see them; only the admin posts or deletes.
     match /photos/{id} { allow read: if isAdmin() || isLivina(); allow write: if isAdmin(); }
     // Her photos (to unlock bonus photos): she can send them; only the two of you can see them; the admin can delete.
-    match /herPhotos/{id} { allow read: if isAdmin() || isLivina(); allow create: if isLivina() || isAdmin(); allow delete: if isAdmin(); }
+    match /herPhotos/{id} { allow read: if isAdmin() || isLivina(); allow create: if isLivina() || isAdmin(); allow update, delete: if isAdmin(); }
     // Everything else is closed.
     match /{document=**} { allow read, write: if false; }
   }
