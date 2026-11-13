@@ -78,8 +78,15 @@ Kiwi.onReady(function () {
   function needsYou() {
     var t = todo(), rows = [];
     if (t.photos) rows.push(['photos', '📸', t.photos + ' photo' + (t.photos > 1 ? 's' : '') + ' from her to approve']);
-    if (t.inbox) rows.push(['inbox', '📬', t.inbox + ' message' + (t.inbox > 1 ? 's' : '') + ' waiting for a reply']);
-    if (t.wishes) rows.push(['wishes', '💭', t.wishes + ' new guess' + (t.wishes > 1 ? 'es/wishes' : '/wish')]);
+    if (t.inbox) {
+      var c = { msg: 0, guess: 0, wish: 0, answer: 0 }; fromHer().forEach(function (i) { if (!i.done) c[i.kind]++; });
+      var parts = [];
+      if (c.msg) parts.push(c.msg + ' message' + (c.msg > 1 ? 's' : ''));
+      if (c.guess) parts.push(c.guess + ' guess' + (c.guess > 1 ? 'es' : ''));
+      if (c.wish) parts.push(c.wish + ' wish' + (c.wish > 1 ? 'es' : ''));
+      if (c.answer) parts.push(c.answer + ' answer' + (c.answer > 1 ? 's' : '') + ' to your question');
+      rows.push(['inbox', '📥', 'New from her: ' + parts.join(', ')]);
+    }
     return '<section class="card stack needs"><h3>✋ Needs you</h3>' + (rows.length ? rows.map(function (r) {
       return '<button type="button" class="need-row" data-goto="' + r[0] + '"><span class="em">' + r[1] + '</span><span>' + r[2] + '</span><span class="go">›</span></button>';
     }).join('') : '<p class="muted" style="margin:0">All caught up 💚</p>') + '</section>' +
@@ -105,8 +112,7 @@ Kiwi.onReady(function () {
       '<p>👀 Livina last visited: <b>' + ago(her.lastSeen) + '</b></p>' +
       '<p>⏳ Main countdown: <b>' + (f ? esc(f.emoji + ' ' + f.label) : 'none') + '</b></p>' +
       '<p>💌 Surprise: <b>' + (sp && sp.active ? esc(sp.title || 'untitled') + (her.seenSurprise === sp.id ? ' (seen ✓)' : ' (not opened yet)') : 'none showing') + '</b></p>' +
-      '<p>💭 New guesses/wishes: <b>' + ((her.guesses || []).filter(function (x) { return !x.verdict; }).length + (her.wishes || []).filter(function (x) { return !x.status; }).length) + '</b></p>' +
-      '<p>📬 Messages waiting in your inbox: <b>' + (her.messages || []).filter(function (m) { return !isArchived(m); }).length + '</b></p>' +
+      '<p>📥 Things from her waiting for you: <b>' + fromHer().filter(function (i) { return !i.done; }).length + '</b></p>' +
       '<p>📣 Status update: <b>' + (ov && ov.text && (!ov.until || Date.now() < ov.until) ? esc(ov.text) : 'none (using schedule)') + '</b></p>' +
 
     '</section>';
@@ -192,63 +198,98 @@ Kiwi.onReady(function () {
 
   var VERDICT = { yes: '✅ Correct', close: '🔥 Close', warm: '🙂 Warmer', no: '❌ Nope' };
   var WISH = { noted: '💚 Noted', maybe: '🤔 Maybe', coming: '🎁 On its way', no: '🙈 Not this time' };
-  P.wishes = function () {
-    var her = DB.her, num = {}, name = {};
+
+  // ---- Everything from her in one place: messages, guesses, wishes, answers to your questions.
+  // "Needs you" = waiting for your reply; "Done" = replied / archived.
+  var inboxView = 'inbox', inboxKind = 'all';
+  function isArchived(m) { return m.archived === true || (m.archived !== false && !!m.reply); }
+  function seenAnswers() { return DB.state.seenAnswers || {}; }
+  function fromHer() {
+    var her = DB.her, num = {}, name = {}, out = [];
     K.gifts().forEach(function (g) { num[g.id] = g.n; name[g.id] = g.name; });
-    var gs = (her.guesses || []).slice().reverse(), ws = (her.wishes || []).slice().reverse();
-    function btns(kind, x, map, cur) {
-      return '<div class="btns">' + Object.keys(map).map(function (k) {
-        return '<button class="btn sm ' + (cur === k ? '' : 'ghost') + '" data-reply="' + kind + '" data-xid="' + esc(x.id) + '" data-v="' + k + '">' + map[k] + '</button>';
-      }).join('') + '<button class="btn sm danger" data-xdel="' + kind + '" data-xid="' + esc(x.id) + '">🗑️</button></div>';
+    (her.messages || []).forEach(function (m) { out.push({ kind: 'msg', id: m.id, at: m.at, done: isArchived(m), x: m }); });
+    (her.guesses || []).forEach(function (x) { out.push({ kind: 'guess', id: x.id, at: x.at, done: !!x.verdict, x: x, n: num[x.giftId], real: name[x.giftId] }); });
+    (her.wishes || []).forEach(function (x) { out.push({ kind: 'wish', id: x.id, at: x.at, done: !!x.status, x: x }); });
+    K.questions().forEach(function (q) { if (q.answer) out.push({ kind: 'answer', id: q.id, at: q.answer.at, done: seenAnswers()[q.id] === q.answer.at, x: q }); });
+    return out.sort(function (a, b) { return b.at - a.at; });
+  }
+  var KINDS = [['all', 'All'], ['msg', '💌 Messages'], ['guess', '🤔 Guesses'], ['wish', '💭 Wishes'], ['answer', '❓ Answers']];
+  var KIND_LABEL = { msg: '💌 Message', guess: '🤔 Guess', wish: '💭 Wish', answer: '❓ Answer' };
+  function longText(text) {
+    var t = esc(text);
+    if (text.length <= 700) return '<div class="msg-text">' + t + '</div>';
+    return '<details class="msg-long"><summary><span class="msg-text">' + esc(text.slice(0, 600)) + '…</span><span class="more">Read all (' + text.trim().split(/\s+/).length + ' words)</span></summary><div class="msg-text">' + t + '</div></details>';
+  }
+  function itemHtml(it) {
+    var x = it.x, head = '<div class="item-head"><span><span class="kind ' + it.kind + '">' + KIND_LABEL[it.kind] + '</span><span class="help">' + K.herDateTime(it.at) + ' · ' + ago(it.at) + '</span></span>';
+    var del = '<button class="btn sm danger" data-' + (it.kind === 'msg' ? 'msg="del" data-mid' : it.kind === 'answer' ? 'adel' : 'xdel="' + it.kind + '" data-xid') + '="' + esc(it.id) + '">🗑️</button>';
+    if (it.kind === 'msg') {
+      var tag = !it.done ? (x.read ? '<span class="tag">read</span>' : '<span class="tag on">new</span>') : (x.reply ? '<span class="tag on">replied ✓</span>' : '<span class="tag">archived</span>');
+      return '<div class="item' + (!it.done && !x.read ? ' unread' : '') + '">' + head + tag + '</div>' + longText(x.text) +
+        '<label class="help">' + (x.reply ? 'Your reply' : 'Reply') + ' (she sees it under her message)<textarea class="field" data-replyto="' + esc(x.id) + '" placeholder="Write back…">' + esc(x.reply || '') + '</textarea></label>' +
+        '<div class="btns">' + (!it.done
+          ? '<button class="btn sm" data-msg="reply" data-mid="' + esc(x.id) + '">💌 Reply</button><button class="btn sm ghost" data-msg="archive" data-mid="' + esc(x.id) + '">🗄️ Done, no reply</button>'
+          : '<button class="btn sm" data-msg="reply" data-mid="' + esc(x.id) + '">💌 ' + (x.reply ? 'Update reply' : 'Reply') + '</button><button class="btn sm ghost" data-msg="unarchive" data-mid="' + esc(x.id) + '">📥 Back to Needs you</button>') +
+        del + '</div></div>';
     }
-    return '<section class="card stack"><h3>🤔 Her guesses</h3><p class="help">Your reply shows next to her guess. Add a note if you like, and optional points for a good guess.</p>' +
-      '<div class="row2"><label class="help">Note with your next reply<input class="field" id="x-note" placeholder="e.g. haha nice try 😏" maxlength="100"></label>' +
-      '<label class="help">Points with your next reply<input class="field" id="x-pts" type="number" inputmode="numeric" placeholder="0"></label></div>' +
-      (gs.length ? gs.map(function (x) {
-        return '<div class="item"><div class="item-head"><b>#' + (num[x.giftId] || '?') + ': "' + esc(x.text) + '"</b><span class="tag' + (x.verdict ? ' on' : '') + '">' + (x.verdict ? VERDICT[x.verdict] : 'new') + '</span></div>' +
-          '<div class="help">Really: ' + esc(name[x.giftId] || 'deleted gift') + ' · ' + ago(x.at) + (x.note ? ' · your note: ' + esc(x.note) : '') + '</div>' + btns('guess', x, VERDICT, x.verdict) + '</div>';
-      }).join('') : '<p class="muted">No guesses yet</p>') + '</section>' +
-      '<section class="card stack"><h3>💭 Her wish list</h3>' +
-      (ws.length ? ws.map(function (x) {
-        return '<div class="item"><div class="item-head"><b>' + esc(x.text) + '</b><span class="tag' + (x.status ? ' on' : '') + '">' + (x.status ? WISH[x.status] : 'new') + '</span></div>' +
-          '<div class="help">' + ago(x.at) + (x.note ? ' · your note: ' + esc(x.note) : '') + '</div>' + btns('wish', x, WISH, x.status) + '</div>';
-      }).join('') : '<p class="muted">No wishes yet</p>') + '</section>';
+    if (it.kind === 'guess' || it.kind === 'wish') {
+      var map = it.kind === 'guess' ? VERDICT : WISH, cur = it.kind === 'guess' ? x.verdict : x.status;
+      return '<div class="item">' + head + '<span class="tag' + (cur ? ' on' : '') + '">' + (cur ? map[cur] : 'new') + '</span></div>' +
+        '<b style="color:var(--brown)">' + (it.kind === 'guess' ? 'Present #' + (it.n || '?') + ': ' : '') + '"' + esc(x.text) + '"</b>' +
+        (it.kind === 'guess' ? '<div class="help">Really: ' + esc(it.real || 'deleted gift') + '</div>' : '') +
+        '<div class="row2"><label class="help">Note (optional)<input class="field" data-xnote="' + esc(x.id) + '" value="' + esc(x.note || '') + '" placeholder="e.g. haha nice try 😏" maxlength="100"></label>' +
+        '<label class="help">Points (optional)<input class="field" data-xpts="' + esc(x.id) + '" type="number" inputmode="numeric" placeholder="0"></label></div>' +
+        '<div class="btns">' + Object.keys(map).map(function (k) {
+          return '<button class="btn sm ' + (cur === k ? '' : 'ghost') + '" data-reply="' + it.kind + '" data-xid="' + esc(x.id) + '" data-v="' + k + '">' + map[k] + '</button>';
+        }).join('') + del + '</div></div>';
+    }
+    // answer to a question
+    var opt = (x.options || [])[x.answer.choice] || {};
+    return '<div class="item">' + head + '<span class="tag' + (it.done ? '' : ' on') + '">' + (it.done ? 'seen ✓' : 'new') + '</span></div>' +
+      '<div class="help">You asked: ' + esc(K.qText(x)) + '</div>' +
+      '<b style="color:var(--brown)">She said: ' + esc(opt.label || '?') + '</b>' + (x.answer.note ? '<div class="msg-text">"' + esc(x.answer.note) + '"</div>' : '') +
+      '<div class="btns">' + (!it.done ? '<button class="btn sm" data-aseen="' + esc(x.id) + '">✓ Got it</button>' : '') + '<button class="btn sm ghost" data-goto="ask">❓ Questions</button></div></div>';
+  }
+  P.inbox = function () {
+    var all = fromHer();
+    var needs = all.filter(function (i) { return !i.done; }), done = all.filter(function (i) { return i.done; });
+    var list = (inboxView === 'inbox' ? needs : done).filter(function (i) { return inboxKind === 'all' || i.kind === inboxKind; });
+    var pool = inboxView === 'inbox' ? needs : done;
+    var seg = '<div class="seg" role="group">' +
+      '<button type="button" data-inboxview="inbox" aria-pressed="' + (inboxView === 'inbox') + '">✋ Needs you' + (needs.length ? ' (' + needs.length + ')' : '') + '</button>' +
+      '<button type="button" data-inboxview="archive" aria-pressed="' + (inboxView === 'archive') + '">✓ Done' + (done.length ? ' (' + done.length + ')' : '') + '</button></div>';
+    var chips = '<div class="chips">' + KINDS.map(function (k) {
+      var n = k[0] === 'all' ? pool.length : pool.filter(function (i) { return i.kind === k[0]; }).length;
+      return '<button type="button" data-inboxkind="' + k[0] + '" aria-pressed="' + (inboxKind === k[0]) + '">' + k[1] + (n ? ' ' + n : '') + '</button>';
+    }).join('') + '</div>';
+    var help = inboxView === 'inbox'
+      ? '<p class="help" style="margin:0">Newest first. Once you reply, it moves to Done.</p>'
+      : '<p class="help" style="margin:0">Everything you\'ve answered. You can still change a reply.</p>';
+    var empty = inboxView === 'inbox' ? '<p class="muted">All caught up 💚 Nothing from her is waiting.</p>' : '<p class="muted">Nothing here yet</p>';
+    return '<section class="card stack"><h3>📥 From her</h3>' + seg + chips + help + (list.map(itemHtml).join('') || empty) + '</section>';
   };
 
-  // Messages from her: Inbox (waiting for you) and Archive (replied, or archived by you).
-  var inboxView = 'inbox';
-  function isArchived(m) { return m.archived === true || (m.archived !== false && !!m.reply); }
-  P.inbox = function () {
-    var all = (DB.her.messages || []).slice().reverse();
-    var inbox = all.filter(function (m) { return !isArchived(m); }), arch = all.filter(isArchived);
-    var list = inboxView === 'inbox' ? inbox : arch;
-    var seg = '<div class="seg" role="group" style="margin-bottom:4px">' +
-      '<button type="button" data-inboxview="inbox" aria-pressed="' + (inboxView === 'inbox') + '">📥 Inbox' + (inbox.length ? ' (' + inbox.length + ')' : '') + '</button>' +
-      '<button type="button" data-inboxview="archive" aria-pressed="' + (inboxView === 'archive') + '">🗄️ Archive' + (arch.length ? ' (' + arch.length + ')' : '') + '</button></div>';
-    var help = inboxView === 'inbox'
-      ? '<p class="help" style="margin:0">Replying sends your answer to her and moves the message to the Archive.</p>'
-      : '<p class="help" style="margin:0">Replied and archived messages. You can still edit a reply or move one back to the Inbox.</p>';
-    function body(m) {
-      var t = esc(m.text);
-      if (m.text.length <= 700) return '<div class="msg-text">' + t + '</div>';
-      return '<details class="msg-long"><summary><span class="msg-text">' + esc(m.text.slice(0, 600)) + '…</span><span class="more">Read all (' + m.text.trim().split(/\s+/).length + ' words)</span></summary><div class="msg-text">' + t + '</div></details>';
-    }
-    var items = list.map(function (m) {
-      var tag = !isArchived(m) ? (m.read ? '<span class="tag">read</span>' : '<span class="tag on">new</span>') : (m.reply ? '<span class="tag on">replied ✓</span>' : '<span class="tag">archived</span>');
-      return '<div class="item' + (!isArchived(m) && !m.read ? ' unread' : '') + '"><div class="item-head"><span class="help">' + K.herDateTime(m.at) + ' Barcelona · ' + ago(m.at) + '</span>' + tag + '</div>' +
-        body(m) +
-        '<label class="help">' + (m.reply ? 'Your reply (she sees it under her message)' : 'Reply (she sees it under her message)') +
-          '<textarea class="field" data-replyto="' + esc(m.id) + '" placeholder="Write back…">' + esc(m.reply || '') + '</textarea></label>' +
-        '<div class="btns">' +
-          (inboxView === 'inbox'
-            ? '<button class="btn sm" data-msg="reply" data-mid="' + esc(m.id) + '">💌 Reply &amp; archive</button>' +
-              '<button class="btn sm ghost" data-msg="archive" data-mid="' + esc(m.id) + '">🗄️ Archive</button>'
-            : '<button class="btn sm" data-msg="reply" data-mid="' + esc(m.id) + '">💌 ' + (m.reply ? 'Update reply' : 'Reply') + '</button>' +
-              '<button class="btn sm ghost" data-msg="unarchive" data-mid="' + esc(m.id) + '">📥 Back to Inbox</button>') +
-          '<button class="btn sm danger" data-msg="del" data-mid="' + esc(m.id) + '">🗑️</button></div></div>';
-    }).join('');
-    var empty = inboxView === 'inbox' ? '<p class="muted">All caught up 💚 Nothing waiting for a reply.</p>' : '<p class="muted">Nothing archived yet</p>';
-    return '<section class="card stack"><h3>📬 Messages from her</h3>' + seg + help + (items || empty) + '</section>';
+  // ---- Questions you ask her (show as a card on her Home page)
+  function qList() { var q = DB.state.questions; return ((q && q.length) ? q : (window.QUESTIONS || [])).map(function (x) { return Object.assign({}, x); }); }
+  function saveQs(list, msg) { DB.setState({ questions: list }); toast(msg); render(); }
+  P.ask = function () {
+    var qs = K.questions().slice().reverse(), now = Date.now();
+    return '<section class="card stack"><h3>❓ Ask her something</h3><p class="help" style="margin:0">Shows as a big card at the top of her Home page, with buttons to answer. Write {name} for a pet name.</p><div class="form">' +
+        '<div class="row2"><label>Emoji<input class="field" id="qa-emoji" value="💭" maxlength="4"></label><span></span></div>' +
+        '<label>Question<textarea class="field" id="qa-text" placeholder="e.g. Hey {name}, are you free for a call at 9pm? 📞"></textarea></label>' +
+        '<label>Answer buttons (one per line)<textarea class="field" id="qa-opts" placeholder="Yes! 💚\nNot tonight 🥲"></textarea></label>' +
+        '<label>What she sees after answering (optional, one per line, same order)<textarea class="field" id="qa-replies" placeholder="Yay! See you at 9 💚\nAww okay, tomorrow then 🥺"></textarea></label>' +
+        '<label>Box for her to add a line (empty = no box)<input class="field" id="qa-note" placeholder="e.g. Anything to add? (optional)"></label>' +
+        '<label>Hide if she hasn\'t answered by (optional, Barcelona time)<input class="field" id="qa-until" type="datetime-local"><span class="help sg"></span></label></div>' +
+        '<div class="btns"><button class="btn sm pink" id="qa-send">💌 Ask her</button></div></section>' +
+      '<section class="card stack"><h3>📋 Your questions</h3>' + (qs.length ? qs.map(function (q) {
+        var showing = q.active !== false && (q.answer ? now - q.answer.at < 864e5 : (!q.untilMs || now < q.untilMs));
+        return '<div class="item"><div class="item-head"><b>' + esc(q.emoji || '💭') + ' ' + esc(K.qText(q)).slice(0, 140) + '</b><span class="tag' + (q.answer ? ' on' : '') + '">' + (q.answer ? 'answered ✓' : showing ? 'waiting' : 'hidden') + '</span></div>' +
+          (q.options || []).map(function (o, i) { var won = q.answer && q.answer.choice === i; return '<div class="q-admin-opt' + (won ? ' won' : '') + '"><span>' + (won ? '👉 ' : '') + esc(o.label) + '</span></div>'; }).join('') +
+          (q.answer ? '<div class="help">Answered ' + K.herDateTime(q.answer.at) + ' Barcelona' + (q.answer.note ? ' · "' + esc(q.answer.note) + '"' : '') + '</div>' : (q.untilMs ? '<div class="help">Hides ' + K.herDateTime(q.untilMs) + ' Barcelona if unanswered</div>' : '')) +
+          '<div class="btns">' + (q.active === false ? '<button class="btn sm ghost" data-qshow="' + esc(q.id) + '">👀 Show again</button>' : '<button class="btn sm ghost" data-qhide="' + esc(q.id) + '">🙈 Hide</button>') +
+          '<button class="btn sm danger" data-qdel="' + esc(q.id) + '">🗑️</button></div></div>';
+      }).join('') : '<p class="muted">No questions yet</p>') + '</section>';
   };
 
   P.photos = function () {
@@ -361,9 +402,9 @@ Kiwi.onReady(function () {
   // ---- navigation: 5 groups, each with its own tabs
   var GROUPS = [
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
-    { id: 'her', label: '💬 Her', tabs: [['inbox', '📬 Messages'], ['photos', '📸 Photos'], ['wishes', '💭 Guesses & wishes']] },
+    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['ask', '❓ Ask her'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
     { id: 'more', label: '⚙️ More', tabs: [['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
@@ -371,9 +412,8 @@ Kiwi.onReady(function () {
   function todo() {
     var her = DB.her;
     return {
-      inbox: (her.messages || []).filter(function (m) { return !isArchived(m); }).length,
-      photos: (DB.herPhotos || []).filter(function (p) { return (p.status || 'pending') === 'pending'; }).length,
-      wishes: (her.guesses || []).filter(function (x) { return !x.verdict; }).length + (her.wishes || []).filter(function (x) { return !x.status; }).length
+      inbox: fromHer().filter(function (i) { return !i.done; }).length,
+      photos: (DB.herPhotos || []).filter(function (p) { return (p.status || 'pending') === 'pending'; }).length
     };
   }
   function renderNav() {
@@ -472,10 +512,11 @@ Kiwi.onReady(function () {
         return;
       }
       else {
-        var note = val('x-note'), pts = Math.round(+val('x-pts') || 0);
+        var nEl = panels.querySelector('[data-xnote="' + d.xid + '"]'), pEl = panels.querySelector('[data-xpts="' + d.xid + '"]');
+        var note = nEl ? nEl.value.trim() : '', pts = Math.round(+(pEl ? pEl.value : 0) || 0);
         arr = arr.map(function (x) {
           if (x.id !== d.xid) return x;
-          var y = Object.assign({}, x); y[key === 'guesses' ? 'verdict' : 'status'] = d.v; if (note) y.note = note; return y;
+          var y = Object.assign({}, x); y[key === 'guesses' ? 'verdict' : 'status'] = d.v; if (note) y.note = note; else delete y.note; return y;
         });
         if (pts) addPoints(pts, key === 'guesses' ? 'Great guess! 🤔' : 'For your wish 💭');
       }
@@ -483,6 +524,34 @@ Kiwi.onReady(function () {
     }
 
     if (d.inboxview) { inboxView = d.inboxview; return render(); }
+    if (d.inboxkind) { inboxKind = d.inboxkind; return render(); }
+    if (d.aseen) {
+      var qa = K.questions().find(function (q) { return q.id === d.aseen; }); if (!qa || !qa.answer) return;
+      var sa = Object.assign({}, seenAnswers()); sa[qa.id] = qa.answer.at; DB.setState({ seenAnswers: sa }); toast('Moved to Done ✓'); return render();
+    }
+    if (d.adel) {
+      K.confirm({ emoji: '🗑️', title: 'Delete her answer?', text: 'The question shows again on her Home page (if it hasn\'t expired).', yes: 'Delete', danger: true }).then(function (ok) {
+        if (!ok) return; var an = Object.assign({}, DB.her.answers || {}); delete an[d.adel]; DB.setHer({ answers: an }); toast('Deleted'); render();
+      });
+      return;
+    }
+    if (d.qhide || d.qshow) { var hid = d.qhide || d.qshow; return saveQs(qList().map(function (q) { if (q.id === hid) q.active = !!d.qshow; return q; }), d.qhide ? 'Hidden from her 🙈' : 'Showing again 👀'); }
+    if (d.qdel) {
+      K.confirm({ emoji: '🗑️', title: 'Delete this question?', text: 'It disappears from her Home page too.', yes: 'Delete', danger: true }).then(function (ok) {
+        if (ok) saveQs(qList().filter(function (q) { return q.id !== d.qdel; }), 'Deleted');
+      });
+      return;
+    }
+    if (id === 'qa-send') {
+      var qtext = val('qa-text'), opts = val('qa-opts').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      var reps = val('qa-replies').split('\n').map(function (x) { return x.trim(); });
+      if (!qtext) return toast('Write a question first');
+      if (opts.length < 1) return toast('Add at least one answer button');
+      var nq = { id: 'q' + uid(), emoji: val('qa-emoji') || '💭', text: qtext, options: opts.map(function (o, i) { var r = { label: o }; if (reps[i]) r.reply = reps[i]; return r; }), at: Date.now() };
+      if (val('qa-note')) nq.note = val('qa-note');
+      if (val('qa-until')) nq.until = val('qa-until').replace(' ', 'T').slice(0, 16);
+      return saveQs(qList().concat([nq]), 'Asked! It\'s on her Home page now 💌');
+    }
     if (d.msg) {
       var mid = d.mid, msgs = (DB.her.messages || []).slice();
       if (d.msg === 'del') {
@@ -502,7 +571,7 @@ Kiwi.onReady(function () {
         return y;
       });
       DB.setHer({ messages: msgs });
-      toast({ reply: inboxView === 'inbox' ? 'Reply sent 💌 · moved to Archive' : 'Reply updated 💌', archive: 'Archived 🗄️', unarchive: 'Back in the Inbox 📥' }[d.msg] || 'Done');
+      toast({ reply: inboxView === 'inbox' ? 'Reply sent 💌 · moved to Done' : 'Reply updated 💌', archive: 'Moved to Done ✓', unarchive: 'Back in Needs you ✋' }[d.msg] || 'Done');
       return render();
     }
 

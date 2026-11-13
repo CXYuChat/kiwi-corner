@@ -52,6 +52,65 @@ Kiwi.onReady(function () {
   $('#hi-name').textContent = K.name();
   K.missButton();
 
+  // ---------------------------------------------------------------- questions from him
+  (function () {
+    var box = $('#questions'); if (!DB.user || !box) return;
+    var DAY = 864e5, picked = {};
+    function visible() {
+      var now = Date.now();
+      return K.questions().filter(function (q) {
+        if (q.active === false) return false;
+        if (q.answer) return now - q.answer.at < DAY;          // her answer stays for a day
+        return !q.untilMs || now < q.untilMs;
+      });
+    }
+    var last = '';
+    function draw() {
+      var qs = visible();
+      var sig = JSON.stringify(qs.map(function (q) { return [q.id, q.answer && q.answer.at, q.text]; })) + JSON.stringify(picked);
+      if (sig === last) return; last = sig;
+      var keep = {}; box.querySelectorAll('[data-qnote]').forEach(function (t) { keep[t.dataset.qnote] = t.value; });
+      box.innerHTML = qs.map(function (q) {
+        var head = '<div class="q-from">💌 Chengxuan asks…</div><div class="q-em">' + K.esc(q.emoji || '💭') + '</div><p class="q-text">' + K.esc(K.qText(q)) + '</p>';
+        if (q.answer) {
+          var opt = (q.options || [])[q.answer.choice] || {};
+          return '<section class="card q-card answered">' + head +
+            '<div class="q-you">You said: <b>' + K.esc(opt.label || '') + '</b>' + (q.answer.note ? '<br>"' + K.esc(q.answer.note) + '"' : '') + '</div>' +
+            '<p class="q-reply">' + K.esc(opt.reply || 'Sent to Chengxuan 💚') + '</p>' +
+            '<button type="button" class="link-btn" data-qredo="' + K.esc(q.id) + '">Change my answer</button></section>';
+        }
+        var sel = picked[q.id];
+        return '<section class="card q-card">' + head +
+          '<div class="q-opts">' + (q.options || []).map(function (o, i) {
+            return '<button type="button" class="q-opt" data-q="' + K.esc(q.id) + '" data-i="' + i + '" aria-pressed="' + (sel === i) + '">' + K.esc(o.label) + '</button>';
+          }).join('') + '</div>' +
+          (q.note ? '<textarea class="field q-note" data-qnote="' + K.esc(q.id) + '" maxlength="300" placeholder="' + K.esc(q.note) + '"></textarea>' : '') +
+          '<button type="button" class="btn pink big" data-qsend="' + K.esc(q.id) + '"' + (sel === undefined ? ' disabled' : '') + '>Send my answer 💌</button></section>';
+      }).join('');
+      box.querySelectorAll('[data-qnote]').forEach(function (t) { if (keep[t.dataset.qnote]) t.value = keep[t.dataset.qnote]; });
+    }
+    box.addEventListener('click', function (e) {
+      var o = e.target.closest('[data-q]'), s = e.target.closest('[data-qsend]'), r = e.target.closest('[data-qredo]');
+      if (o) { picked[o.dataset.q] = +o.dataset.i; draw(); return; }
+      if (r) {
+        var a0 = Object.assign({}, DB.her.answers || {}); var was = a0[r.dataset.qredo]; delete a0[r.dataset.qredo];
+        if (was) picked[r.dataset.qredo] = was.choice;
+        DB.setHer({ answers: a0 }); return;
+      }
+      if (s) {
+        var id = s.dataset.qsend; if (picked[id] === undefined) return;
+        var t = box.querySelector('[data-qnote="' + id + '"]'), note = t ? t.value.trim() : '';
+        var a = Object.assign({}, DB.her.answers || {}); a[id] = { choice: picked[id], note: note, at: Date.now() };
+        var r2 = s.getBoundingClientRect();
+        DB.setHer({ answers: a }).then(function () { K.toast('Sent to Chengxuan 💚'); });
+        delete picked[id];
+        if (t) { t.value = ''; try { localStorage.removeItem('kiwi-draft:home:' + t.id); } catch (x) { /* */ } }
+        K.confetti({ x: r2.left + r2.width / 2, y: r2.top, count: 90 });
+      }
+    });
+    draw(); DB.subscribe(draw); setInterval(function () { last = ''; draw(); }, 60000);
+  })();
+
   // ---------------------------------------------------------------- daily check-in card
   (function () {
     if (!DB.user || !$('#checkin-card')) return;

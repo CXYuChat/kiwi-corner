@@ -32,23 +32,41 @@ Kiwi.onReady(function () {
   if ($('#msg-text')) $('#msg-text').addEventListener('input', showCount);
 
   if (DB.user && $('#msg-form')) {
+    // Newest first, grouped by day. Only the latest few are open; older ones fold away.
+    var SHOW = 4;
     var drawMsgs = function () {
       var list = (DB.her.messages || []).slice().reverse();
-      $('#msg-list').innerHTML = list.length ? list.map(function (m) {
+      function one(m) {
         var txt = m.text.length > 700
           ? '<details class="msg-long"><summary><span>' + K.esc(m.text.slice(0, 600)) + '…</span><span class="more">Read all</span></summary>' + K.esc(m.text) + '</details>'
           : K.esc(m.text);
-        return '<div class="bubble-me">' + txt + '<small>' + K.herDateTime(m.at) + (m.read ? ' · seen ✓' : '') + '</small></div>' +
+        var state = m.reply ? '💚 replied' : m.read ? 'seen ✓' : 'sent';
+        return '<div class="bubble-me">' + txt + '<small>' + window.KiwiTime.fmtTime(m.at, K.HZ) + ' · ' + state + '</small></div>' +
           (m.reply ? '<div class="bubble-him"><b>Chengxuan 🥝</b>' + K.esc(m.reply) + '</div>' : '');
-      }).join('') : '<p class="muted" style="text-align:center">No messages yet 💭</p>';
+      }
+      function group(ms) {
+        var out = '', day = '';
+        ms.forEach(function (m) {
+          var d = K.herDay(m.at);
+          if (d !== day) { day = d; out += '<div class="day-sep"><span>' + K.esc(d) + '</span></div>'; }
+          out += one(m);
+        });
+        return out;
+      }
+      var replies = list.filter(function (m) { return m.reply; }).length;
+      $('#msg-stats').textContent = list.length ? list.length + (list.length === 1 ? ' message' : ' messages') + ' sent · ' + replies + ' answered 💚' : '';
+      if (!list.length) { $('#msg-list').innerHTML = '<p class="muted" style="text-align:center">No messages yet 💭</p>'; return; }
+      var open = $('#msg-older') && $('#msg-older').open;
+      $('#msg-list').innerHTML = group(list.slice(0, SHOW)) +
+        (list.length > SHOW ? '<details class="older" id="msg-older"' + (open ? ' open' : '') + '><summary>Older messages (' + (list.length - SHOW) + ')</summary>' + group(list.slice(SHOW)) + '</details>' : '');
     };
     drawMsgs(); DB.subscribe(drawMsgs);
     $('#msg-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var t = $('#msg-text').value.trim(); if (!t) return;
       DB.setHer({ messages: fitMessages((DB.her.messages || []).concat([{ id: Math.random().toString(36).slice(2, 9), text: t, at: Date.now() }])) });
-      showCount();
       $('#msg-text').value = '';
+      showCount();
       K.confetti({ count: 40 });
     });
   }

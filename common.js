@@ -158,6 +158,13 @@
     return (same ? '' : T.fmtDay(e, HZ).split(' ')[0] + ' ') + T.fmtTime(e, HZ);
   };
   K.herDateTime = function (e) { return T.fmtDay(e, HZ) + ', ' + T.fmtTime(e, HZ); };
+  // "Today" / "Yesterday" / "Wed 11 Nov" in her time
+  K.herDay = function (e) {
+    var k = T.dayKey(e, HZ), now = T.now();
+    if (k === T.dayKey(now, HZ)) return 'Today';
+    if (k === T.dayKey(now - 864e5, HZ)) return 'Yesterday';
+    return T.fmtDay(e, HZ);
+  };
 
   // ------------------------------------------------------------ live status (her POV, Barcelona times)
   K.status = function () {
@@ -260,6 +267,18 @@
   // Points she can spend = points given (by hand + nightly) − points spent on presents
   K.spent = function () { var b = DB.her.bought || {}; return Object.keys(b).reduce(function (a, k) { return a + (+b[k] || 0); }, 0); };
   K.balance = function () { return Math.max(0, K.earned() - K.spent()); };
+  // ------------------------------------------------------------ questions he asks her
+  K.questions = function () {
+    var q = DB && DB.state.questions; q = (q && q.length) ? q : (window.QUESTIONS || []);
+    return q.map(function (x) {
+      var at = 0, until = 0;
+      try { at = typeof x.at === 'number' ? x.at : x.at ? T.parse(x.at, HZ) : 0; } catch (e) { /* */ }
+      try { until = typeof x.until === 'number' ? x.until : x.until ? T.parse(x.until, HZ) : 0; } catch (e) { /* */ }
+      return Object.assign({}, x, { atMs: at, untilMs: until, answer: ((DB && DB.her.answers) || {})[x.id] || null });
+    });
+  };
+  K.qText = function (q) { return String(q.text || '').replace(/\{name\}/g, K.petName ? K.petName() : 'baby'); };
+
   K.gifts = function () {
     var st = DB.state, her = DB.her, now = T.now(), bal = K.balance();
     var src = st.gifts ? Object.keys(st.gifts).map(function (k) { return Object.assign({ id: k }, st.gifts[k]); }) : (window.GIFTS || []).map(function (g, i) { return Object.assign({ order: i }, g); });
@@ -521,7 +540,12 @@
     });
     var showPts = function () {
       var el = K.$('#pts-count'); if (el) el.textContent = K.balance();
-      var un = K.$('#admin-unread'); if (un) { var n = (DB.her.messages || []).filter(function (m) { return !(m.archived === true || (m.archived !== false && m.reply)); }).length; un.textContent = n ? ' ' + n + '📬' : ''; }
+      var un = K.$('#admin-unread'); if (un) { var h = DB.her, seen = DB.state.seenAnswers || {};
+        var n = (h.messages || []).filter(function (m) { return !(m.archived === true || (m.archived !== false && m.reply)); }).length +
+          (h.guesses || []).filter(function (x) { return !x.verdict; }).length + (h.wishes || []).filter(function (x) { return !x.status; }).length +
+          K.questions().filter(function (q) { return q.answer && seen[q.id] !== q.answer.at; }).length +
+          (DB.herPhotos || []).filter(function (p) { return (p.status || 'pending') === 'pending'; }).length;
+        un.textContent = n ? ' ' + n + '📥' : ''; }
     };
     showPts(); DB.subscribe(showPts); setInterval(showPts, 60000);
   }

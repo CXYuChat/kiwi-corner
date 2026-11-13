@@ -14,16 +14,23 @@ Kiwi.onReady(function () {
       : '<option value="">All presents are opened 🎉</option>';
     if (cur) sel.value = cur;
     var num = {}; K.gifts().forEach(function (g) { num[g.id] = g.n; });
-    var guesses = (DB.her.guesses || []).slice().reverse();
-    $('#guess-list').innerHTML = guesses.map(function (x) {
-      return '<li><span>#' + (num[x.giftId] || '?') + ': "' + esc(x.text) + '"' + (x.note ? '<br><small>' + esc(x.note) + '</small>' : '') + '</span>' +
+    // Newest first; the latest 5 show, older ones fold into "Older (n)".
+    function list(el, arr, row) {
+      var open = el.querySelector('details.older') && el.querySelector('details.older').open;
+      var waiting = arr.filter(function (x) { return !(x.verdict || x.status); }).length;
+      el.innerHTML = !arr.length ? '' :
+        '<li class="list-sum">' + arr.length + ' sent' + (waiting ? ' · ' + waiting + ' waiting for Chengxuan ⏳' : ' · all answered 💚') + '</li>' +
+        arr.slice(0, 5).map(row).join('') +
+        (arr.length > 5 ? '<li class="older-li"><details class="older"' + (open ? ' open' : '') + '><summary>Older (' + (arr.length - 5) + ')</summary><ul class="log">' + arr.slice(5).map(row).join('') + '</ul></details></li>' : '');
+    }
+    list($('#guess-list'), (DB.her.guesses || []).slice().reverse(), function (x) {
+      return '<li><span>#' + (num[x.giftId] || '?') + ': "' + esc(x.text) + '"' + (x.note ? '<br><small>💬 ' + esc(x.note) + '</small>' : '') + '<br><small class="muted">' + K.herDay(x.at) + '</small></span>' +
         '<span class="amt">' + (x.verdict ? VERDICT[x.verdict] : '⏳ waiting') + '</span></li>';
-    }).join('');
-    var wishes = (DB.her.wishes || []).slice().reverse();
-    $('#wish-list').innerHTML = wishes.map(function (x) {
-      return '<li><span>' + esc(x.text) + (x.note ? '<br><small>' + esc(x.note) + '</small>' : '') + '</span>' +
+    });
+    list($('#wish-list'), (DB.her.wishes || []).slice().reverse(), function (x) {
+      return '<li><span>' + esc(x.text) + (x.note ? '<br><small>💬 ' + esc(x.note) + '</small>' : '') + '<br><small class="muted">' + K.herDay(x.at) + '</small></span>' +
         '<span class="amt">' + (x.status ? WISH[x.status] : '⏳ sent') + '</span></li>';
-    }).join('');
+    });
   }
   $('#guess-form').addEventListener('submit', function (e) {
     e.preventDefault();
