@@ -41,6 +41,23 @@
       <div class="chat" id="msg-list"></div>
     </section>
 
+    <section class="card movies-card" data-auth id="movies-card">
+      <h2>Movies to watch together 🍿</h2>
+      <p class="muted">Our watch list. Add anything you want to watch with him, and tick it off after movie night.</p>
+      <form id="mv-form" class="mv-add">
+        <input class="field" id="mv-title" maxlength="120" placeholder="Add a movie or show…" required autocomplete="off">
+        <button class="btn sm" type="submit" aria-label="Add">＋</button>
+      </form>
+      <div class="mv-tools">
+        <div class="seg" role="group">
+          <button type="button" data-mvview="to" aria-pressed="true">🎬 To watch</button>
+          <button type="button" data-mvview="done" aria-pressed="false">✅ Watched</button>
+        </div>
+        <button type="button" class="btn sm ghost" id="mv-pick">🎲 Pick one</button>
+      </div>
+      <ul class="mv-list" id="mv-list"></ul>
+    </section>
+
     <section class="card miss" data-auth>
       <h2 id="miss-h">Missing him? 🥺</h2>
       <button class="btn pink" id="miss-btn">I miss you 💚</button>

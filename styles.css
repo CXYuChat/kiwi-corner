@@ -629,3 +629,19 @@ details.older[open] { display: grid; gap: 8px; }
 .kind.answer { background: #dff5c4; color: #335400; }
 .q-admin-opt { display: flex; justify-content: space-between; gap: 8px; font-size: .92rem; padding: 6px 10px; border-radius: 10px; background: rgba(122, 82, 48, .05); }
 .q-admin-opt.won { background: #f1fbdf; font-weight: 600; }
+
+/* movies to watch */
+.mv-add { display: flex; gap: 8px; margin-top: 10px; }
+.mv-add .field { flex: 1; min-width: 0; }
+.mv-add .btn { font-size: 1.3rem; padding: 0 16px; }
+.mv-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.mv-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
+.mv-item { display: flex; align-items: center; gap: 10px; background: rgba(122, 82, 48, .05); border-radius: 14px; padding: 8px 10px; }
+.mv-check { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid var(--green-d); background: #fff; color: #fff; font: 700 .95rem Fredoka, sans-serif; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.mv-item.done .mv-check { background: var(--green-d); }
+.mv-body { flex: 1; min-width: 0; display: grid; }
+.mv-body b { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.mv-item.done .mv-body b { color: var(--muted); }
+.mv-body small { color: var(--muted); font-size: .78rem; }
+.mv-del { flex: none; background: none; border: 0; color: var(--muted); font-size: .95rem; cursor: pointer; padding: 4px 6px; opacity: .6; }
+.mv-empty { background: none; text-align: center; padding: 10px; }

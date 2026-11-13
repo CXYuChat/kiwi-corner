@@ -71,6 +71,66 @@ Kiwi.onReady(function () {
     });
   }
 
+  // ---------------------------------------------------------------- movies to watch together
+  (function () {
+    if (!DB.user || !$('#mv-list')) return;
+    var SEED = [{ id: 'm10things', title: '10 Things I Hate About You', by: 'admin', at: Date.UTC(2026, 10, 13, 6), watched: false }];
+    var view = 'to';
+    function movies() { var m = DB.her.movies; return Array.isArray(m) ? m : SEED; }
+    function save(list) { return DB.setHer({ movies: list.slice(-300) }); }
+    function who(m) { return m.by === 'admin' ? 'Chengxuan' : 'You'; }
+    function me() { return DB.user.role === 'admin' ? 'admin' : 'livina'; }
+    function draw() {
+      var all = movies(), to = all.filter(function (m) { return !m.watched; }), done = all.filter(function (m) { return m.watched; });
+      document.querySelectorAll('[data-mvview]').forEach(function (b) {
+        var v = b.dataset.mvview; b.setAttribute('aria-pressed', v === view);
+        b.textContent = (v === 'to' ? '🎬 To watch' : '✅ Watched') + ' (' + (v === 'to' ? to : done).length + ')';
+      });
+      $('#mv-pick').hidden = view !== 'to' || to.length < 2;
+      var list = view === 'to' ? to.slice().reverse() : done.slice().sort(function (a, b) { return (b.watchedAt || 0) - (a.watchedAt || 0); });
+      $('#mv-list').innerHTML = list.length ? list.map(function (m) {
+        return '<li class="mv-item' + (m.watched ? ' done' : '') + '" data-mvid="' + K.esc(m.id) + '">' +
+          '<button type="button" class="mv-check" data-mvtoggle="' + K.esc(m.id) + '" aria-label="' + (m.watched ? 'Mark as not watched' : 'Mark as watched') + '">' + (m.watched ? '✓' : '') + '</button>' +
+          '<span class="mv-body"><b>' + K.esc(m.title) + '</b><small>' + (m.watched ? 'Watched ' + K.herDay(m.watchedAt || m.at) : 'Added by ' + who(m) + ' · ' + K.herDay(m.at)) + '</small></span>' +
+          '<button type="button" class="mv-del" data-mvdel="' + K.esc(m.id) + '" aria-label="Remove">✕</button></li>';
+      }).join('') : '<li class="muted mv-empty">' + (view === 'to' ? 'Nothing on the list yet. Add one! 🍿' : 'No movie nights yet 🥺') + '</li>';
+    }
+    $('#mv-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var t = $('#mv-title').value.trim(); if (!t) return;
+      if (movies().some(function (m) { return !m.watched && m.title.toLowerCase() === t.toLowerCase(); })) { K.toast('That one\'s already on the list 🍿'); return; }
+      save(movies().concat([{ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: t, by: me(), at: Date.now(), watched: false }]));
+      $('#mv-title').value = ''; view = 'to'; draw();
+      K.toast('Added to the list 🍿');
+    });
+    document.addEventListener('click', function (e) {
+      var v = e.target.closest('[data-mvview]'), tg = e.target.closest('[data-mvtoggle]'), dl = e.target.closest('[data-mvdel]');
+      if (v) { view = v.dataset.mvview; draw(); return; }
+      if (tg) {
+        var id = tg.dataset.mvtoggle, r = tg.getBoundingClientRect(), nowWatched = false;
+        save(movies().map(function (m) {
+          if (m.id !== id) return m;
+          var y = Object.assign({}, m); y.watched = !m.watched; nowWatched = y.watched; if (y.watched) y.watchedAt = Date.now(); else delete y.watchedAt; return y;
+        }));
+        if (nowWatched) { K.confetti({ x: r.left + r.width / 2, y: r.top, count: 50 }); K.toast('Movie night ✓ 💚'); }
+        return;
+      }
+      if (dl) {
+        var m0 = movies().find(function (m) { return m.id === dl.dataset.mvdel; }); if (!m0) return;
+        K.confirm({ emoji: '🍿', title: 'Remove "' + m0.title + '"?', yes: 'Remove', danger: true }).then(function (ok) {
+          if (ok) save(movies().filter(function (m) { return m.id !== m0.id; }));
+        });
+      }
+    });
+    $('#mv-pick').addEventListener('click', function () {
+      var to = movies().filter(function (m) { return !m.watched; }); if (!to.length) return;
+      var pick = to[Math.floor(Math.random() * to.length)];
+      K.modal('<div class="em">🎲🍿</div><h3>Tonight\'s movie:</h3><p class="desc" style="font-size:1.25rem;font-weight:600;color:var(--brown)">' + K.esc(pick.title) + '</p><p class="muted">Grab snacks and call him 📞💚</p>', 'call');
+      K.confetti({ count: 70 });
+    });
+    draw(); DB.subscribe(draw);
+  })();
+
   // ---------------------------------------------------------------- catch the kiwis
   var cv = $('#game'), ctx = cv.getContext('2d'), overlay = $('#game-overlay');
   var W = 300, H = 380, DURATION = 30;

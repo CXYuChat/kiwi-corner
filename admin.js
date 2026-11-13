@@ -93,7 +93,7 @@ Kiwi.onReady(function () {
     '<section class="card stack"><h3>⚡ Quick actions</h3><div class="quick">' +
       '<button type="button" class="btn sm" data-quick="10">+10 ⭐</button><button type="button" class="btn sm" data-quick="25">+25 ⭐</button>' +
       '<button type="button" class="btn sm ghost" data-goto="photos">📸 Post a photo</button><button type="button" class="btn sm ghost" data-goto="messages">💌 Send a surprise</button>' +
-      '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
+      '<a class="btn sm ghost" href="fun.html#movies-card" style="text-decoration:none">🍿 Movie list</a>' + '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
   }
 
   P.overview = function () {
