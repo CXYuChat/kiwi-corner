@@ -29,7 +29,7 @@
       featured: 'auto'
     };
   }
-  function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [], moods: [], checkins: [], unlockedBonus: {} }; }
+  function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [], moods: [], checkins: [], unlockedBonus: {}, movies: null }; }
 
   var state = defaultState(), her = defaultHer(), user = null, subs = [], photos = [], herPhotos = [];
   function fill(d, def) { var o = def(); if (d) Object.keys(d).forEach(function (k) { if (d[k] !== undefined) o[k] = d[k]; }); return o; }
