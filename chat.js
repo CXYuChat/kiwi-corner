@@ -17,6 +17,18 @@ Kiwi.onReady(function () {
   $('#dm-ava').textContent = other === 'him' ? '🥝' : '🌸';
   $('#dm-back').href = me === 'him' ? 'admin.html' : 'index.html';
   $('#dm-gear').hidden = false;
+  // 🔔 in the header until notifications are on for this phone
+  (function () {
+    var st = K.pushState(); if (st === 'on' || st === 'unsupported') return;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'dm-gear dm-bell'; b.textContent = '🔔'; b.setAttribute('aria-label', 'Turn on notifications');
+    $('#dm-gear').before(b);
+    b.addEventListener('click', function () {
+      var s2 = K.pushState();
+      if (s2 === 'needs-app') { K.installHelp(); return; }
+      if (s2 === 'denied') { K.toast('Notifications are blocked. Turn them on in Settings → Notifications'); return; }
+      K.enablePush().then(function (ok) { if (ok) b.remove(); });
+    });
+  })();
 
   function meta() { return DB.dmMeta || {}; }
   function settings() { return meta().settings || {}; }
@@ -84,12 +96,11 @@ Kiwi.onReady(function () {
   function bigEmoji(t) { if (!t || t.length > 24 || !BIG.test(t) || /^[\d#*\s]+$/.test(t)) return false; var n = typeof Intl.Segmenter === 'function' ? Array.from(new Intl.Segmenter().segment(t.trim())).length : Array.from(t.trim()).length; return n <= 3; }
   function linkify(t) { return esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>'); }
   function timeLabel(at) {
-    var today = T.dayKey(at, K.HZ) === K.todayKey();
-    return (today ? 'Today' : K.herDay(at)) + ' ' + T.fmtTime(at, K.HZ);
+    return K.herDay(at) + ' ' + T.fmtTime(at, K.VZ);
   }
   function short(at) {
-    var today = T.dayKey(at, K.HZ) === K.todayKey();
-    return today ? T.fmtTime(at, K.HZ) : K.herDay(at);
+    var today = K.herDay(at) === 'Today';
+    return today ? T.fmtTime(at, K.VZ) : K.herDay(at);
   }
   function rowHtml(m, prev, next) {
     var mine = m.from === me, gapPrev = !prev || m.at - prev.at > 15 * 60000;

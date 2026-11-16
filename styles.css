@@ -889,3 +889,4 @@ body:not(.has-tabs) .chat-fab { bottom: calc(env(safe-area-inset-bottom) + 18px)
 @keyframes ckRainbow { to { filter: hue-rotate(360deg) saturate(1.4); } }
 .ck-trophy { position: fixed; left: 50%; top: 70px; transform: translate(-50%, -30px); opacity: 0; z-index: 90; background: #2a2320; color: #ffe48a; padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem; box-shadow: 0 8px 22px rgba(0, 0, 0, .25); transition: transform .35s, opacity .35s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
 .ck-trophy.show { transform: translate(-50%, 0); opacity: 1; }
+.dm-bell { right: 46px; animation: giftshake 2.4s ease-in-out infinite; }

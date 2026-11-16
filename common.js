@@ -138,6 +138,11 @@
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); K.installPrompt = e; document.dispatchEvent(new Event('kiwi:installable')); });
   var HZ = 'Europe/Madrid';
   K.HZ = HZ;
+  // Display zone: Barcelona for her and visitors; Singapore for Chengxuan in the chat and admin.
+  // (Her days, streaks and points always use Barcelona days, whatever is displayed.)
+  var VZ = HZ;
+  K.VZ = VZ;
+  K.zoneLabel = function () { return VZ === HZ ? 'Barcelona' : 'Singapore'; };
   K.$ = function (s, root) { return (root || document).querySelector(s); };
   K.notes = function () { var n = DB && DB.state.notes; return (n && n.length) ? n : (window.LOVE_NOTES || ['I love you 💚']); };
   K.model = window.SCHEDULE ? T.build(window.SCHEDULE) : null;
@@ -158,16 +163,16 @@
 
   // "4:30 PM" if today (Barcelona), else "Fri 4:30 PM"
   K.herTime = function (e) {
-    var same = T.dayKey(e, HZ) === T.dayKey(T.now(), HZ);
-    return (same ? '' : T.fmtDay(e, HZ).split(' ')[0] + ' ') + T.fmtTime(e, HZ);
+    var same = T.dayKey(e, VZ) === T.dayKey(T.now(), VZ);
+    return (same ? '' : T.fmtDay(e, VZ).split(' ')[0] + ' ') + T.fmtTime(e, VZ);
   };
-  K.herDateTime = function (e) { return T.fmtDay(e, HZ) + ', ' + T.fmtTime(e, HZ); };
-  // "Today" / "Yesterday" / "Wed 11 Nov" in her time
+  K.herDateTime = function (e) { return T.fmtDay(e, VZ) + ', ' + T.fmtTime(e, VZ); };
+  // "Today" / "Yesterday" / "Wed 11 Nov" (in the display zone)
   K.herDay = function (e) {
-    var k = T.dayKey(e, HZ), now = T.now();
-    if (k === T.dayKey(now, HZ)) return 'Today';
-    if (k === T.dayKey(now - 864e5, HZ)) return 'Yesterday';
-    return T.fmtDay(e, HZ);
+    var k = T.dayKey(e, VZ), now = T.now();
+    if (k === T.dayKey(now, VZ)) return 'Today';
+    if (k === T.dayKey(now - 864e5, VZ)) return 'Yesterday';
+    return T.fmtDay(e, VZ);
   };
 
   // ------------------------------------------------------------ live status (her POV, Barcelona times)
@@ -1059,6 +1064,7 @@
       chrome(page);
       document.documentElement.classList.remove('locked');
       var mirror = /[?&]mirror=1/.test(location.search);
+      if (u && u.role === 'admin' && (page === 'admin' || page === 'chat') && !mirror) { VZ = 'Asia/Singapore'; K.VZ = VZ; }
       if (u && u.role === 'admin' && !mirror) document.body.classList.add('is-admin');
       if (mirror) document.body.classList.add('mirror');
       applyFeatures(); DB.subscribe(applyFeatures);

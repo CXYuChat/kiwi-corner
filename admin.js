@@ -2,6 +2,11 @@
 Kiwi.onReady(function () {
   'use strict';
   var K = window.Kiwi, T = window.KiwiTime, DB = window.KiwiDB, $ = K.$, esc = K.esc, HZ = K.HZ;
+  // Everything in admin is shown and typed in Singapore time. Things stored as Barcelona clock times (gift dates, countdowns) are converted.
+  var VZ = K.VZ || 'Asia/Singapore', ZL = VZ === HZ ? 'Barcelona' : 'Singapore';
+  function wallOf(epoch, z) { var p = T.parts(epoch, z), d = function (n) { return (n < 10 ? '0' : '') + n; }; return p.y + '-' + d(p.m) + '-' + d(p.d) + 'T' + d(p.h) + ':' + d(p.mi); }
+  function toBcn(v) { try { return v ? wallOf(T.parse(String(v).replace(' ', 'T').slice(0, 16), VZ), HZ) : ''; } catch (e) { return ''; } }
+  function fromBcn(v) { try { return v ? wallOf(T.parse(v, HZ), VZ) : ''; } catch (e) { return ''; } }
   var panels = $('#panels'), current = 'overview';
   $('#demo-warn').hidden = DB.mode !== 'demo';
 
@@ -19,7 +24,8 @@ Kiwi.onReady(function () {
   }
   function sgHint(v) {
     if (!v) return '';
-    try { var e = T.parse(v, HZ); return '= ' + T.fmtDay(e, 'Asia/Singapore') + ', ' + T.fmtTime(e, 'Asia/Singapore') + ' Singapore time'; } catch (x) { return ''; }
+    var other = VZ === HZ ? 'Asia/Singapore' : HZ;
+    try { var e = T.parse(v, VZ); return '= ' + T.fmtDay(e, other) + ', ' + T.fmtTime(e, other) + (other === HZ ? ' her time (Barcelona)' : ' Singapore time'); } catch (x) { return ''; }
   }
   function wireSgHints(root) {
     root.querySelectorAll('input[type=datetime-local]').forEach(function (inp) {
@@ -39,7 +45,7 @@ Kiwi.onReady(function () {
   function nextAuto(ap) {
     if (!ap.on) return 'off';
     var at = nextAutoAt(ap); if (!at) return '—';
-    return T.fmtDay(at, 'Asia/Singapore') + ', ' + T.fmtTime(at, 'Asia/Singapore') + ' Singapore (' + K.herDateTime(at) + ' Barcelona)';
+    return T.fmtDay(at, 'Asia/Singapore') + ', ' + T.fmtTime(at, 'Asia/Singapore') + ' Singapore (' + T.fmtDay(at, HZ) + ', ' + T.fmtTime(at, HZ) + ' her time)';
   }
   function nextAutoKey(ap) { var at = nextAutoAt(Object.assign({}, ap, { skipped: [] })); return at ? T.dayKey(at, ap.zone || 'Asia/Singapore') : ''; }
   // Turn nights already awarded into normal points so later setting changes don't rewrite them
@@ -71,7 +77,7 @@ Kiwi.onReady(function () {
     return '<div class="mood-admin"><b>💭 Her mood</b>' +
       '<div class="mood-big">' + info[1] + ' <span>' + esc(info[2]) + '</span></div>' +
       (now.note ? '<div class="mood-quote">"' + esc(now.note) + '"</div>' : '') +
-      '<div class="help">' + ago(now.at) + ' · ' + K.herDateTime(now.at) + ' Barcelona</div>' +
+      '<div class="help">' + ago(now.at) + ' · ' + K.herDateTime(now.at) + '</div>' +
       (hist ? '<div class="help">Before that: <span class="mood-hist">' + hist + '</span></div>' : '') + '</div>';
   }
 
@@ -103,7 +109,8 @@ Kiwi.onReady(function () {
     var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
     var opened = gs.filter(function (g) { return g.opened; }).length, unlocked = gs.filter(function (g) { return g.unlocked; }).length;
     var sp = st.surprise, ov = st.statusOverride;
-    return '<section class="card stack"><div data-presence="small">' + presenceHtml(false) + '</div><div class="btns"><button class="btn sm ghost" data-goto="live">🛰️ Live details</button><button class="btn sm ghost" data-goto="control">📲 Ping her</button></div></section>' +
+    return '<section class="card a2hs" id="push-card-admin" hidden></section>' +
+      '<section class="card stack"><div data-presence="small">' + presenceHtml(false) + '</div><div class="btns"><button class="btn sm ghost" data-goto="live">🛰️ Live details</button><button class="btn sm ghost" data-goto="control">📲 Ping her</button></div></section>' +
       needsYou() + '<section class="card stack"><h3>💚 Her</h3>' +
       '<div class="stat-grid">' +
         '<div class="stat"><b>⭐ ' + K.balance() + '</b><span>points (' + K.spent() + ' spent)</span></div>' +
@@ -163,7 +170,7 @@ Kiwi.onReady(function () {
       '<h3 style="margin-top:8px">History</h3>' +
       (log.length ? '<button class="btn sm ghost" id="pt-undo">↩️ Undo last</button>' : '') +
       '<ul class="log">' + (log.length ? log.map(function (l) {
-        return '<li><span>' + (l.auto ? '📞 ' : '') + esc(l.reason || '(no reason)') + '<br><small class="muted">' + K.herDateTime(l.at) + ' Barcelona' + (l.auto ? ' · nightly' : '') + '</small></span><span class="amt' + (l.amt < 0 ? ' neg' : '') + '">' + (l.amt > 0 ? '+' : '') + l.amt + '</span></li>';
+        return '<li><span>' + (l.auto ? '📞 ' : '') + esc(l.reason || '(no reason)') + '<br><small class="muted">' + K.herDateTime(l.at) + (l.auto ? ' · nightly' : '') + '</small></span><span class="amt' + (l.amt < 0 ? ' neg' : '') + '">' + (l.amt > 0 ? '+' : '') + l.amt + '</span></li>';
       }).join('') : '<li class="muted">No points given yet</li>') + '</ul>' +
     '</section>';
   };
@@ -171,7 +178,7 @@ Kiwi.onReady(function () {
   P.gifts = function () {
     var map = giftsMap(), ids = Object.keys(map).sort(function (a, b) { return (map[a].order || 0) - (map[b].order || 0); });
     var live = {}; K.gifts().forEach(function (g) { live[g.id] = g; });
-    return '<p class="help" style="margin:0 4px">She can <b>spend</b> points to unlock a gift (its price), or it unlocks for free on its date, or right away if you tap "Unlock now". Leave points at 0 for date-only, or the date empty for points-only. Dates are <b>Barcelona time</b>.</p>' +
+    return '<p class="help" style="margin:0 4px">She can <b>spend</b> points to unlock a gift (its price), or it unlocks for free on its date, or right away if you tap "Unlock now". Leave points at 0 for date-only, or the date empty for points-only. Dates are <b>' + ZL + ' time</b>.</p>' +
       ids.map(function (id) {
         var g = map[id], L = live[id] || {};
         var tag = L.opened ? '<span class="tag on">opened ✓</span>' : L.unlocked ? '<span class="tag on">unlocked (' + L.why + ')</span>' : '<span class="tag">🔒 locked</span>';
@@ -183,7 +190,7 @@ Kiwi.onReady(function () {
             '<label>What it is (shown after unwrapping)<input class="field" data-k="name" value="' + esc(g.name || '') + '"></label>' +
             '<label>Hint (shown before)<input class="field" data-k="hint" value="' + esc(g.hint || '') + '"></label>' +
             '<label>Message when opened<textarea class="field" data-k="message">' + esc(g.message || '') + '</textarea></label>' +
-            '<label>Opens on (Barcelona time)<input class="field" data-k="reveal" type="datetime-local" value="' + esc(g.reveal || '') + '"><span class="help sg"></span></label>' +
+            '<label>Opens on (' + ZL + ' time)<input class="field" data-k="reveal" type="datetime-local" value="' + esc(fromBcn(g.reveal || '')) + '"><span class="help sg"></span></label>' +
             '<div class="row2"><label>Wrapping colour<input class="field" data-k="color" type="color" value="' + esc(g.color || '#8EE000') + '" style="height:46px;padding:4px"></label>' +
             '<label>Ribbon colour<input class="field" data-k="ribbon" type="color" value="' + esc(g.ribbon || '#7A5230') + '" style="height:46px;padding:4px"></label></div>' +
           '</div>' +
@@ -285,13 +292,13 @@ Kiwi.onReady(function () {
         '<label>Answer buttons (one per line)<textarea class="field" id="qa-opts" placeholder="Yes! 💚\nNot tonight 🥲"></textarea></label>' +
         '<label>What she sees after answering (optional, one per line, same order)<textarea class="field" id="qa-replies" placeholder="Yay! See you at 9 💚\nAww okay, tomorrow then 🥺"></textarea></label>' +
         '<label>Box for her to add a line (empty = no box)<input class="field" id="qa-note" placeholder="e.g. Anything to add? (optional)"></label>' +
-        '<label>Hide if she hasn\'t answered by (optional, Barcelona time)<input class="field" id="qa-until" type="datetime-local"><span class="help sg"></span></label></div>' +
+        '<label>Hide if she hasn\'t answered by (optional, ' + ZL + ' time)<input class="field" id="qa-until" type="datetime-local"><span class="help sg"></span></label></div>' +
         '<div class="btns"><button class="btn sm pink" id="qa-send">💌 Ask her</button></div></section>' +
       '<section class="card stack"><h3>📋 Your questions</h3>' + (qs.length ? qs.map(function (q) {
         var showing = q.active !== false && (q.answer ? now - q.answer.at < 864e5 : (!q.untilMs || now < q.untilMs));
         return '<div class="item"><div class="item-head"><b>' + esc(q.emoji || '💭') + ' ' + esc(K.qText(q)).slice(0, 140) + '</b><span class="tag' + (q.answer ? ' on' : '') + '">' + (q.answer ? 'answered ✓' : showing ? 'waiting' : 'hidden') + '</span></div>' +
           (q.options || []).map(function (o, i) { var won = q.answer && q.answer.choice === i; return '<div class="q-admin-opt' + (won ? ' won' : '') + '"><span>' + (won ? '👉 ' : '') + esc(o.label) + '</span></div>'; }).join('') +
-          (q.answer ? '<div class="help">Answered ' + K.herDateTime(q.answer.at) + ' Barcelona' + (q.answer.note ? ' · "' + esc(q.answer.note) + '"' : '') + '</div>' : (q.untilMs ? '<div class="help">Hides ' + K.herDateTime(q.untilMs) + ' Barcelona if unanswered</div>' : '')) +
+          (q.answer ? '<div class="help">Answered ' + K.herDateTime(q.answer.at) + (q.answer.note ? ' · "' + esc(q.answer.note) + '"' : '') + '</div>' : (q.untilMs ? '<div class="help">Hides ' + K.herDateTime(q.untilMs) + ' if unanswered</div>' : '')) +
           '<div class="btns">' + (q.active === false ? '<button class="btn sm ghost" data-qshow="' + esc(q.id) + '">👀 Show again</button>' : '<button class="btn sm ghost" data-qhide="' + esc(q.id) + '">🙈 Hide</button>') +
           '<button class="btn sm danger" data-qdel="' + esc(q.id) + '">🗑️</button></div></div>';
       }).join('') : '<p class="muted">No questions yet</p>') + '</section>';
@@ -352,7 +359,7 @@ Kiwi.onReady(function () {
       '<section class="card stack"><h3>📣 Live status update</h3><p class="help">Replaces the "Right now Chengxuan is…" text for a while, e.g. "Just landed! 🛬".</p><div class="form">' +
         '<label>Status<input class="field" id="o-text" value="' + esc(ovOn ? ov.text : '') + '" placeholder="e.g. Just landed safe! 🛬" maxlength="80"></label>' +
         '<label>Show for<select class="field" id="o-dur"><option value="1">1 hour</option><option value="3" selected>3 hours</option><option value="6">6 hours</option><option value="24">1 day</option><option value="0">Until I clear it</option></select></label></div>' +
-        '<p class="help">' + (ovOn ? 'Showing now' + (ov.until ? ' until ' + K.herDateTime(ov.until) + ' Barcelona' : '') : 'Not showing (using the schedule)') + '</p>' +
+        '<p class="help">' + (ovOn ? 'Showing now' + (ov.until ? ' until ' + K.herDateTime(ov.until) : '') : 'Not showing (using the schedule)') + '</p>' +
         '<div class="btns"><button class="btn sm" id="o-save">📣 Show status</button>' + (ovOn ? '<button class="btn sm ghost" id="o-clear">Clear</button>' : '') + '</div></section>' +
       '<section class="card stack"><h3>🏷️ Home page banner</h3><div class="form"><label>Short line at the top of her home page (empty = hidden)<input class="field" id="b-text" value="' + esc(st.banner || '') + '" maxlength="90" placeholder="e.g. Good luck on your exam today! 📚💚"></label></div>' +
         '<div class="btns"><button class="btn sm" id="b-save">💾 Save banner</button></div></section>';
@@ -368,11 +375,11 @@ Kiwi.onReady(function () {
       '<section class="card stack"><h3>＋ Add your own countdown</h3><div class="form">' +
         '<div class="row2"><label>Emoji<input class="field" id="c-emoji" value="✈️" maxlength="4"></label><span></span></div>' +
         '<label>Label<input class="field" id="c-label" placeholder="e.g. Next video call" maxlength="60"></label>' +
-        '<label>When (Barcelona time)<input class="field" id="c-at" type="datetime-local"><span class="help sg"></span></label></div>' +
+        '<label>When (' + ZL + ' time)<input class="field" id="c-at" type="datetime-local"><span class="help sg"></span></label></div>' +
         '<div class="btns"><button class="btn sm" id="c-add">＋ Add countdown</button></div></section>' +
       '<section class="card stack"><h3>Your countdowns</h3>' +
         ((st.countdowns || []).length ? (st.countdowns || []).map(function (c) {
-          return '<div class="item-head"><span>' + esc((c.emoji || '⭐') + ' ' + c.label) + '<br><small class="muted">' + esc(K.herDateTime(T.parse(c.at, HZ))) + ' Barcelona</small></span><button class="btn sm danger" data-cdel="' + esc(c.id) + '">🗑️</button></div>';
+          return '<div class="item-head"><span>' + esc((c.emoji || '⭐') + ' ' + c.label) + '<br><small class="muted">' + esc(K.herDateTime(T.parse(c.at, HZ))) + '</small></span><button class="btn sm danger" data-cdel="' + esc(c.id) + '">🗑️</button></div>';
         }).join('') : '<p class="muted">None yet</p>') +
         '<p class="help">Automatic ones (leaving, both free, home, presents) come from the schedule and gifts. Right now she sees ' + all.length + ' countdowns in the Timers tab.</p></section>';
   };
@@ -402,7 +409,7 @@ Kiwi.onReady(function () {
   // ---- precise time helpers
   function exact(at) {
     if (!at) return 'never';
-    return new Date(at).toLocaleString('en-GB', { timeZone: HZ, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+    return new Date(at).toLocaleString('en-GB', { timeZone: VZ, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
   }
   function dur(ms) {
     var s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
@@ -423,7 +430,7 @@ Kiwi.onReady(function () {
       ? 'On <b>' + esc(K.pageName(p.page)) + '</b> · ' + esc(p.device || '') + ' · here for <span class="mono" data-for="' + (p.since || p.start) + '">' + dur(Date.now() - (p.since || p.start)) + '</span>'
       : s.lastAt ? 'Last online <b class="mono" data-ago="' + s.lastAt + '">' + agoP(s.lastAt) + '</b>' + (p ? ' · on ' + esc(K.pageName(p.page)) + ' · ' + esc(p.device || '') : '') : '';
     return '<div class="presence ' + s.cls + '"><span class="dot"></span><div><b>' + s.label + '</b><div class="help" style="margin:2px 0 0">' + line + '</div>' +
-      (s.lastAt && s.cls !== 'on' ? '<div class="help mono" style="margin:0">' + exact(s.lastAt) + ' (her time)</div>' : '') +
+      (s.lastAt && s.cls !== 'on' ? '<div class="help mono" style="margin:0">' + exact(s.lastAt) + ' (' + ZL + ')</div>' : '') +
       (big && p ? '<div class="help" style="margin:2px 0 0">Screen ' + esc(p.screen || '?') + ' · ' + esc(p.tz || '') + ' · ' + esc(p.lang || '') + '</div>' : '') + '</div></div>';
   }
   // live tickers: every second
@@ -449,15 +456,15 @@ Kiwi.onReady(function () {
           '<div class="stat"><b>' + (lv.pingSeen ? '✓' : '–') + '</b><span>' + (lv.pingSeen ? 'saw your last ping ' + agoP(lv.pingSeen.at) : 'no ping seen yet') + '</span></div>' +
         '</div>' +
         (Object.keys(devs).length ? '<p class="help" style="margin:0">Devices: ' + Object.keys(devs).map(function (d) { return esc(d) + ' (' + devs[d] + ')'; }).join(', ') + '</p>' : '') +
-        '<p class="help" style="margin:0">Updates every 20 seconds while the site is open on her screen. Times are Barcelona time.</p></section>' +
+        '<p class="help" style="margin:0">Updates every 20 seconds while the site is open on her screen. Times are ' + ZL + ' time.</p></section>' +
       '<section class="card stack"><h3>🕒 Visits</h3>' + (sess.length ? '<table class="sess">' + sess.slice(0, 30).map(function (x) {
         var live = x.open && Date.now() - x.end < 45000;
-        return '<tr><td class="mono">' + esc(T.fmtDay(x.start, HZ)) + '<br><b>' + T.fmtTime(x.start, HZ) + '</b>' + (live ? ' → <b style="color:#2a9d3a">now</b>' : ' → ' + T.fmtTime(x.end || x.start, HZ)) + '</td>' +
+        return '<tr><td class="mono">' + esc(T.fmtDay(x.start, VZ)) + '<br><b>' + T.fmtTime(x.start, VZ) + '</b>' + (live ? ' → <b style="color:#2a9d3a">now</b>' : ' → ' + T.fmtTime(x.end || x.start, VZ)) + '</td>' +
           '<td><b class="mono">' + dur((live ? Date.now() : x.end || x.start) - x.start) + '</b><br><span class="help">' + esc(x.d || '') + '</span></td>' +
           '<td class="help">' + (x.pages || []).map(function (pg) { return esc(K.pageName(pg)); }).join(' → ') + '</td></tr>';
       }).join('') + '</table>' : '<p class="muted">No visits recorded yet. They show up after she opens the site.</p>') + '</section>' +
       '<section class="card stack"><h3>📜 What she did</h3>' + (ev.length ? '<ul class="feed">' + ev.slice(0, 120).map(function (e) {
-        return '<li><span>' + esc(e.e || '•') + '</span><span>' + esc(e.t) + '</span><span class="t" title="' + esc(exact(e.at) + (e.d ? ' · ' + e.d : '')) + '">' + esc(T.fmtDayShort(e.at, HZ)) + ' ' + T.fmtTime(e.at, HZ) + '</span></li>';
+        return '<li><span>' + esc(e.e || '•') + '</span><span>' + esc(e.t) + '</span><span class="t" title="' + esc(exact(e.at) + (e.d ? ' · ' + e.d : '')) + '">' + esc(T.fmtDayShort(e.at, VZ)) + ' ' + T.fmtTime(e.at, VZ) + '</span></li>';
       }).join('') + '</ul>' : '<p class="muted">Nothing yet. Check-ins, messages, presents, clicker milestones and more show up here.</p>') +
       (ev.length ? '<div class="btns"><button class="btn sm ghost" id="ev-clear">🧹 Clear activity &amp; visits</button></div>' : '') + '</section>';
   };
@@ -488,7 +495,7 @@ Kiwi.onReady(function () {
           return '<li><span>' + (g.amount >= 0 ? '+' : '') + f(Math.abs(g.amount)) + (g.amount < 0 ? ' taken' : '') + (g.note ? ' · ' + esc(g.note) : '') + '<br><small>' + ago(g.at) + '</small></span><span class="amt">' + (got ? 'received ✓' : 'waiting') + '</span></li>';
         }).join('') + '</ul>' : '') + '</section>' +
       '<section class="card stack"><h3>⚡ Kiwi boost</h3><p class="help" style="margin:0">Multiplies everything she makes for a while. She sees a banner.</p>' +
-        (boostOn ? '<p><b>' + b.mult + '× on</b> until ' + K.herDateTime(b.until) + ' Barcelona · "' + esc(b.label || '') + '"</p>' : '') +
+        (boostOn ? '<p><b>' + b.mult + '× on</b> until ' + K.herDateTime(b.until) + ' · "' + esc(b.label || '') + '"</p>' : '') +
         '<div class="form"><div class="row2"><label>Multiplier<select class="field" id="cb-mult">' + [2, 3, 5, 10, 25, 100].map(function (n) { return '<option value="' + n + '">' + n + '×</option>'; }).join('') + '</select></label>' +
         '<label>For how long<select class="field" id="cb-hours"><option value="0.5">30 minutes</option><option value="1" selected>1 hour</option><option value="3">3 hours</option><option value="12">12 hours</option><option value="24">1 day</option><option value="168">1 week</option></select></label></div>' +
         '<label>Banner text<input class="field" id="cb-label" maxlength="60" placeholder="e.g. Movie night bonus 🍿"></label></div>' +
@@ -673,9 +680,9 @@ Kiwi.onReady(function () {
 
   // ================================================================ MORE POWER: schedule, notifications, history, theme, screen, devices, search
   function dtInput(id, label) {
-    return '<label>' + label + ' (Barcelona time)<input class="field" id="' + id + '" type="datetime-local"><span class="help sg"></span></label>';
+    return '<label>' + label + ' (' + ZL + ' time)<input class="field" id="' + id + '" type="datetime-local"><span class="help sg"></span></label>';
   }
-  function parseDt(v) { try { return v ? T.parse(v.replace(' ', 'T').slice(0, 16), HZ) : 0; } catch (e) { return 0; } }
+  function parseDt(v) { try { return v ? T.parse(v.replace(' ', 'T').slice(0, 16), VZ) : 0; } catch (e) { return 0; } }
 
   // ---- ⏰ Schedule
   var SCHED_TYPES = [['ping', '📲 Ping'], ['surprise', '💌 Surprise'], ['points', '⭐ Points'], ['kiwis', '🥝 Clicker kiwis'], ['question', '❓ Question'], ['banner', '🏷️ Banner'], ['theme', '🎨 Theme']];
@@ -701,14 +708,14 @@ Kiwi.onReady(function () {
     return '<section class="card stack"><h3>⏰ Schedule something</h3><p class="help" style="margin:0">Write it now, it goes out by itself at the time you pick, even while you sleep. If her site is open it appears within ~20 seconds; otherwise the next time she opens it.</p>' +
         '<div class="chips">' + SCHED_TYPES.map(function (t) { return '<button type="button" data-schedtype="' + t[0] + '" aria-pressed="' + (schedType === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>' +
         '<div class="form">' + schedFields(schedType) + dtInput('sc-at', 'Send at') + '</div>' +
-        '<div class="quick">' + [['in 1 hour', 1], ['tomorrow 7:30 AM', 'm'], ['tonight 9 PM', 'n']].map(function (q) { return '<button class="btn sm ghost" data-schedquick="' + q[1] + '">' + q[0] + '</button>'; }).join('') + '</div>' +
+        '<div class="quick">' + [['in 1 hour', 1], ['her 7:30 AM tomorrow', 'm'], ['her 9 PM tonight', 'n']].map(function (q) { return '<button class="btn sm ghost" data-schedquick="' + q[1] + '">' + q[0] + '</button>'; }).join('') + '</div>' +
         '<div class="btns"><button class="btn sm pink" id="sc-add">⏰ Schedule it</button></div></section>' +
       '<section class="card stack"><h3>📅 Coming up</h3>' + (up.length ? up.map(function (s) {
-        return '<div class="hist-row"><div><b>' + esc(schedSummary(s)) + '</b><p class="help">' + K.herDateTime(s.at) + ' Barcelona · ' + T.fmtDay(s.at, 'Asia/Singapore') + ' ' + T.fmtTime(s.at, 'Asia/Singapore') + ' Singapore · in ' + dur(s.at - now) + '</p></div>' +
+        return '<div class="hist-row"><div><b>' + esc(schedSummary(s)) + '</b><p class="help">' + K.herDateTime(s.at) + ' · her time ' + T.fmtDay(s.at, HZ) + ' ' + T.fmtTime(s.at, HZ) + ' · in ' + dur(s.at - now) + '</p></div>' +
           '<div class="btns"><button class="btn sm ghost" data-schednow="' + esc(s.id) + '">Send now</button><button class="btn sm danger" data-scheddel="' + esc(s.id) + '">🗑️</button></div></div>';
       }).join('') : '<p class="muted">Nothing scheduled</p>') + '</section>' +
       (past.length ? '<section class="card stack"><h3>✓ Already sent</h3>' + past.slice(0, 15).map(function (s) {
-        return '<div class="hist-row"><div><b>' + esc(schedSummary(s)) + '</b><p class="help">' + K.herDateTime(s.at) + ' Barcelona</p></div><button class="btn sm danger" data-scheddel="' + esc(s.id) + '">🗑️</button></div>';
+        return '<div class="hist-row"><div><b>' + esc(schedSummary(s)) + '</b><p class="help">' + K.herDateTime(s.at) + '</p></div><button class="btn sm danger" data-scheddel="' + esc(s.id) + '">🗑️</button></div>';
       }).join('') + '<p class="help" style="margin:0">Deleting a sent one takes it back (e.g. its points).</p></section>' : '');
   };
 
@@ -769,7 +776,7 @@ Kiwi.onReady(function () {
     var h = hist().slice().reverse();
     return '<section class="card stack"><h3>🕘 History</h3><p class="help" style="margin:0">Every change you made from admin on this device (last 80). Undo puts those things back to how they were just before.</p>' +
       (h.length ? h.map(function (e) {
-        return '<div class="hist-row"><div><b>' + esc(e.label || 'Changed ' + e.keys.join(', ')) + '</b><p class="help">' + esc(T.fmtDayShort(e.at, HZ) + ' ' + T.fmtTime(e.at, HZ)) + ' · ' + agoP(e.at) + ' · ' + DOCNAME[e.doc] + ': ' + esc(e.keys.join(', ')) + (e.undone ? ' · <b>undone</b>' : '') + '</p></div>' +
+        return '<div class="hist-row"><div><b>' + esc(e.label || 'Changed ' + e.keys.join(', ')) + '</b><p class="help">' + esc(T.fmtDayShort(e.at, VZ) + ' ' + T.fmtTime(e.at, VZ)) + ' · ' + agoP(e.at) + ' · ' + DOCNAME[e.doc] + ': ' + esc(e.keys.join(', ')) + (e.undone ? ' · <b>undone</b>' : '') + '</p></div>' +
           '<button class="btn sm ghost" data-undo="' + esc(e.id) + '">↶ Undo</button></div>';
       }).join('') + '<div class="btns"><button class="btn sm ghost" id="hist-clear">Clear history</button></div>' : '<p class="muted">No changes yet</p>') + '</section>';
   };
@@ -901,8 +908,7 @@ Kiwi.onReady(function () {
         var p = T.parts(now, HZ), hh = d.schedquick === 'm' ? 7 : 21, mm = d.schedquick === 'm' ? 30 : 0;
         at = T.wall(p.y, p.m, p.d, hh, mm, HZ); if (at <= now) at = T.addDays(at, 1, HZ);
       }
-      var q = T.parts(at, HZ), pad = function (n) { return (n < 10 ? '0' : '') + n; };
-      var inp = $('#sc-at'); inp.value = q.y + '-' + pad(q.m) + '-' + pad(q.d) + 'T' + pad(q.h) + ':' + pad(q.mi); inp.dispatchEvent(new Event('input')); return true;
+      var inp = $('#sc-at'); inp.value = wallOf(at, VZ); inp.dispatchEvent(new Event('input')); return true;
     }
     if (id === 'sc-add') {
       var at2 = parseDt(val('sc-at')); if (!at2) { toast('Pick when to send it'); return true; }
@@ -1001,6 +1007,7 @@ Kiwi.onReady(function () {
   function render() {
     renderNav();
     panels.innerHTML = '<div class="panel stack">' + P[current]() + '</div>';
+    var pc = $('#push-card-admin'); if (pc) { var x = K.store.get('kiwi-push-x'); K.store.set('kiwi-push-x', '0'); K.pushCard(pc); if (x) K.store.set('kiwi-push-x', x); }
     wireSgHints(panels);
   }
   // ---- navigation: 5 groups, each with its own tabs
@@ -1085,7 +1092,7 @@ Kiwi.onReady(function () {
     if (d.g) {
       var card = b.closest('[data-gid]'), gid = card.dataset.gid, map = giftsMap(), g = map[gid] || {};
       if (d.g === 'save') {
-        card.querySelectorAll('[data-k]').forEach(function (inp) { g[inp.dataset.k] = inp.dataset.k === 'points' ? Math.max(0, +inp.value || 0) : inp.value.trim(); });
+        card.querySelectorAll('[data-k]').forEach(function (inp) { g[inp.dataset.k] = inp.dataset.k === 'points' ? Math.max(0, +inp.value || 0) : inp.dataset.k === 'reveal' ? toBcn(inp.value.trim()) : inp.value.trim(); });
         if (!g.reveal) delete g.reveal;
         map[gid] = g; return saveGifts(map, 'Gift saved 🎁');
       }
@@ -1159,7 +1166,7 @@ Kiwi.onReady(function () {
       if (opts.length < 1) return toast('Add at least one answer button');
       var nq = { id: 'q' + uid(), emoji: val('qa-emoji') || '💭', text: qtext, options: opts.map(function (o, i) { var r = { label: o }; if (reps[i]) r.reply = reps[i]; return r; }), at: Date.now() };
       if (val('qa-note')) nq.note = val('qa-note');
-      if (val('qa-until')) nq.until = val('qa-until').replace(' ', 'T').slice(0, 16);
+      if (val('qa-until')) nq.until = toBcn(val('qa-until'));
       return saveQs(qList().concat([nq]), 'Asked! It\'s on her Home page now 💌');
     }
     if (d.msg) {
@@ -1252,7 +1259,7 @@ Kiwi.onReady(function () {
     }
     if (d.herview) {
       var hp = (DB.herPhotos || []).find(function (x) { return x.id === d.herview; });
-      if (hp) K.modal('<img class="photo-big" src="' + hp.data + '" alt=""><div class="help">' + esc(K.herDateTime(hp.at)) + ' Barcelona</div>', 'photo-sheet');
+      if (hp) K.modal('<img class="photo-big" src="' + hp.data + '" alt=""><div class="help">' + esc(K.herDateTime(hp.at)) + '</div>', 'photo-sheet');
       return;
     }
     if (d.herdel) {
@@ -1287,7 +1294,7 @@ Kiwi.onReady(function () {
     if (id === 'feat-save') { DB.setState({ featured: val('feat') }); toast('Main countdown saved ⭐'); return render(); }
     if (id === 'c-add') {
       if (!val('c-label') || !val('c-at')) return toast('Add a label and a date');
-      DB.setState({ countdowns: (DB.state.countdowns || []).concat([{ id: 'c-' + uid(), emoji: val('c-emoji') || '⭐', label: val('c-label'), at: val('c-at') }]) });
+      DB.setState({ countdowns: (DB.state.countdowns || []).concat([{ id: 'c-' + uid(), emoji: val('c-emoji') || '⭐', label: val('c-label'), at: toBcn(val('c-at')) }]) });
       toast('Countdown added ⏳'); return render();
     }
     if (d.cdel) { DB.setState({ countdowns: (DB.state.countdowns || []).filter(function (c) { return c.id !== d.cdel; }) }); toast('Countdown deleted'); return render(); }
