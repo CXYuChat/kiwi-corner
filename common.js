@@ -554,6 +554,7 @@
         '<p class="desc">You\'re logged in' + (DB.mode === 'demo' ? ' (demo mode: saved on this device only)' : '') + '.</p>' +
         (u.role === 'admin' ? '<p><a class="btn" href="admin.html" style="text-decoration:none;display:inline-block">🔧 Open admin</a></p>' : '') +
         '<div class="btns" style="flex-direction:column;align-items:stretch">' +
+          (K.pushState() === 'off' ? '<button type="button" class="btn" id="m-push">🔔 Turn on notifications</button>' : '') +
           '<button type="button" class="btn" id="m-refresh">🔄 Refresh (get the latest)</button>' +
           (K.standalone() ? '' : '<button type="button" class="btn pink" id="m-install">📱 Add to home screen</button>') +
           '<button type="button" class="btn brown" id="logout">Log out</button></div>' +
@@ -568,6 +569,7 @@
         });
       });
       K.$('#m-refresh').addEventListener('click', K.refresh);
+      var mp = K.$('#m-push'); if (mp) mp.addEventListener('click', function () { K.closeModal(); K.enablePush(); });
       var mi = K.$('#m-install'); if (mi) mi.addEventListener('click', K.installHelp);
       K.$('#logout').addEventListener('click', function () { DB.logout().then(function () { location.href = 'login.html'; }); });
     });
@@ -947,6 +949,55 @@
     DB.subscribe(check); check(); setInterval(check, 15000);
   }
 
+  // ------------------------------------------------------------ real phone notifications (Web Push via the Kiwi Corner server)
+  function b64ToBytes(b) { var p = '='.repeat((4 - b.length % 4) % 4), s = atob((b + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(s, function (c) { return c.charCodeAt(0); }); }
+  K.isIOS = function () { var ua = navigator.userAgent; return /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1); };
+  K.pushState = function () {
+    if (!('serviceWorker' in navigator)) return 'unsupported';
+    if (K.isIOS() && !K.standalone()) return 'needs-app';           // iPhone: only from the home-screen app
+    if (!('PushManager' in window) || !('Notification' in window)) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    return Notification.permission === 'granted' && K.store.get('kiwi-push-on') === '1' ? 'on' : 'off';
+  };
+  function savePush(sub) {
+    var j = sub.toJSON(), id = j.endpoint.replace(/[^a-z0-9]/gi, '').slice(-60);
+    return DB.savePush(id, { who: K.dmMe(), sub: { endpoint: j.endpoint, keys: j.keys }, device: K.deviceName(), at: Date.now() });
+  }
+  K.enablePush = function () {
+    var key = (window.KIWI_CONFIG || {}).pushKey;
+    if (!key || DB.mode !== 'live') { K.toast('Notifications only work on the real site'); return Promise.resolve(false); }
+    return navigator.serviceWorker.register('/sw.js').then(function () { return Notification.requestPermission(); }).then(function (perm) {
+      if (perm !== 'granted') { K.toast('Notifications are blocked. Allow them in your phone settings'); return false; }
+      return navigator.serviceWorker.ready.then(function (reg) {
+        return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) }); });
+      }).then(savePush).then(function () {
+        K.store.set('kiwi-push-on', '1'); K.toast('Notifications on 🔔'); K.logEvent('🔔', 'Turned on notifications on ' + K.deviceName()); return true;
+      });
+    }).catch(function (e) { console.error(e); K.toast('Couldn\'t turn on notifications on this device'); return false; });
+  };
+  // keep this phone's address fresh (once a day)
+  function refreshPush() {
+    if (K.pushState() !== 'on' || DB.mode !== 'live') return;
+    if (Date.now() - +K.store.get('kiwi-push-at', '0') < 864e5) return;
+    navigator.serviceWorker.register('/sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function (reg) { return reg.pushManager.getSubscription(); })
+      .then(function (s) { if (s) { K.store.set('kiwi-push-at', String(Date.now())); return savePush(s); } K.store.set('kiwi-push-on', '0'); }).catch(function () { /* */ });
+  }
+  K.pushCard = function (el) {
+    if (!el) return;
+    var st = K.pushState();
+    if (st === 'on' || st === 'unsupported' || K.store.get('kiwi-push-x') === '1') { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<button type="button" class="a2hs-x" data-push-x aria-label="Hide">✕</button><div class="em">🔔</div><div><b>' + (K.dmMe() === 'her' ? 'Get a buzz when Chengxuan messages you' : 'Get a buzz when she messages you') + '</b>' +
+      (st === 'needs-app' ? '<span>First put Kiwi Corner on your home screen, then open it from there and tap here again.</span><button type="button" class="btn sm" data-push-a2hs style="margin-top:8px">📱 How?</button>'
+        : st === 'denied' ? '<span>Notifications are blocked for this site. Turn them on in Settings → Notifications → Kiwi Corner.</span>'
+        : '<span>Messages, surprises, points and more, even when the site is closed.</span><button type="button" class="btn sm" data-push-on style="margin-top:8px">🔔 Turn on notifications</button>') + '</div>';
+    el.onclick = function (e) {
+      if (e.target.closest('[data-push-on]')) K.enablePush().then(function () { K.pushCard(el); });
+      if (e.target.closest('[data-push-a2hs]')) K.installHelp();
+      if (e.target.closest('[data-push-x]')) { K.store.set('kiwi-push-x', '1'); el.hidden = true; }
+    };
+  };
+
   // ------------------------------------------------------------ DM: unread badge, presence, floating chat button with "our" emojis
   K.dmMe = function () { return DB.user ? (DB.user.role === 'admin' ? 'him' : 'her') : null; };
   K.dmOurs = function () { var o = (DB.dmMeta.settings || {}).emojis; return (o && o.length) ? o : ['🥝', '💚', '🥺', '😘', '🫶', '😂', '🥰', '🍿', '🌙', '☀️', '🐦', '💕']; };
@@ -1015,6 +1066,7 @@
       if (u && !mirror) { checkSignout(); DB.subscribe(checkSignout); }
       if (u && u.role === 'admin' && !mirror) { setTimeout(adminDeviceBeat, 1500); setInterval(adminDeviceBeat, 60000); }
       if (u && !mirror) startDm(page);
+      if (u && !mirror) { refreshPush(); K.pushCard(K.$('#push-card')); }
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });
         startPresence(page); watchAdminSignals(); startScreenShare(page);

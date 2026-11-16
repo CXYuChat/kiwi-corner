@@ -851,3 +851,41 @@ body:not(.has-tabs) .chat-fab { bottom: calc(env(safe-area-inset-bottom) + 18px)
 .chat-fab b { position: absolute; top: -3px; right: -3px; min-width: 20px; height: 20px; border-radius: 999px; background: #ff3b3b; color: #fff; font-size: .72rem; display: grid; place-items: center; padding: 0 5px; border: 2px solid #fff; }
 .chat-fab b[hidden] { display: none; }
 .dm-last { background: rgba(122, 82, 48, .05); border-radius: 14px; padding: 10px 12px; font-size: .92rem; }
+
+/* kiwi clicker v2 */
+.ck-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.ck-tabs::-webkit-scrollbar { display: none; }
+.ck-tabs button { flex: none; font: inherit; font-size: .88rem; cursor: pointer; border: 2px solid rgba(122, 82, 48, .12); background: #fff; color: var(--brown); border-radius: 999px; padding: 6px 12px; }
+.ck-tabs button[aria-pressed="true"] { background: var(--brown); color: #fff; border-color: var(--brown); }
+.ck-tabs b { background: #ff3b3b; color: #fff; border-radius: 999px; padding: 0 6px; font-size: .72rem; }
+.ck-tabs b:empty { display: none; }
+.ck-basket { margin-top: 10px; font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; background: linear-gradient(90deg, #ffe48a, #ffc2d1); color: var(--brown); animation: giftshake 2.4s ease-in-out infinite; }
+.ck-float.hot { color: #ff6f00; font-size: 1.5rem; }
+.ck-drop { position: absolute; top: -40px; z-index: 3; width: 44px; height: 44px; border: 0; background: none; font-size: 2rem; cursor: pointer; animation: ckDrop linear forwards; touch-action: manipulation; }
+@keyframes ckDrop { to { transform: translateY(320px) rotate(300deg); } }
+.ck-ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.ck-a { display: grid; justify-items: center; text-align: center; gap: 1px; padding: 8px 4px; border-radius: 14px; background: rgba(122, 82, 48, .05); opacity: .5; }
+.ck-a.got { opacity: 1; background: #fff6d6; box-shadow: inset 0 0 0 2px #ffe48a; }
+.ck-a span { font-size: 1.5rem; }
+.ck-a b { font-size: .75rem; color: var(--brown); line-height: 1.15; }
+.ck-a small { font-size: .65rem; color: var(--muted); line-height: 1.15; }
+.ck-seedbox { text-align: center; display: grid; gap: 4px; justify-items: center; background: linear-gradient(180deg, #effbe0, transparent); border-radius: 18px; padding: 12px; }
+.ck-seedbox .em { font-size: 2.4rem; }
+.ck-seedbox b { font-size: 1.2rem; color: var(--green-d); }
+.ck-seedbox small { color: var(--muted); }
+.ck-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.ck-skin { font: inherit; display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border-radius: 16px; border: 2px solid transparent; background: rgba(122, 82, 48, .05); cursor: pointer; color: var(--ink); }
+.ck-skin.on { border-color: var(--green-d); background: #f1fbdf; }
+.ck-skin:disabled { opacity: .5; cursor: default; }
+.ck-skin small { font-size: .68rem; color: var(--muted); text-align: center; }
+.ck-skin-k { width: 56px; height: 56px; display: block; }
+.ck-skin-k svg { width: 100%; height: 100%; }
+.skin-gold { filter: sepia(1) saturate(4) hue-rotate(-10deg) brightness(1.1); }
+.skin-pink { filter: hue-rotate(250deg) saturate(1.3); }
+.skin-blue { filter: hue-rotate(130deg) saturate(1.2); }
+.skin-night { filter: hue-rotate(200deg) brightness(.75) saturate(1.4); }
+.skin-rainbow { animation: ckRainbow 4s linear infinite; }
+.ck-kiwi.skin-rainbow { animation: ckRainbow 4s linear infinite, ckIdle 3s ease-in-out infinite; }
+@keyframes ckRainbow { to { filter: hue-rotate(360deg) saturate(1.4); } }
+.ck-trophy { position: fixed; left: 50%; top: 70px; transform: translate(-50%, -30px); opacity: 0; z-index: 90; background: #2a2320; color: #ffe48a; padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem; box-shadow: 0 8px 22px rgba(0, 0, 0, .25); transition: transform .35s, opacity .35s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+.ck-trophy.show { transform: translate(-50%, 0); opacity: 1; }

@@ -16,6 +16,9 @@ globalThis.KIWI_CONFIG = {
   // Added to every PIN before it's sent to Firebase (Firebase needs 6+ characters).
   pepper: "-kiwicorner",
 
+  // Public key for phone notifications (the private half lives only on the server)
+  pushKey: "BNFUtb89SZTprIvGwj5WEvaeEOO5u5IvVlvCJCOX6I5M3dLV5pxcUTfCm5Lo40MqJbdEGuAnZhwPBGbGXVqdZM8",
+
   // username → Firebase account
   users: {
     wifey: { email: "livina@mywifelivina.com", role: "livina", name: "Livina" },

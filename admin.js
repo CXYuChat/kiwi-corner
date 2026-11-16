@@ -77,6 +77,8 @@ Kiwi.onReady(function () {
 
   function needsYou() {
     var t = todo(), rows = [];
+    var bl = DB.billing || {};
+    if ((+bl.cost || 0) >= 10 && bl.capAt == null && !bl.disabledAt) rows.push(['billing', '💳', 'S$10 spent this month: stop here or keep going to S$15?']);
     if (t.photos) rows.push(['photos', '📸', t.photos + ' photo' + (t.photos > 1 ? 's' : '') + ' from her to approve']);
     if (t.inbox) {
       var c = { msg: 0, guess: 0, wish: 0, answer: 0 }; fromHer().forEach(function (i) { if (!i.done) c[i.kind]++; });
@@ -470,10 +472,10 @@ Kiwi.onReady(function () {
     return '<section class="card stack"><h3>🥝 Her Kiwi Clicker</h3>' + (c ? '<div class="stat-grid">' +
         '<div class="stat"><b>' + f(c.k) + '</b><span>kiwis now</span></div>' +
         '<div class="stat"><b>' + f(c.kps) + '/s</b><span>kiwis per second</span></div>' +
-        '<div class="stat"><b>' + f(c.total) + '</b><span>grown ever</span></div>' +
+        '<div class="stat"><b>' + f(c.totalEver || c.total) + '</b><span>grown ever</span></div>' +
         '<div class="stat"><b>' + f(c.clicks) + '</b><span>taps</span></div></div>' +
         '<p class="help" style="margin:0">Helpers: ' + (Object.keys(c.owned || {}).map(function (k) { return ({ bird: '🐦', tree: '🌳', farm: '🚜', bakery: '🧁', factory: '🏭', island: '🏝️', rocket: '🚀', portal: '🌀', love: '💚' }[k] || esc(k)) + ' ×' + c.owned[k]; }).join(', ') || 'none') +
-        ' · Upgrades: ' + Object.keys(c.up || {}).length + ' · Golden kiwis: ' + (c.golden || 0) + ' · Saved <span data-ago="' + (c.savedAt || 0) + '">' + agoP(c.savedAt) + '</span></p>' +
+        ' · Upgrades: ' + Object.keys(c.up || {}).length + ' · Trophies: ' + (c.trophies || 0) + ' · Love Seeds: ' + (c.seeds || 0) + ' · Golden kiwis: ' + (c.goldenEver || c.golden || 0) + ' · Saved <span data-ago="' + (c.savedAt || 0) + '">' + agoP(c.savedAt) + '</span></p>' +
         '<a class="btn sm ghost" href="clicker.html" style="text-decoration:none;justify-self:start">👀 Watch her game</a>'
       : '<p class="muted">She hasn\'t played yet. It\'s on her Fun page.</p>') + '</section>' +
       '<section class="card stack"><h3>🎁 Send her kiwis</h3><p class="help" style="margin:0">Pops up next time she opens the game (only once she\'s started playing). Use a minus number to take some away.</p><div class="form">' +
@@ -714,7 +716,12 @@ Kiwi.onReady(function () {
   P.notify = function () {
     var c = K.notifyCfg(), ev = c.events || {};
     var KINDS = [['message', '💌 She sends you a message'], ['online', '🟢 She opens the site'], ['checkin', '✅ She checks in'], ['answer', '❓ She answers a question'], ['wish', '💭 Guesses and wishes'], ['gift', '🎁 She opens or unlocks a present'], ['photo', '📸 She sends a selfie'], ['miss', '🥺 She presses "I miss you"'], ['movie', '🍿 Movie list changes'], ['clicker', '🥝 Clicker milestones']];
-    return '<section class="card stack"><h3>🔔 Notifications on your phone</h3>' +
+    return '<section class="card stack"><h3>🔔 Kiwi Corner notifications</h3><p class="help" style="margin:0">Real notifications from Kiwi Corner itself, on each phone or laptop you turn them on for. You get one when she messages, checks in, answers, wishes, opens a present, sends a selfie or opens the site. She gets one for your chat messages, pings, surprises, points, questions, photos and scheduled things.</p>' +
+        '<p><b>This device: ' + ({ on: '🔔 on', off: 'off', denied: 'blocked in settings', 'needs-app': 'add to home screen first', unsupported: 'not supported here' }[K.pushState()]) + '</b></p>' +
+        (K.pushState() === 'off' ? '<div class="btns"><button class="btn sm pink" id="push-on">🔔 Turn on for this device</button></div>' : '') +
+        (K.pushState() === 'needs-app' ? '<div class="btns"><button class="btn sm" id="push-a2hs">📱 Add to home screen</button></div>' : '') +
+        '<p class="help" style="margin:0">She turns hers on from the 🔔 card on her Home page (or her 🌸 menu). With these on, you don\'t need ntfy anymore.</p></section>' +
+      '<section class="card stack"><h3>📲 ntfy (optional, older way)</h3>' +
         '<p class="help" style="margin:0">Uses the free <b>ntfy</b> app. Her site sends a notification to a private channel only you know.</p>' +
         '<ol class="steps"><li>Install <b>ntfy</b> from the App Store or Google Play.</li><li>Tap <b>＋</b>, then subscribe to this channel:<br><b class="mono" style="user-select:all">' + esc(c.topic || '(press "Make my channel" first)') + '</b></li><li>Turn it on below and press <b>Send a test</b>.</li></ol>' +
         '<div class="btns"><button class="btn sm ghost" id="nt-topic">' + (c.topic ? '🔁 Make a new channel' : '✨ Make my channel') + '</button>' + (c.topic ? '<button class="btn sm ghost" id="nt-copy">📋 Copy channel</button>' : '') + '</div>' +
@@ -869,6 +876,21 @@ Kiwi.onReady(function () {
     return '<section class="card stack"><h3>🔎 Search everything</h3><input class="field" id="search-q" placeholder="e.g. miss, movie, exam…" value="' + esc(searchQ) + '" autocomplete="off"><div id="search-out" class="stack">' + searchResults() + '</div></section>';
   };
 
+  // ---- 💳 Spending (cap: warnings S$1/3/5, choice at S$10, switches off at S$15)
+  P.billing = function () {
+    var b = DB.billing || {}, cost = +b.cost || 0, cap = b.capAt === 10 ? 10 : 15, pct = Math.min(100, cost / 15 * 100);
+    return '<section class="card stack"><h3>💳 Spending this month</h3>' +
+        '<div class="stat-grid"><div class="stat"><b>S$' + cost.toFixed(2) + '</b><span>so far' + (b.at ? ' (updated ' + agoP(b.at) + ')' : '') + '</span></div><div class="stat"><b>S$' + cap + '</b><span>hard stop</span></div></div>' +
+        '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+        '<p class="help" style="margin:0">Expected: S$0. Google sends a report a few times a day, so this can lag by some hours. You get a phone notification and an email at S$1, S$3 and S$5. At S$10 you\'re asked here. At your stop, billing switches off by itself: the site keeps working, only notifications stop until you turn billing back on.</p>' +
+        (b.disabledAt ? '<p class="warn">🛑 Billing was switched off ' + agoP(b.disabledAt) + ' (' + esc(b.disabledReason || '') + '). To turn it back on: Firebase console → kiwi-corner → Upgrade → Blaze, then pick your billing account.</p>' : '') +
+        '</section>' +
+      '<section class="card stack"><h3>🛑 Where to stop</h3>' +
+        '<div class="theme-pick"><button type="button" data-cap="10" aria-pressed="' + (cap === 10) + '">Stop at S$10</button><button type="button" data-cap="15" aria-pressed="' + (cap === 15) + '">Keep going to S$15</button></div>' +
+        '<label class="switch"><span><b>Remember this for next months</b><br><span class="help">Off = every month starts again at S$15 and asks you at S$10.</span></span><input type="checkbox" id="cap-keep"' + (b.capKeep ? ' checked' : '') + '></label>' +
+        '<p class="help" style="margin:0">Budget: S$15/month on your billing account, with alerts at S$1, S$3, S$5, S$10 and S$15.</p></section>';
+  };
+
   // ---- clicks for the tabs above
   function morePowerClick(b, d, id) {
     if (d.schedtype) { schedType = d.schedtype; render(); return true; }
@@ -906,6 +928,16 @@ Kiwi.onReady(function () {
       return true;
     }
     if (d.schednow) { DB.setState({ scheduled: (DB.state.scheduled || []).map(function (s) { return s.id === d.schednow ? Object.assign({}, s, { at: Date.now() }) : s; }) }); toast('Sent now ✓'); render(); return true; }
+    if (id === 'push-on') { K.enablePush().then(render); return true; }
+    if (id === 'push-a2hs') { K.installHelp(); return true; }
+    if (d.cap) {
+      var c10 = d.cap === '10';
+      if (c10 && (+(DB.billing || {}).cost || 0) >= 10) {
+        K.confirm({ emoji: '🛑', title: 'Stop now?', text: 'You\'re already past S$10, so billing switches off right away and notifications stop.', yes: 'Stop now', danger: true }).then(function (ok) { if (ok) DB.setBilling({ capAt: 10 }).then(function () { toast('Stopping at S$10'); render(); }); });
+        return true;
+      }
+      DB.setBilling({ capAt: c10 ? 10 : null }).then(function () { toast(c10 ? 'It stops at S$10 this month' : 'Keeps going up to S$15'); render(); }); return true;
+    }
     // notifications
     if (id === 'nt-topic') {
       var c0 = K.notifyCfg(), a = new Uint8Array(12); crypto.getRandomValues(a);
@@ -958,6 +990,7 @@ Kiwi.onReady(function () {
     return false;
   }
   panels.addEventListener('change', function (e) {
+    if (e.target.id === 'cap-keep') { DB.setBilling({ capKeep: e.target.checked }); toast('Saved'); return; }
     if (e.target.id === 'th-choice') { DB.setState({ themeChoice: e.target.checked }); toast(e.target.checked ? 'She can pick her theme now 🎨' : 'Theme picker hidden'); render(); }
   });
   panels.addEventListener('input', function (e) {
@@ -976,7 +1009,7 @@ Kiwi.onReady(function () {
     { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
     { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
-    { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
+    { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['billing', '💳 Spending'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
   // Things waiting for you, per tab

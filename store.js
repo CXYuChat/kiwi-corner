@@ -36,7 +36,7 @@
   var state = defaultState(), her = defaultHer(), user = null, subs = [], photos = [], herPhotos = [], live = defaultLive(), liveDenied = false;
   // DMs: one document per message (collection "dm") + one small "kiwi/dm" record for presence, typing, unread counts and his privacy settings.
   function defaultDmMeta() { return { him: {}, her: {}, unread: { him: 0, her: 0 }, settings: { showOnline: true, showRead: true, showDelivered: true, showTyping: true }, last: null }; }
-  var dmMeta = defaultDmMeta();
+  var dmMeta = defaultDmMeta(), billing = null;
   function fillMeta(d) { var m = fill(d, defaultDmMeta); m.settings = Object.assign(defaultDmMeta().settings, m.settings || {}); m.unread = Object.assign({ him: 0, her: 0 }, m.unread || {}); return m; }
   function fill(d, def) { var o = def(); if (d) Object.keys(d).forEach(function (k) { if (d[k] !== undefined) o[k] = d[k]; }); return o; }
   function emit() { subs.forEach(function (f) { try { f(state, her, user); } catch (e) { console.error(e); } }); }
@@ -91,6 +91,8 @@
     dmAdd: function (m) { var l = local.dmLoad(); l.push(m); local.dmSave(l); return Promise.resolve(); },
     dmUpdate: function (id, patch) { var l = local.dmLoad().map(function (m) { return m.id === id ? Object.assign({}, m, patch) : m; }); local.dmSave(l); return Promise.resolve(); },
     dmUpdateMany: function (ids, patch) { var l = local.dmLoad().map(function (m) { return ids.indexOf(m.id) !== -1 ? Object.assign({}, m, patch) : m; }); local.dmSave(l); return Promise.resolve(); },
+    savePush: function () { return Promise.resolve(); },
+    setBilling: function (patch) { billing = Object.assign({}, billing || {}, patch); emit(); return Promise.resolve(); },
     dmMetaSet: function (patch, incFor) {
       local.dmLoad();
       Object.keys(patch).forEach(function (k) { dmMeta[k] = (patch[k] && typeof patch[k] === 'object' && !Array.isArray(patch[k])) ? Object.assign({}, dmMeta[k] || {}, patch[k]) : patch[k]; });
@@ -142,6 +144,7 @@
           if (!user) her = defaultHer();
           fb.unsub.push(fb.stateRef.onSnapshot(function (d) { state = fill(d.data(), defaultState); emit(); done(); }, function (e) { console.error(e); done(); }));
           photos = []; herPhotos = []; live = defaultLive(); liveDenied = false; dmMeta = defaultDmMeta();
+          if (user && user.role === 'admin') fb.unsub.push(db.collection('kiwi').doc('billing').onSnapshot(function (d) { billing = d.data() || null; emit(); }, function () { /* */ }));
           if (user) fb.unsub.push(fb.dmMetaRef.onSnapshot(function (d) { dmMeta = fillMeta(d.data()); emit(); }, function (e) { console.warn('dm meta', e && e.code); }));
           if (user) fb.unsub.push(fb.liveRef.onSnapshot(function (d) { live = fill(d.data(), defaultLive); emit(); done(); }, function (e) {
             // Rules for kiwi/live not published yet: keep the same data inside her record instead.
@@ -186,6 +189,8 @@
     dmUpdateMany: function (ids, patch) {
       var b = fb.db.batch(); ids.slice(0, 400).forEach(function (id) { b.set(fb.dmRef.doc(id), patch, { merge: true }); }); return b.commit();
     },
+    savePush: function (id, data) { return fb.db.collection('push').doc(id).set(data); },
+    setBilling: function (patch) { return fb.db.collection('kiwi').doc('billing').set(patch, { merge: true }); },
     dmMetaSet: function (patch, incFor) {
       var p = JSON.parse(JSON.stringify(patch));
       if (incFor) { p.unread = p.unread || {}; p.unread[incFor] = firebase.firestore.FieldValue.increment(1); }
@@ -225,6 +230,9 @@
     get herPhotos() { return herPhotos; },
     // ---- DMs
     get dmMeta() { return dmMeta; },
+    get billing() { return billing; },
+    setBilling: function (patch) { return B.setBilling(patch); },
+    savePush: function (id, data) { return B.savePush(id, data); },
     dmListen: function (limit, cb) { return B.dmListen(limit, cb); },
     dmSend: function (m) { return B.dmAdd(m); },
     dmUpdate: function (id, patch) { return B.dmUpdate(id, patch); },

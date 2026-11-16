@@ -31,17 +31,21 @@
         <button type="button" class="ck-golden" id="ck-golden" hidden aria-label="Golden kiwi!">🥝</button>
       </div>
       <div class="ck-tap">+<span id="ck-per">1</span> per tap</div>
+      <button type="button" class="ck-basket" id="ck-basket" hidden>🧺 Daily basket ready! <b id="ck-basket-n"></b></button>
     </section>
     <section class="card" data-auth>
-      <div class="ck-shop-head">
-        <div class="seg" role="group">
-          <button type="button" data-shop="helpers" aria-pressed="true">🐦 Helpers</button>
-          <button type="button" data-shop="upgrades" aria-pressed="false">✨ Upgrades <b id="ck-upn"></b></button>
-        </div>
-        <div class="seg sm" role="group" id="ck-qty">
-          <button type="button" data-qty="1" aria-pressed="true">×1</button>
-          <button type="button" data-qty="10" aria-pressed="false">×10</button>
-        </div>
+      <div class="ck-tabs" role="group">
+        <button type="button" data-shop="helpers" aria-pressed="true">🐦 Helpers</button>
+        <button type="button" data-shop="upgrades" aria-pressed="false">✨ Upgrades <b id="ck-upn"></b></button>
+        <button type="button" data-shop="trophies" aria-pressed="false">🏆 Trophies</button>
+        <button type="button" data-shop="seeds" aria-pressed="false">🌱 Seeds <b id="ck-seedn"></b></button>
+        <button type="button" data-shop="skins" aria-pressed="false">🎨 Skins</button>
+      </div>
+      <div class="seg sm" role="group" id="ck-qty" style="margin-top:10px">
+        <button type="button" data-qty="1" aria-pressed="true">×1</button>
+        <button type="button" data-qty="10" aria-pressed="false">×10</button>
+        <button type="button" data-qty="100" aria-pressed="false">×100</button>
+        <button type="button" data-qty="max" aria-pressed="false">Max</button>
       </div>
       <div class="ck-shop" id="ck-shop"></div>
     </section>
