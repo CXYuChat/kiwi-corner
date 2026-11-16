@@ -528,6 +528,7 @@
       '<div class="top-right">' + (K.standalone() ? '<button type="button" class="pill acct" id="refresh-btn" aria-label="Refresh">🔄</button>' : '') + (!u
         ? '<a class="pill pts-pill" href="login.html?next=' + encodeURIComponent(location.pathname.split('/').pop() || 'index.html') + '">🔑 Log in</a>'
         : (u.role === 'admin' ? '<a class="pill admin-pill" href="admin.html">🔧 Admin<b id="admin-unread"></b></a>' : '') +
+          '<a class="pill chat-pill" href="chat.html" aria-label="Chat">💬<b id="chat-unread"></b></a>' +
           '<a class="pill pts-pill" href="gifts.html" title="Your points">⭐ <b id="pts-count">0</b></a>' +
           '<button type="button" class="pill acct" id="acct" aria-label="Account">' + (u.role === 'admin' ? '🥝' : '🌸') + '</button>') +
       '</div>';
@@ -537,7 +538,7 @@
       pv.innerHTML = '👀 <b>Her view</b> · just looking: nothing you open or tap here counts for her' + (page === 'fun' ? ' (except the movie list)' : '');
       top.after(pv);
     }
-    if (page !== 'admin') {
+    if (page !== 'admin' && page !== 'chat') {
       var nav = document.createElement('nav');
       nav.className = 'tabbar';
       nav.innerHTML = TABS.map(function (t) {
@@ -946,6 +947,45 @@
     DB.subscribe(check); check(); setInterval(check, 15000);
   }
 
+  // ------------------------------------------------------------ DM: unread badge, presence, floating chat button with "our" emojis
+  K.dmMe = function () { return DB.user ? (DB.user.role === 'admin' ? 'him' : 'her') : null; };
+  K.dmOurs = function () { var o = (DB.dmMeta.settings || {}).emojis; return (o && o.length) ? o : ['🥝', '💚', '🥺', '😘', '🫶', '😂', '🥰', '🍿', '🌙', '☀️', '🐦', '💕']; };
+  K.dmQuickSend = function (text) {
+    var me = K.dmMe(), other = me === 'him' ? 'her' : 'him', now = Date.now();
+    var m = { id: 'm' + now.toString(36) + Math.random().toString(36).slice(2, 8), from: me, text: text, at: now };
+    DB.dmSend(m); var p = { last: { at: now, from: me, text: text } }; DB.dmMetaSet(p, other);
+    if (me === 'her') K.notify('message', '💬 Livina', text);
+    K.toast('Sent ' + text + ' to ' + (me === 'him' ? 'Livina' : 'Chengxuan'));
+  };
+  function startDm(page) {
+    var me = K.dmMe(), other = me === 'him' ? 'her' : 'him';
+    function badge() {
+      var n = ((DB.dmMeta.unread || {})[me]) || 0;
+      var b = K.$('#chat-unread'); if (b) b.textContent = n ? ' ' + (n > 99 ? '99+' : n) : '';
+      var f = K.$('#fab-n'); if (f) { f.textContent = n > 99 ? '99+' : n; f.hidden = !n; }
+    }
+    DB.subscribe(badge); badge();
+    // site-wide "online" for the chat header (every 25 s while on screen)
+    function beat(vis) { var o = {}; o[me] = { at: Date.now(), visible: vis, page: page }; if (!vis) o[me].typing = 0; DB.dmMetaSet(o).catch(function () { /* */ }); }
+    if (page !== 'chat') {
+      setTimeout(function () { beat(!document.hidden); }, 1200); setInterval(function () { if (!document.hidden) beat(true); }, 25000);
+      document.addEventListener('visibilitychange', function () { beat(!document.hidden); });
+    }
+    if (page === 'chat' || page === 'login' || /[?&]mirror=1/.test(location.search)) return;
+    // floating chat button: tap = quick sheet with our emojis, last message and "Open chat"
+    var fab = document.createElement('button'); fab.type = 'button'; fab.className = 'chat-fab'; fab.setAttribute('aria-label', 'Chat');
+    fab.innerHTML = '💬<b id="fab-n" hidden></b>';
+    document.body.appendChild(fab); badge();
+    fab.addEventListener('click', function () {
+      var last = DB.dmMeta.last, NAME = { him: 'Chengxuan', her: 'Livina' };
+      var sh = K.modal('<h3>💬 ' + NAME[other] + '</h3>' +
+        (last ? '<div class="dm-last"><b>' + (last.from === me ? 'You' : NAME[last.from]) + ':</b> ' + K.esc(last.text || '') + '<span class="help"> · ' + K.herTime(last.at) + '</span></div>' : '') +
+        '<p class="help" style="margin:10px 0 6px">Tap to send instantly:</p><div class="dm-ours big">' + K.dmOurs().map(function (e) { return '<button type="button" data-qsend="' + K.esc(e) + '">' + K.esc(e) + '</button>'; }).join('') + '</div>' +
+        '<a class="btn big" href="chat.html" style="margin-top:14px;text-decoration:none;display:block;text-align:center">Open chat 💬</a>', 'dm-quick');
+      sh.addEventListener('click', function (e) { var b = e.target.closest('[data-qsend]'); if (!b) return; K.dmQuickSend(b.dataset.qsend); K.closeModal(); });
+    });
+  }
+
   // ------------------------------------------------------------ feature switches: admin can hide parts of her site
   function applyFeatures() {
     var off = (DB.state && DB.state.hide) || {};
@@ -974,6 +1014,7 @@
       applyTheme(); DB.subscribe(applyTheme);
       if (u && !mirror) { checkSignout(); DB.subscribe(checkSignout); }
       if (u && u.role === 'admin' && !mirror) { setTimeout(adminDeviceBeat, 1500); setInterval(adminDeviceBeat, 60000); }
+      if (u && !mirror) startDm(page);
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });
         startPresence(page); watchAdminSignals(); startScreenShare(page);

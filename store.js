@@ -34,6 +34,10 @@
   // live: small record that changes often (presence, activity, clicker game). Kept apart so her big record isn't rewritten every minute.
   function defaultLive() { return { presence: null, sessions: [], events: [], clicker: null }; }
   var state = defaultState(), her = defaultHer(), user = null, subs = [], photos = [], herPhotos = [], live = defaultLive(), liveDenied = false;
+  // DMs: one document per message (collection "dm") + one small "kiwi/dm" record for presence, typing, unread counts and his privacy settings.
+  function defaultDmMeta() { return { him: {}, her: {}, unread: { him: 0, her: 0 }, settings: { showOnline: true, showRead: true, showDelivered: true, showTyping: true }, last: null }; }
+  var dmMeta = defaultDmMeta();
+  function fillMeta(d) { var m = fill(d, defaultDmMeta); m.settings = Object.assign(defaultDmMeta().settings, m.settings || {}); m.unread = Object.assign({ him: 0, her: 0 }, m.unread || {}); return m; }
   function fill(d, def) { var o = def(); if (d) Object.keys(d).forEach(function (k) { if (d[k] !== undefined) o[k] = d[k]; }); return o; }
   function emit() { subs.forEach(function (f) { try { f(state, her, user); } catch (e) { console.error(e); } }); }
 
@@ -54,11 +58,14 @@
         try { state = fill(JSON.parse(localStorage.getItem('kiwi-db-state') || 'null'), defaultState); } catch (e) { state = defaultState(); }
         try { her = fill(JSON.parse(localStorage.getItem('kiwi-db-her') || 'null'), defaultHer); } catch (e) { her = defaultHer(); }
       }
-      load(); local.loadPhotos(); local.loadLive();
+      load(); local.loadPhotos(); local.loadLive(); local.dmLoad();
       var s = null; try { s = localStorage.getItem('kiwi-session'); } catch (e) { /* */ }
       var u = s && userByName(s);
       user = u ? Object.assign({ username: s }, u) : null;
-      window.addEventListener('storage', function (e) { if (/^kiwi-db-/.test(e.key || '')) { load(); local.loadPhotos(); local.loadLive(); emit(); } });
+      window.addEventListener('storage', function (e) {
+        if (e.key === 'kiwi-db-dm') { local.dmFire(); return; }
+        if (/^kiwi-db-/.test(e.key || '')) { load(); local.loadPhotos(); local.loadLive(); local.dmLoad(); emit(); }
+      });
       return Promise.resolve();
     },
     login: async function (name, pin) {
@@ -72,6 +79,24 @@
     logout: function () { try { localStorage.removeItem('kiwi-session'); } catch (e) { /* */ } user = null; return Promise.resolve(); },
     saveState: function () { localStorage.setItem('kiwi-db-state', JSON.stringify(state)); return Promise.resolve(); },
     saveHer: function () { localStorage.setItem('kiwi-db-her', JSON.stringify(her)); return Promise.resolve(); },
+    dmLoad: function () {
+      var l = []; try { l = JSON.parse(localStorage.getItem('kiwi-db-dm') || '[]'); } catch (e) { /* */ }
+      try { dmMeta = fillMeta(JSON.parse(localStorage.getItem('kiwi-db-dmmeta') || 'null')); } catch (e) { dmMeta = defaultDmMeta(); }
+      return l;
+    },
+    dmSave: function (l) { localStorage.setItem('kiwi-db-dm', JSON.stringify(l.slice(-500))); local.dmFire(); },
+    dmFire: function () { var l = local.dmLoad(); local.dmSubs.forEach(function (f) { f(l.slice().sort(function (a, b) { return a.at - b.at; })); }); },
+    dmSubs: [],
+    dmListen: function (limit, cb) { local.dmSubs.push(cb); setTimeout(function () { cb(local.dmLoad().sort(function (a, b) { return a.at - b.at; }).slice(-limit)); }, 0); return function () { local.dmSubs = local.dmSubs.filter(function (f) { return f !== cb; }); }; },
+    dmAdd: function (m) { var l = local.dmLoad(); l.push(m); local.dmSave(l); return Promise.resolve(); },
+    dmUpdate: function (id, patch) { var l = local.dmLoad().map(function (m) { return m.id === id ? Object.assign({}, m, patch) : m; }); local.dmSave(l); return Promise.resolve(); },
+    dmUpdateMany: function (ids, patch) { var l = local.dmLoad().map(function (m) { return ids.indexOf(m.id) !== -1 ? Object.assign({}, m, patch) : m; }); local.dmSave(l); return Promise.resolve(); },
+    dmMetaSet: function (patch, incFor) {
+      local.dmLoad();
+      Object.keys(patch).forEach(function (k) { dmMeta[k] = (patch[k] && typeof patch[k] === 'object' && !Array.isArray(patch[k])) ? Object.assign({}, dmMeta[k] || {}, patch[k]) : patch[k]; });
+      if (incFor) dmMeta.unread[incFor] = (dmMeta.unread[incFor] || 0) + 1;
+      localStorage.setItem('kiwi-db-dmmeta', JSON.stringify(dmMeta)); emit(); return Promise.resolve();
+    },
     loadLive: function () { try { live = fill(JSON.parse(localStorage.getItem('kiwi-db-live') || 'null'), defaultLive); } catch (e) { live = defaultLive(); } },
     saveLive: function (patch) { local.loadLive(); live = Object.assign({}, live, patch); localStorage.setItem('kiwi-db-live', JSON.stringify(live)); emit(); return Promise.resolve(); },
     loadPhotos: function () {
@@ -98,6 +123,11 @@
       await Promise.all([loadScript(base + 'firebase-auth-compat.js'), loadScript(base + 'firebase-firestore-compat.js')]);
       firebase.initializeApp(C.firebase);
       var db = firebase.firestore();
+      // Keep a copy on the device so the chat opens instantly (and works on a bad connection).
+      try { db.enablePersistence({ synchronizeTabs: true }).catch(function () { /* another tab / private mode */ }); } catch (e) { /* */ }
+      fb.db = db;
+      fb.dmRef = db.collection('dm');
+      fb.dmMetaRef = db.collection('kiwi').doc('dm');
       fb.stateRef = db.collection('kiwi').doc('state');
       fb.photosRef = db.collection('photos');
       fb.herPhotosRef = db.collection('herPhotos');
@@ -111,7 +141,8 @@
           var need = user ? 3 : 1, got = 0, done = function () { if (++got === need && first) { first = false; resolve(); } };
           if (!user) her = defaultHer();
           fb.unsub.push(fb.stateRef.onSnapshot(function (d) { state = fill(d.data(), defaultState); emit(); done(); }, function (e) { console.error(e); done(); }));
-          photos = []; herPhotos = []; live = defaultLive(); liveDenied = false;
+          photos = []; herPhotos = []; live = defaultLive(); liveDenied = false; dmMeta = defaultDmMeta();
+          if (user) fb.unsub.push(fb.dmMetaRef.onSnapshot(function (d) { dmMeta = fillMeta(d.data()); emit(); }, function (e) { console.warn('dm meta', e && e.code); }));
           if (user) fb.unsub.push(fb.liveRef.onSnapshot(function (d) { live = fill(d.data(), defaultLive); emit(); done(); }, function (e) {
             // Rules for kiwi/live not published yet: keep the same data inside her record instead.
             console.warn('live doc unavailable, using fallback', e && e.code); liveDenied = true; emit(); done();
@@ -145,6 +176,21 @@
         throw e;
       });
     },
+    dmListen: function (limit, cb) {
+      return fb.dmRef.orderBy('at', 'desc').limit(limit).onSnapshot({ includeMetadataChanges: true }, function (q) {
+        cb(q.docs.map(function (d) { return Object.assign({ id: d.id, pending: d.metadata.hasPendingWrites }, d.data()); }).reverse());
+      }, function (e) { console.error('dm', e); });
+    },
+    dmAdd: function (m) { var id = m.id, d = Object.assign({}, m); delete d.id; return fb.dmRef.doc(id).set(d); },
+    dmUpdate: function (id, patch) { return fb.dmRef.doc(id).set(patch, { merge: true }); },
+    dmUpdateMany: function (ids, patch) {
+      var b = fb.db.batch(); ids.slice(0, 400).forEach(function (id) { b.set(fb.dmRef.doc(id), patch, { merge: true }); }); return b.commit();
+    },
+    dmMetaSet: function (patch, incFor) {
+      var p = JSON.parse(JSON.stringify(patch));
+      if (incFor) { p.unread = p.unread || {}; p.unread[incFor] = firebase.firestore.FieldValue.increment(1); }
+      return fb.dmMetaRef.set(p, { merge: true });
+    },
     addPhoto: function (p) { var id = p.id; var d = Object.assign({}, p); delete d.id; return fb.photosRef.doc(id).set(d); },
     deletePhoto: function (id) { return fb.photosRef.doc(id).delete(); },
     updatePhoto: function (id, patch) { return fb.photosRef.doc(id).set(patch, { merge: true }); },
@@ -163,7 +209,7 @@
     }
   } catch (e) { /* */ }
   var B = (C.firebase && !demo) ? fb : local;
-  function isPreview() { return !!(user && user.role === 'admin' && document.body && document.body.dataset.page && document.body.dataset.page !== 'admin'); }
+  function isPreview() { var pg = document.body && document.body.dataset.page; return !!(user && user.role === 'admin' && pg && pg !== 'admin' && pg !== 'chat'); }
   var ready = B.init().catch(function (e) { console.error('KiwiDB init failed', e); });
 
   window.KiwiDB = {
@@ -177,6 +223,13 @@
     deletePhoto: function (id) { return B.deletePhoto(id); },
     updatePhoto: function (id, patch) { return B.updatePhoto(id, patch); },
     get herPhotos() { return herPhotos; },
+    // ---- DMs
+    get dmMeta() { return dmMeta; },
+    dmListen: function (limit, cb) { return B.dmListen(limit, cb); },
+    dmSend: function (m) { return B.dmAdd(m); },
+    dmUpdate: function (id, patch) { return B.dmUpdate(id, patch); },
+    dmUpdateMany: function (ids, patch) { return ids.length ? B.dmUpdateMany(ids, patch) : Promise.resolve(); },
+    dmMetaSet: function (patch, incFor) { return B.dmMetaSet(patch, incFor); },
     get live() { return (liveDenied ? fill(her.live, defaultLive) : live); },
     setLive: function (patch) {
       if (isPreview() && Object.keys(patch || {}).some(function (k) { return !/^(adminDevices|watching)$/.test(k); })) { live = Object.assign({}, live, patch); emit(); return Promise.resolve(); }

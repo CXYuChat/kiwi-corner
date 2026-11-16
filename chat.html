@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Chat 💬</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="chat" class="chat-page">
+  <div class="dm-app" id="dm-app">
+    <header class="dm-head">
+      <a class="dm-back" href="index.html" id="dm-back" aria-label="Back">‹</a>
+      <div class="dm-who">
+        <div class="dm-ava" id="dm-ava">🥝</div>
+        <div><b id="dm-name">Chengxuan</b><span id="dm-status"></span></div>
+      </div>
+      <button type="button" class="dm-gear" id="dm-gear" hidden aria-label="Chat settings">⚙️</button>
+    </header>
+    <div class="dm-list" id="dm-list" role="log" aria-live="polite">
+      <div class="dm-more" id="dm-more" hidden>Loading earlier messages…</div>
+      <div id="dm-msgs"></div>
+      <div class="dm-typing" id="dm-typing" hidden><span class="typing"><i></i><i></i><i></i></span></div>
+    </div>
+    <button type="button" class="dm-jump" id="dm-jump" hidden>↓ <span id="dm-jump-n"></span></button>
+    <div class="dm-reply" id="dm-reply" hidden><div><b id="dm-reply-who"></b><span id="dm-reply-text"></span></div><button type="button" id="dm-reply-x" aria-label="Cancel reply">✕</button></div>
+    <form class="dm-compose" id="dm-form" autocomplete="off">
+      <label class="dm-cam" aria-label="Send a photo">📷<input type="file" id="dm-file" accept="image/*" hidden></label>
+      <textarea id="dm-text" rows="1" placeholder="iMessage… but kiwi 🥝" maxlength="5000"></textarea>
+      <button type="submit" class="dm-send" id="dm-send" aria-label="Send" disabled>↑</button>
+    </form>
+    <div class="dm-login" id="dm-login" hidden>🔑 <a href="login.html?next=chat.html">Log in</a> to chat.</div>
+  </div>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="questions.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="chat.js"></script>
+</body>
+</html>
