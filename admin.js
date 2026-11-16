@@ -93,6 +93,7 @@ Kiwi.onReady(function () {
     '<section class="card stack"><h3>⚡ Quick actions</h3><div class="quick">' +
       '<button type="button" class="btn sm" data-quick="10">+10 ⭐</button><button type="button" class="btn sm" data-quick="25">+25 ⭐</button>' +
       '<button type="button" class="btn sm ghost" data-goto="photos">📸 Post a photo</button><button type="button" class="btn sm ghost" data-goto="messages">💌 Send a surprise</button>' +
+      '<button type="button" class="btn sm ghost" data-goto="ask">❓ Ask her something</button><button type="button" class="btn sm ghost" data-goto="control">📲 Ping her</button><button type="button" class="btn sm ghost" data-goto="clicker">🥝 Send clicker kiwis</button>' +
       '<a class="btn sm ghost" href="fun.html#movies-card" style="text-decoration:none">🍿 Movie list</a>' + '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
   }
 
@@ -100,7 +101,8 @@ Kiwi.onReady(function () {
     var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
     var opened = gs.filter(function (g) { return g.opened; }).length, unlocked = gs.filter(function (g) { return g.unlocked; }).length;
     var sp = st.surprise, ov = st.statusOverride;
-    return needsYou() + '<section class="card stack"><h3>💚 Her</h3>' +
+    return '<section class="card stack"><div data-presence="small">' + presenceHtml(false) + '</div><div class="btns"><button class="btn sm ghost" data-goto="live">🛰️ Live details</button><button class="btn sm ghost" data-goto="control">📲 Ping her</button></div></section>' +
+      needsYou() + '<section class="card stack"><h3>💚 Her</h3>' +
       '<div class="stat-grid">' +
         '<div class="stat"><b>⭐ ' + K.balance() + '</b><span>points (' + K.spent() + ' spent)</span></div>' +
         '<div class="stat"><b>🥺 ' + (her.missCount || 0) + '</b><span>times she missed you</span></div>' +
@@ -109,7 +111,6 @@ Kiwi.onReady(function () {
       '</div>' +
       moodBox(her) +
       '<p>🔥 Check-in streak: <b>' + K.streak() + (K.streak() === 1 ? ' day' : ' days') + '</b>' + (K.checkedInToday() ? ' · checked in today ✓' : ' · not checked in yet today') + ' <span class="muted">(best: ' + K.bestStreak() + ')</span></p>' +
-      '<p>👀 Livina last visited: <b>' + ago(her.lastSeen) + '</b></p>' +
       '<p>⏳ Main countdown: <b>' + (f ? esc(f.emoji + ' ' + f.label) : 'none') + '</b></p>' +
       '<p>💌 Surprise: <b>' + (sp && sp.active ? esc(sp.title || 'untitled') + (her.seenSurprise === sp.id ? ' (seen ✓)' : ' (not opened yet)') : 'none showing') + '</b></p>' +
       '<p>📥 Things from her waiting for you: <b>' + fromHer().filter(function (i) { return !i.done; }).length + '</b></p>' +
@@ -226,6 +227,8 @@ Kiwi.onReady(function () {
     if (it.kind === 'msg') {
       var tag = !it.done ? (x.read ? '<span class="tag">read</span>' : '<span class="tag on">new</span>') : (x.reply ? '<span class="tag on">replied ✓</span>' : '<span class="tag">archived</span>');
       return '<div class="item' + (!it.done && !x.read ? ' unread' : '') + '">' + head + tag + '</div>' + longText(x.text) +
+        (x.auto && x.auto.text ? '<div class="help" style="margin:0">🤖 Auto-replied: "' + esc(x.auto.text) + '"</div>' : '') +
+        (!it.done ? '<div class="qr-chips">' + quickList().map(function (q, qi) { return '<button type="button" data-qr="' + qi + '" data-mid="' + esc(x.id) + '">' + esc(q) + '</button>'; }).join('') + '</div>' : '') +
         '<label class="help">' + (x.reply ? 'Your reply' : 'Reply') + ' (she sees it under her message)<textarea class="field" data-replyto="' + esc(x.id) + '" placeholder="Write back…">' + esc(x.reply || '') + '</textarea></label>' +
         '<div class="btns">' + (!it.done
           ? '<button class="btn sm" data-msg="reply" data-mid="' + esc(x.id) + '">💌 Reply</button><button class="btn sm ghost" data-msg="archive" data-mid="' + esc(x.id) + '">🗄️ Done, no reply</button>'
@@ -393,6 +396,279 @@ Kiwi.onReady(function () {
     }).join('') + '</section>';
   };
 
+  // ================================================================ POWER TOOLS
+  // ---- precise time helpers
+  function exact(at) {
+    if (!at) return 'never';
+    return new Date(at).toLocaleString('en-GB', { timeZone: HZ, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  }
+  function dur(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m ? m + 'm ' + x + 's' : x + 's';
+  }
+  function agoP(at) { return at ? dur(Date.now() - at) + ' ago' : 'never'; }
+  // Her presence: online now / probably away / offline
+  function presence() {
+    var lv = DB.live || {}, p = lv.presence, now = Date.now();
+    var lastAt = Math.max(p ? p.at : 0, DB.her.lastSeen || 0);
+    if (p && p.visible && now - p.at < 45000) return { cls: 'on', label: 'Online now', p: p, lastAt: p.at };
+    if (p && p.visible && now - p.at < 5 * 60000) return { cls: 'idle', label: 'Probably just put her phone down', p: p, lastAt: p.at };
+    return { cls: '', label: lastAt ? 'Offline' : 'Hasn\'t visited yet', p: p, lastAt: lastAt };
+  }
+  function presenceHtml(big) {
+    var s = presence(), p = s.p;
+    var line = s.cls === 'on'
+      ? 'On <b>' + esc(K.pageName(p.page)) + '</b> · ' + esc(p.device || '') + ' · here for <span class="mono" data-for="' + (p.since || p.start) + '">' + dur(Date.now() - (p.since || p.start)) + '</span>'
+      : s.lastAt ? 'Last online <b class="mono" data-ago="' + s.lastAt + '">' + agoP(s.lastAt) + '</b>' + (p ? ' · on ' + esc(K.pageName(p.page)) + ' · ' + esc(p.device || '') : '') : '';
+    return '<div class="presence ' + s.cls + '"><span class="dot"></span><div><b>' + s.label + '</b><div class="help" style="margin:2px 0 0">' + line + '</div>' +
+      (s.lastAt && s.cls !== 'on' ? '<div class="help mono" style="margin:0">' + exact(s.lastAt) + ' (her time)</div>' : '') +
+      (big && p ? '<div class="help" style="margin:2px 0 0">Screen ' + esc(p.screen || '?') + ' · ' + esc(p.tz || '') + ' · ' + esc(p.lang || '') + '</div>' : '') + '</div></div>';
+  }
+  // live tickers: every second
+  setInterval(function () {
+    panels.querySelectorAll('[data-ago]').forEach(function (el) { el.textContent = agoP(+el.dataset.ago); });
+    panels.querySelectorAll('[data-for]').forEach(function (el) { el.textContent = dur(Date.now() - +el.dataset.for); });
+    var pr = panels.querySelector('[data-presence]');
+    if (pr) { var sig = presence().cls + (DB.live.presence || {}).at; if (pr.dataset.sig !== sig) { pr.dataset.sig = sig; pr.innerHTML = presenceHtml(pr.dataset.presence === 'big'); } }
+  }, 1000);
+
+  // ---- 🛰️ Live: where she is, every visit, everything she did
+  P.live = function () {
+    var lv = DB.live || {}, sess = (lv.sessions || []).slice().reverse(), ev = (lv.events || []).slice().reverse();
+    var today = sess.filter(function (x) { return T.dayKey(x.start, HZ) === K.todayKey(); });
+    var todayMs = today.reduce(function (a, x) { return a + Math.max(0, (x.end || x.start) - x.start); }, 0);
+    var weekMs = sess.filter(function (x) { return Date.now() - x.start < 7 * 864e5; }).reduce(function (a, x) { return a + Math.max(0, (x.end || x.start) - x.start); }, 0);
+    var devs = {}; sess.forEach(function (x) { devs[x.d] = (devs[x.d] || 0) + 1; });
+    return '<section class="card stack"><h3>🛰️ Right now</h3><div data-presence="big">' + presenceHtml(true) + '</div>' +
+        '<div class="stat-grid">' +
+          '<div class="stat"><b>' + today.length + '</b><span>visits today</span></div>' +
+          '<div class="stat"><b>' + dur(todayMs) + '</b><span>on the site today</span></div>' +
+          '<div class="stat"><b>' + dur(weekMs) + '</b><span>last 7 days</span></div>' +
+          '<div class="stat"><b>' + (lv.pingSeen ? '✓' : '–') + '</b><span>' + (lv.pingSeen ? 'saw your last ping ' + agoP(lv.pingSeen.at) : 'no ping seen yet') + '</span></div>' +
+        '</div>' +
+        (Object.keys(devs).length ? '<p class="help" style="margin:0">Devices: ' + Object.keys(devs).map(function (d) { return esc(d) + ' (' + devs[d] + ')'; }).join(', ') + '</p>' : '') +
+        '<p class="help" style="margin:0">Updates every 20 seconds while the site is open on her screen. Times are Barcelona time.</p></section>' +
+      '<section class="card stack"><h3>🕒 Visits</h3>' + (sess.length ? '<table class="sess">' + sess.slice(0, 30).map(function (x) {
+        var live = x.open && Date.now() - x.end < 45000;
+        return '<tr><td class="mono">' + esc(T.fmtDay(x.start, HZ)) + '<br><b>' + T.fmtTime(x.start, HZ) + '</b>' + (live ? ' → <b style="color:#2a9d3a">now</b>' : ' → ' + T.fmtTime(x.end || x.start, HZ)) + '</td>' +
+          '<td><b class="mono">' + dur((live ? Date.now() : x.end || x.start) - x.start) + '</b><br><span class="help">' + esc(x.d || '') + '</span></td>' +
+          '<td class="help">' + (x.pages || []).map(function (pg) { return esc(K.pageName(pg)); }).join(' → ') + '</td></tr>';
+      }).join('') + '</table>' : '<p class="muted">No visits recorded yet. They show up after she opens the site.</p>') + '</section>' +
+      '<section class="card stack"><h3>📜 What she did</h3>' + (ev.length ? '<ul class="feed">' + ev.slice(0, 120).map(function (e) {
+        return '<li><span>' + esc(e.e || '•') + '</span><span>' + esc(e.t) + '</span><span class="t" title="' + esc(exact(e.at) + (e.d ? ' · ' + e.d : '')) + '">' + esc(T.fmtDayShort(e.at, HZ)) + ' ' + T.fmtTime(e.at, HZ) + '</span></li>';
+      }).join('') + '</ul>' : '<p class="muted">Nothing yet. Check-ins, messages, presents, clicker milestones and more show up here.</p>') +
+      (ev.length ? '<div class="btns"><button class="btn sm ghost" id="ev-clear">🧹 Clear activity &amp; visits</button></div>' : '') + '</section>';
+  };
+
+  // ---- 🥝 Clicker: watch her game, send kiwis, boosts
+  P.clicker = function () {
+    var c = (DB.live || {}).clicker, st = DB.state, b = st.clickerBoost, boostOn = b && b.until > Date.now();
+    var f = K.fmtKiwis || function (n) { return Math.floor(n || 0).toLocaleString(); };
+    function fmt(n) { n = Math.max(0, n || 0); if (n < 100 && n % 1) return n.toFixed(1); if (n < 1000) return Math.floor(n).toLocaleString(); var u = ['K', 'M', 'B', 'T', 'Qa'], i = -1; while (n >= 1000 && i < 4) { n /= 1000; i++; } return n.toFixed(n < 10 ? 2 : 1) + u[i]; }
+    f = fmt;
+    var gifts = (st.clickerGifts || []).slice().reverse();
+    return '<section class="card stack"><h3>🥝 Her Kiwi Clicker</h3>' + (c ? '<div class="stat-grid">' +
+        '<div class="stat"><b>' + f(c.k) + '</b><span>kiwis now</span></div>' +
+        '<div class="stat"><b>' + f(c.kps) + '/s</b><span>kiwis per second</span></div>' +
+        '<div class="stat"><b>' + f(c.total) + '</b><span>grown ever</span></div>' +
+        '<div class="stat"><b>' + f(c.clicks) + '</b><span>taps</span></div></div>' +
+        '<p class="help" style="margin:0">Helpers: ' + (Object.keys(c.owned || {}).map(function (k) { return ({ bird: '🐦', tree: '🌳', farm: '🚜', bakery: '🧁', factory: '🏭', island: '🏝️', rocket: '🚀', portal: '🌀', love: '💚' }[k] || esc(k)) + ' ×' + c.owned[k]; }).join(', ') || 'none') +
+        ' · Upgrades: ' + Object.keys(c.up || {}).length + ' · Golden kiwis: ' + (c.golden || 0) + ' · Saved <span data-ago="' + (c.savedAt || 0) + '">' + agoP(c.savedAt) + '</span></p>' +
+        '<a class="btn sm ghost" href="clicker.html" style="text-decoration:none;justify-self:start">👀 Watch her game</a>'
+      : '<p class="muted">She hasn\'t played yet. It\'s on her Fun page.</p>') + '</section>' +
+      '<section class="card stack"><h3>🎁 Send her kiwis</h3><p class="help" style="margin:0">Pops up next time she opens the game (only once she\'s started playing). Use a minus number to take some away.</p><div class="form">' +
+        '<div class="row2"><label>Kiwis<input class="field" id="cg-amt" type="number" inputmode="numeric" placeholder="e.g. 1000"></label><span></span></div>' +
+        '<div class="btns">' + [100, 1000, 10000, 100000, 1000000].map(function (n) { return '<button class="btn sm ghost" data-cgquick="' + n + '">+' + f(n) + '</button>'; }).join('') + '</div>' +
+        '<label>Note (optional)<input class="field" id="cg-note" maxlength="120" placeholder="e.g. For being the cutest 🥝"></label></div>' +
+        '<div class="btns"><button class="btn sm pink" id="cg-send">🎁 Send kiwis</button></div>' +
+        (gifts.length ? '<ul class="log">' + gifts.slice(0, 8).map(function (g) {
+          var got = c && (c.gifts || []).indexOf(g.id) !== -1;
+          return '<li><span>' + (g.amount >= 0 ? '+' : '') + f(Math.abs(g.amount)) + (g.amount < 0 ? ' taken' : '') + (g.note ? ' · ' + esc(g.note) : '') + '<br><small>' + ago(g.at) + '</small></span><span class="amt">' + (got ? 'received ✓' : 'waiting') + '</span></li>';
+        }).join('') + '</ul>' : '') + '</section>' +
+      '<section class="card stack"><h3>⚡ Kiwi boost</h3><p class="help" style="margin:0">Multiplies everything she makes for a while. She sees a banner.</p>' +
+        (boostOn ? '<p><b>' + b.mult + '× on</b> until ' + K.herDateTime(b.until) + ' Barcelona · "' + esc(b.label || '') + '"</p>' : '') +
+        '<div class="form"><div class="row2"><label>Multiplier<select class="field" id="cb-mult">' + [2, 3, 5, 10, 25, 100].map(function (n) { return '<option value="' + n + '">' + n + '×</option>'; }).join('') + '</select></label>' +
+        '<label>For how long<select class="field" id="cb-hours"><option value="0.5">30 minutes</option><option value="1" selected>1 hour</option><option value="3">3 hours</option><option value="12">12 hours</option><option value="24">1 day</option><option value="168">1 week</option></select></label></div>' +
+        '<label>Banner text<input class="field" id="cb-label" maxlength="60" placeholder="e.g. Movie night bonus 🍿"></label></div>' +
+        '<div class="btns"><button class="btn sm" id="cb-on">⚡ Start boost</button>' + (boostOn ? '<button class="btn sm ghost" id="cb-off">Stop boost</button>' : '') + '</div></section>' +
+      '<section class="card stack"><h3>🌱 Restart her game</h3><p class="help" style="margin:0">Sets her kiwis, helpers and upgrades back to zero.</p><div class="btns"><button class="btn sm danger" id="cr-go">Restart her game</button></div></section>';
+  };
+
+  // ---- 🤖 Auto-replies + quick replies
+  var QUICK_DEFAULT = ['I miss you too 🥺💚', 'I love you more 💚', 'Aww baby 🥰', 'Hahaha 😂', 'Call you soon 📞', 'Good night baby 🌙💚', 'So proud of you 🥹', 'You\'re the cutest 🥝'];
+  function quickList() { var q = DB.state.quickReplies; return (q && q.length) ? q : QUICK_DEFAULT; }
+  P.auto = function () {
+    var a = K.autoCfg();
+    return '<section class="card stack"><h3>🤖 Auto-replies</h3><p class="help" style="margin:0">When she sends you a message with one of these words, a reply from you appears a few seconds later (with "typing…" dots first). She doesn\'t see that it\'s automatic. The message stays in your inbox so you can still answer properly.</p>' +
+        '<label class="switch"><span><b>Auto-replies on</b></span><input type="checkbox" id="ar-on"' + (a.on ? ' checked' : '') + '></label>' +
+        '<label class="help">Wait before replying (seconds)<input class="field" id="ar-delay" type="number" min="1" max="120" value="' + esc(a.delay) + '"></label>' +
+        '<div id="ar-rules" class="stack">' + (a.rules || []).map(function (r, i) {
+          return '<div class="item" data-rule><div class="item-head"><b>Rule ' + (i + 1) + '</b><button class="btn sm danger" data-rdel="' + i + '">🗑️</button></div>' +
+            '<label class="help">If her message has any of these words (comma separated)<input class="field" data-rk value="' + esc(r.keys) + '"></label>' +
+            '<label class="help">Reply with one of these (separate with | and one is picked at random)<textarea class="field" data-rr>' + esc(r.replies) + '</textarea></label></div>';
+        }).join('') + '</div>' +
+        '<div class="btns"><button class="btn sm ghost" id="ar-add">＋ Add a rule</button></div>' +
+        '<label class="switch"><span><b>Reply even when no words match</b><br><span class="help">Uses the lines below</span></span><input type="checkbox" id="ar-fb"' + (a.fallbackOn ? ' checked' : '') + '></label>' +
+        '<label class="help">Reply for everything else (separate with |)<textarea class="field" id="ar-fbt">' + esc(a.fallback) + '</textarea></label>' +
+        '<div class="btns"><button class="btn sm" id="ar-save">💾 Save auto-replies</button><button class="btn sm ghost" id="ar-reset">Back to the original</button></div>' +
+        '<label class="help">Try it: type a message like she would<input class="field" id="ar-test" placeholder="e.g. I miss you so much"></label><div class="help" id="ar-test-out"></div></section>' +
+      '<section class="card stack"><h3>⚡ Quick replies</h3><p class="help" style="margin:0">One-tap buttons under each of her messages in your inbox. One per line.</p>' +
+        '<textarea class="field" id="qr-list" style="min-height:160px">' + esc(quickList().join('\n')) + '</textarea>' +
+        '<div class="btns"><button class="btn sm" id="qr-save">💾 Save quick replies</button></div></section>';
+  };
+
+  // ---- 🎛️ Control: ping, refresh, switches, pet names, her numbers
+  var FEATURES = [['countdown', '⏳ Big countdown (Home)'], ['checkin', '✅ Daily check-in (Home)'], ['quote', '💬 Quote (Home)'], ['points', '⭐ Points card (Home)'],
+    ['miss', '🥺 "I miss you" button'], ['clicker', '🥝 Kiwi Clicker'], ['messages', '💌 Messages for him'], ['movies', '🍿 Movie list'], ['notes', '📝 Love note jar'],
+    ['game', '🧺 Catch the kiwis'], ['guesses', '🤔 Guess a present'], ['wishes', '💭 Wish list']];
+  P.control = function () {
+    var st = DB.state, p = st.ping, seen = (DB.live || {}).pingSeen, off = st.hide || {}, pets = (st.petNames && st.petNames.length) ? st.petNames : K.PET_DEFAULT;
+    return '<section class="card stack"><h3>📲 Ping her</h3><p class="help" style="margin:0">Pops up on her screen straight away if she has the site open (or the next time she opens it, within 12 hours).</p>' +
+        '<div data-presence="small">' + presenceHtml(false) + '</div>' +
+        '<div class="quick">' + [['💚', 'Thinking of you'], ['🥺', 'I miss you'], ['📞', 'Call me?'], ['😘', 'Mwah!'], ['🌙', 'Good night baby'], ['☀️', 'Good morning baby']].map(function (q) {
+          return '<button class="btn sm ghost" data-ping="' + esc(q[0]) + '|' + esc(q[1]) + '">' + q[0] + ' ' + esc(q[1]) + '</button>';
+        }).join('') + '</div>' +
+        '<div class="form"><div class="row2"><label>Emoji<input class="field" id="pg-emoji" value="💚" maxlength="4"></label><span></span></div>' +
+        '<label>Title<input class="field" id="pg-title" maxlength="60" placeholder="e.g. Hey you 👀"></label>' +
+        '<label>Message (optional)<textarea class="field" id="pg-text" placeholder="Anything…"></textarea></label></div>' +
+        '<div class="btns"><button class="btn sm pink" id="pg-send">📲 Send ping</button></div>' +
+        (p ? '<p class="help" style="margin:0">Last ping: ' + esc((p.emoji || '') + ' ' + (p.title || '')) + ' · sent ' + agoP(p.at) + ' · ' + (seen && seen.id === p.id ? '<b>seen ✓ ' + agoP(seen.at) + '</b>' : 'not seen yet') + '</p>' : '') + '</section>' +
+      '<section class="card stack"><h3>🔄 Refresh her site</h3><p class="help" style="margin:0">Reloads every open copy of her site right now (it waits if she\'s typing). Use it if something looks stuck.</p>' +
+        '<div class="btns"><button class="btn sm" id="rl-go">🔄 Refresh her site now</button></div>' + (st.reloadAt ? '<p class="help" style="margin:0">Last refresh sent ' + agoP(st.reloadAt) + '</p>' : '') + '</section>' +
+      '<section class="card stack"><h3>🎚️ What she can see</h3><p class="help" style="margin:0">Untick to hide a part of her site. You still see it, faded with a "Hidden from her" label.</p><div class="switches">' +
+        FEATURES.map(function (f) { return '<label class="switch"><span>' + f[1] + '</span><input type="checkbox" data-feat="' + f[0] + '"' + (off[f[0]] ? '' : ' checked') + '></label>'; }).join('') + '</div></section>' +
+      '<section class="card stack"><h3>💕 Pet names</h3><p class="help" style="margin:0">What the site calls her. Bigger number = shows up more often. Empty name = removed.</p>' +
+        '<div id="pet-rows" class="stack">' + pets.concat([['', 10], ['', 10]]).map(function (p2) {
+          return '<div class="row2" data-pet><input class="field" data-pn value="' + esc(p2[0]) + '" placeholder="new name"><input class="field" data-pw type="number" min="0" value="' + esc(p2[1]) + '"></div>';
+        }).join('') + '</div>' +
+        '<div class="btns"><button class="btn sm" id="pet-save">💾 Save pet names</button><button class="btn sm ghost" id="pet-reset">Back to the original</button></div></section>' +
+      '<section class="card stack"><h3>🔢 Her numbers</h3><div class="form">' +
+        '<div class="row2"><label>"I miss you" count<input class="field" id="hn-miss" type="number" min="0" value="' + (DB.her.missCount || 0) + '"></label>' +
+        '<label>Catch-the-kiwis best<input class="field" id="hn-game" type="number" min="0" value="' + (DB.her.gameBest || 0) + '"></label></div></div>' +
+        '<div class="btns"><button class="btn sm" id="hn-save">💾 Save numbers</button></div></section>';
+  };
+
+  // ---- 💾 Data: backup, restore, raw editor
+  var rawWhich = 'state';
+  P.data = function () {
+    var obj = rawWhich === 'state' ? DB.state : rawWhich === 'her' ? DB.her : DB.live;
+    return '<section class="card stack"><h3>💾 Backup</h3><p class="help" style="margin:0">Download everything (points, gifts, messages, check-ins, clicker…) as one file. Photos aren\'t included.</p>' +
+        '<div class="btns"><button class="btn sm" id="bk-down">⬇️ Download backup</button>' +
+        '<label class="btn sm ghost" style="cursor:pointer">⬆️ Restore from backup<input type="file" id="bk-file" accept=".json,application/json" hidden></label></div></section>' +
+      '<section class="card stack"><h3>🧬 Raw data editor</h3><p class="help" style="margin:0">For anything the other tabs can\'t do. Be careful: what you save here goes straight to her site.</p>' +
+        '<div class="seg" role="group">' + [['state', 'Site settings'], ['her', 'Her data'], ['live', 'Live data']].map(function (x) {
+          return '<button type="button" data-raw="' + x[0] + '" aria-pressed="' + (rawWhich === x[0]) + '">' + x[1] + '</button>';
+        }).join('') + '</div>' +
+        '<textarea class="field json" id="raw-json" spellcheck="false">' + esc(JSON.stringify(obj, null, 2)) + '</textarea>' +
+        '<div class="btns"><button class="btn sm" id="raw-save">💾 Save changes</button><button class="btn sm ghost" id="raw-reload">↺ Reload</button></div></section>';
+  };
+
+  function download(name, text) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function readRules() {
+    return [].slice.call(panels.querySelectorAll('[data-rule]')).map(function (r) { return { keys: r.querySelector('[data-rk]').value.trim(), replies: r.querySelector('[data-rr]').value.trim() }; })
+      .filter(function (r) { return r.keys && r.replies; });
+  }
+  function autoFromForm() {
+    return { on: $('#ar-on').checked, delay: Math.min(120, Math.max(1, +$('#ar-delay').value || 6)), rules: readRules(), fallbackOn: $('#ar-fb').checked, fallback: $('#ar-fbt').value.trim() };
+  }
+
+  // power-tool buttons; returns true if it handled the click
+  function powerClick(b, d, id) {
+    if (id === 'ev-clear') {
+      K.confirm({ emoji: '🧹', title: 'Clear her activity and visits?', yes: 'Clear', danger: true }).then(function (ok) { if (ok) DB.setLive({ events: [], sessions: [] }).then(function () { toast('Cleared'); render(); }); });
+      return true;
+    }
+    // clicker
+    if (d.cgquick) { $('#cg-amt').value = d.cgquick; return true; }
+    if (id === 'cg-send') {
+      var amt = Math.round(+$('#cg-amt').value || 0); if (!amt) { toast('Type how many kiwis'); return true; }
+      DB.setState({ clickerGifts: (DB.state.clickerGifts || []).concat([{ id: 'cg' + uid(), amount: amt, note: val('cg-note'), at: Date.now() }]).slice(-50) });
+      toast(amt > 0 ? 'Kiwis sent 🎁🥝' : 'Kiwis taken 😝'); render(); return true;
+    }
+    if (id === 'cb-on') {
+      var h = +$('#cb-hours').value || 1;
+      DB.setState({ clickerBoost: { mult: +$('#cb-mult').value || 2, until: Date.now() + h * 3600e3, label: val('cb-label') || 'Boost from Chengxuan', at: Date.now() } });
+      toast('Boost on ⚡'); render(); return true;
+    }
+    if (id === 'cb-off') { DB.setState({ clickerBoost: null }); toast('Boost stopped'); render(); return true; }
+    if (id === 'cr-go') {
+      K.confirm({ emoji: '🌱', title: 'Restart her Kiwi Clicker?', text: 'Her kiwis, helpers and upgrades go back to zero.', yes: 'Restart', danger: true }).then(function (ok) {
+        if (ok) { DB.setState({ clickerReset: Date.now() }); toast('Her game restarts next time it opens'); render(); }
+      });
+      return true;
+    }
+    // auto-replies
+    if (id === 'ar-add') {
+      var box = $('#ar-rules'), n = box.querySelectorAll('[data-rule]').length + 1, div = document.createElement('div');
+      div.className = 'item'; div.setAttribute('data-rule', '');
+      div.innerHTML = '<div class="item-head"><b>Rule ' + n + '</b><button class="btn sm danger" data-rdel="x">🗑️</button></div><label class="help">If her message has any of these words<input class="field" data-rk placeholder="e.g. hungry, food"></label><label class="help">Reply with one of these (separate with |)<textarea class="field" data-rr placeholder="Go eat something yummy 🍜 | Feed my baby!"></textarea></label>';
+      box.appendChild(div); div.querySelector('[data-rk]').focus(); return true;
+    }
+    if (d.rdel !== undefined) { var it = b.closest('[data-rule]'); if (it) it.remove(); return true; }
+    if (id === 'ar-save') { DB.setState({ autoReply: autoFromForm() }); toast('Auto-replies saved 🤖'); render(); return true; }
+    if (id === 'ar-reset') { DB.setState({ autoReply: null }); toast('Back to the original auto-replies'); render(); return true; }
+    if (id === 'qr-save') { DB.setState({ quickReplies: $('#qr-list').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean) }); toast('Quick replies saved ⚡'); render(); return true; }
+    // control
+    if (d.ping || id === 'pg-send') {
+      var parts = d.ping ? d.ping.split('|') : [val('pg-emoji') || '💚', val('pg-title') || 'Chengxuan says…'];
+      var ping = { id: 'p' + uid(), emoji: parts[0], title: parts[1], text: d.ping ? '' : val('pg-text'), at: Date.now() };
+      DB.setState({ ping: ping }); toast('Ping sent 📲'); render(); return true;
+    }
+    if (id === 'rl-go') { DB.setState({ reloadAt: Date.now() }); toast('Her site will refresh in a few seconds 🔄'); render(); return true; }
+    if (id === 'pet-save' || id === 'pet-reset') {
+      var pets = id === 'pet-reset' ? null : [].slice.call(panels.querySelectorAll('[data-pet]')).map(function (r) { return [r.querySelector('[data-pn]').value.trim(), Math.max(0, +r.querySelector('[data-pw]').value || 0)]; }).filter(function (p) { return p[0] && p[1] > 0; });
+      if (pets && !pets.length) { toast('Keep at least one name'); return true; }
+      DB.setState({ petNames: pets }); toast('Pet names saved 💕'); render(); return true;
+    }
+    if (id === 'hn-save') { DB.setHer({ missCount: Math.max(0, Math.round(+val('hn-miss') || 0)), gameBest: Math.max(0, Math.round(+val('hn-game') || 0)) }); toast('Saved'); render(); return true; }
+    // data
+    if (id === 'bk-down') {
+      download('kiwi-corner-backup-' + T.dayKey(Date.now(), HZ) + '.json', JSON.stringify({ app: 'kiwi-corner', exportedAt: Date.now(), state: DB.state, her: DB.her, live: DB.live }, null, 2));
+      toast('Backup downloaded ⬇️'); return true;
+    }
+    if (d.raw) { rawWhich = d.raw; render(); return true; }
+    if (id === 'raw-reload') { render(); return true; }
+    if (id === 'raw-save') {
+      var obj; try { obj = JSON.parse($('#raw-json').value); } catch (x) { toast('That isn\'t valid JSON: ' + x.message); return true; }
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) { toast('It has to be an object { … }'); return true; }
+      K.confirm({ emoji: '🧬', title: 'Save raw changes?', text: 'This writes straight to her site.', yes: 'Save', danger: true }).then(function (ok) {
+        if (!ok) return;
+        (rawWhich === 'state' ? DB.setState(obj) : rawWhich === 'her' ? DB.setHer(obj) : DB.setLive(obj)).then(function () { toast('Saved 🧬'); render(); });
+      });
+      return true;
+    }
+    return false;
+  }
+  // power-tool inputs (switches, test box, restore file)
+  panels.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.feat) {
+      var off = Object.assign({}, DB.state.hide || {}); if (t.checked) delete off[t.dataset.feat]; else off[t.dataset.feat] = true;
+      DB.setState({ hide: off }); toast(t.checked ? 'Showing it again 👀' : 'Hidden from her 🙈'); return;
+    }
+    if (t.id === 'bk-file' && t.files[0]) {
+      var rd = new FileReader();
+      rd.onload = function () {
+        var j; try { j = JSON.parse(rd.result); } catch (x) { toast('That file isn\'t a backup'); return; }
+        if (!j || j.app !== 'kiwi-corner' || !j.state || !j.her) { toast('That file isn\'t a Kiwi Corner backup'); return; }
+        K.confirm({ emoji: '⬆️', title: 'Restore this backup?', text: 'From ' + K.herDateTime(j.exportedAt) + '. Everything on her site now gets replaced.', yes: 'Restore', danger: true, typeWord: 'RESTORE' }).then(function (ok) {
+          if (!ok) return;
+          Promise.all([DB.setState(j.state), DB.setHer(j.her), j.live ? DB.setLive(j.live) : null]).then(function () { toast('Restored ⬆️'); render(); });
+        });
+      };
+      rd.readAsText(t.files[0]); t.value = '';
+    }
+  });
+  panels.addEventListener('input', function (e) {
+    if (e.target.id !== 'ar-test') return;
+    var saved = DB.state.autoReply; DB.state.autoReply = autoFromForm();   // test with what's on screen (not saved)
+    var r = K.autoReplyFor(e.target.value); DB.state.autoReply = saved;
+    $('#ar-test-out').textContent = e.target.value ? (r ? '🤖 Would reply: "' + r + '"' : 'No auto-reply for that one') : '';
+  });
+
   // ---------------------------------------------------------------- render + tabs
   function render() {
     renderNav();
@@ -402,10 +678,10 @@ Kiwi.onReady(function () {
   // ---- navigation: 5 groups, each with its own tabs
   var GROUPS = [
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
-    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['photos', '📸 Photos']] },
-    { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['ask', '❓ Ask her'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
-    { id: 'more', label: '⚙️ More', tabs: [['reset', '🧹 Reset']] }
+    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['live', '🛰️ Live'], ['photos', '📸 Photos']] },
+    { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
   // Things waiting for you, per tab
@@ -440,7 +716,7 @@ Kiwi.onReady(function () {
   DB.subscribe(function () { renderNav(); });
   var photoCount = -1;
   DB.subscribe(function () {
-    if (current === 'overview') render();
+    if (current === 'overview' || current === 'live') render();
     var pc = (DB.photos || []).length + ':' + (DB.herPhotos || []).map(function (h) { return h.status || 'p'; }).join('') + ':' + Object.keys(DB.her.unlockedBonus || {}).length;
     if (current === 'photos' && pc !== photoCount && !pendingPhoto) { photoCount = pc; render(); }
   });
@@ -458,6 +734,12 @@ Kiwi.onReady(function () {
     }
     var b = e.target.closest('button'); if (!b) return;
     var d = b.dataset, id = b.id;
+    if (powerClick(b, d, id)) return;
+    if (d.qr !== undefined) {
+      var qtext = quickList()[+d.qr]; if (!qtext) return;
+      DB.setHer({ messages: (DB.her.messages || []).map(function (m) { return m.id === d.mid ? Object.assign({}, m, { read: true, reply: qtext, replyAt: Date.now(), archived: true }) : m; }) });
+      toast('Sent: ' + qtext); return render();
+    }
 
     if (d.goto) { go(d.goto); return; }
     if (d.quick) { addPoints(+d.quick, ''); render(); return; }

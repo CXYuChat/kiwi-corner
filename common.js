@@ -143,8 +143,12 @@
   K.model = window.SCHEDULE ? T.build(window.SCHEDULE) : null;
 
   // Pet names, most likely first. Change the numbers to make one show up more or less.
-  var PET = [['baby', 40], ['dumpling', 22], ['Liv', 16], ['wifey', 12], ['my love', 10]];
+  var PET0 = [['baby', 40], ['dumpling', 22], ['Liv', 16], ['wifey', 12], ['my love', 10]];
+  K.PET_DEFAULT = PET0;
   K.petName = function (cap) {
+    var o = DB && DB.state.petNames;
+    var PET = (o && o.length) ? o.filter(function (p) { return p[0] && +p[1] > 0; }) : PET0;
+    if (!PET.length) PET = PET0;
     var total = PET.reduce(function (a, p) { return a + p[1]; }, 0), r = Math.random() * total, n = PET[0][0];
     for (var i = 0; i < PET.length; i++) { r -= PET[i][1]; if (r < 0) { n = PET[i][0]; break; } }
     return cap ? n.charAt(0).toUpperCase() + n.slice(1) : n;
@@ -370,6 +374,7 @@
     btn.addEventListener('click', function (e) {
       var n = (DB.her.missCount || 0) + 1;
       DB.setHer({ missCount: n });
+      K.logEvent('🥺', 'Pressed "I miss you"', 'miss');
       var i; do { i = Math.floor(Math.random() * reactions.length); } while (i === lastR); lastR = i;
       K.$('#miss-react').textContent = n % 25 === 0 ? n + " times?! Okay, he's booking a flight 🛫💚" : reactions[i];
       var c = K.$('#miss-count'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
@@ -421,6 +426,8 @@
       if (!done || extraPts) patch.checkins = (DB.her.checkins || []).concat([{ day: K.todayKey(), at: now }]).slice(-1500);
       if (picked || note) patch.moods = (DB.her.moods || []).concat([{ mood: picked || 'okay', note: note, at: now }]).slice(-60);
       DB.setHer(patch);
+      var mi = picked ? K.moodInfo(picked) : null;
+      K.logEvent('✅', (done ? 'Checked in again' : 'Daily check-in') + (mi ? ' · feeling ' + mi[1] + ' ' + mi[2] : '') + (note ? ' · "' + note + '"' : ''));
       K.closeModal();
       if (!done) {
         var ns = K.streak();
@@ -494,6 +501,15 @@
   };
   K.closeModal = function () { if (sheetBack) sheetBack.classList.remove('open'); sheetTick = null; };
   K.isModalOpen = function () { return !!(sheetBack && sheetBack.classList.contains('open')); };
+  // Pop-ups that shouldn't cover each other: shown one at a time, after whatever is open closes.
+  var mq = [], mqT = null;
+  K.queueModal = function (html, cls, after) {
+    mq.push([html, cls, after]);
+    if (!mqT) mqT = setInterval(function () {
+      if (K.isModalOpen() || !mq.length) { if (!mq.length) { clearInterval(mqT); mqT = null; } return; }
+      var m = mq.shift(); K.modal(m[0], m[1]); if (m[2]) try { m[2](); } catch (e) { /* */ }
+    }, 600);
+  };
 
   // ------------------------------------------------------------ chrome: top bar + bottom tabs
   var TABS = [
@@ -519,7 +535,7 @@
       var nav = document.createElement('nav');
       nav.className = 'tabbar';
       nav.innerHTML = TABS.map(function (t) {
-        return '<a href="' + t[1] + '" class="tab' + (t[0] === 'week' ? ' main' : '') + '"' + (t[0] === page ? ' aria-current="page"' : '') + '><span class="ic">' + t[2] + '</span><span>' + t[3] + '</span></a>';
+        return '<a href="' + t[1] + '" class="tab' + (t[0] === 'week' ? ' main' : '') + '"' + (t[0] === page || (page === 'clicker' && t[0] === 'fun') ? ' aria-current="page"' : '') + '><span class="ic">' + t[2] + '</span><span>' + t[3] + '</span></a>';
       }).join('');
       document.body.appendChild(nav);
       document.body.classList.add('has-tabs');
@@ -669,6 +685,126 @@
     setTimeout(function () { noticeOpen = false; }, 1500);
   }
 
+  // ------------------------------------------------------------ auto-replies to her messages (admin can change them)
+  K.AUTO_DEFAULT = {
+    on: true, delay: 6, fallbackOn: false,
+    fallback: 'Got your message baby 💚 I\'ll read it properly soon | Aww 🥺💚 I\'ll write back properly soon',
+    rules: [
+      { keys: 'miss, missing', replies: 'I miss you too 🥺💚 | I miss you so much more baby 🥺 | Miss you too, counting down the days 💚' },
+      { keys: 'love you, ily, love u', replies: 'I love you more 💚 | I love you too baby 🥰 | Love you to the moon and back 🌙💚' },
+      { keys: 'good night, goodnight, gn, sleep', replies: 'Good night baby 🌙 Sweet dreams 💚 | Sleep well my love 😴💚' },
+      { keys: 'good morning, morning, gm', replies: 'Good morning baby ☀️💚 | Morning my love ☀️ Have the best day!' },
+      { keys: 'sad, cry, crying, tired, stressed, stress', replies: 'Aww baby 🥺 Come here *hug* 🫂 I\'ll call you soon 💚' },
+      { keys: 'exam, test, school, homework', replies: 'You\'ve got this, smart girl 📚💚 | So proud of you 🥹📚' }
+    ]
+  };
+  K.autoCfg = function () { var a = DB && DB.state.autoReply; return Object.assign({}, K.AUTO_DEFAULT, a || {}); };
+  K.autoReplyFor = function (text) {
+    var cfg = K.autoCfg(); if (!cfg.on) return null;
+    var t = ' ' + String(text).toLowerCase().replace(/[^a-z0-9À-ɏ\s']/g, ' ') + ' ';
+    function pick(s) { var o = String(s || '').split('|').map(function (x) { return x.trim(); }).filter(Boolean); return o.length ? o[Math.floor(Math.random() * o.length)] : null; }
+    for (var i = 0; i < (cfg.rules || []).length; i++) {
+      var r = cfg.rules[i], keys = String(r.keys || '').split(',').map(function (k) { return k.trim().toLowerCase(); }).filter(Boolean);
+      if (keys.some(function (k) { return t.indexOf(' ' + k + ' ') !== -1 || (k.length > 4 && t.indexOf(k) !== -1); })) { var p = pick(r.replies); if (p) return p; }
+    }
+    return cfg.fallbackOn ? pick(cfg.fallback) : null;
+  };
+
+  // ------------------------------------------------------------ device name, e.g. "iPhone · app" or "Mac · Chrome"
+  K.deviceName = function () {
+    var ua = navigator.userAgent, ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var dev = /iPhone/.test(ua) ? 'iPhone' : ipad ? 'iPad' : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Android phone' : 'Android tablet') : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : /CrOS/.test(ua) ? 'Chromebook' : /Linux/.test(ua) ? 'Linux' : 'Unknown device';
+    var br = K.standalone() ? 'home-screen app' : /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'browser';
+    return dev + ' · ' + br;
+  };
+  var PAGE_NAMES = { home: 'Home', timers: 'Timers', week: 'Week', gifts: 'Gifts', fun: 'Fun', clicker: 'Kiwi Clicker', login: 'Login' };
+  K.pageName = function (p) { return PAGE_NAMES[p] || p || '?'; };
+
+  // ------------------------------------------------------------ activity log (what she does, for Chengxuan's Live tab)
+  // merge: events with the same key within 10 minutes are combined ("Pressed I miss you ×5")
+  K.logEvent = function (emoji, text, merge) {
+    if (!DB.user || DB.user.role !== 'livina' || !DB.setLive) return;
+    var list = (DB.live.events || []).slice(), last = list[list.length - 1];
+    if (merge && last && last.k === merge && Date.now() - last.at < 600000) {
+      var n = (last.n || 1) + 1; list[list.length - 1] = Object.assign({}, last, { t: String(text).slice(0, 160) + ' ×' + n, n: n, at: Date.now() });
+      return DB.setLive({ events: list }).catch(function () { /* */ });
+    }
+    var item = { e: emoji, t: String(text).slice(0, 160), at: Date.now(), d: K.deviceName() }; if (merge) item.k = merge;
+    var ev = list.concat([item]).slice(-200);
+    DB.setLive({ events: ev }).catch(function () { /* */ });
+  };
+
+  // ------------------------------------------------------------ presence: precise "online now / last online" (only for her)
+  function startPresence(page) {
+    var PING = 20000, start = Date.now(), dev = K.deviceName(), visibleSince = document.hidden ? 0 : Date.now();
+    var key = 'kiwi-sess';
+    // A visit = time the site is open on screen. Moving between pages within 2 minutes continues the same visit.
+    var prev = K.store.get(key, null);
+    try { prev = typeof prev === 'string' ? JSON.parse(prev) : prev; } catch (e) { prev = null; }
+    var sess = (prev && prev.end && Date.now() - prev.end < 120000 && prev.d === dev) ? prev : { id: Math.random().toString(36).slice(2, 9), start: start, d: dev, pages: [] };
+    if (sess.pages[sess.pages.length - 1] !== page) sess.pages = sess.pages.concat([page]).slice(-30);
+    function pres(visible) {
+      return { at: Date.now(), visible: visible, page: page, device: dev, start: sess.start, sessId: sess.id, since: visibleSince || Date.now(),
+        screen: Math.round(screen.width) + '×' + Math.round(screen.height), lang: navigator.language || '', tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '') };
+    }
+    function sessions(endNow) {
+      var list = (DB.live.sessions || []).filter(function (x) { return x.id !== sess.id; });
+      var cur = { id: sess.id, start: sess.start, end: Date.now(), d: dev, pages: sess.pages, open: !endNow };
+      return list.concat([cur]).slice(-60);
+    }
+    function beat() {
+      if (document.hidden) return;
+      sess.end = Date.now(); K.store.set(key, JSON.stringify(sess));
+      DB.setLive({ presence: pres(true), sessions: sessions(false) }).catch(function () { /* offline */ });
+    }
+    function away() {
+      sess.end = Date.now(); K.store.set(key, JSON.stringify(sess));
+      DB.setLive({ presence: pres(false), sessions: sessions(true) }).catch(function () { /* */ });
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { away(); visibleSince = 0; }
+      else {
+        // came back after a while = a new visit
+        if (sess.end && Date.now() - sess.end > 120000) { sess = { id: Math.random().toString(36).slice(2, 9), start: Date.now(), d: dev, pages: [page] }; }
+        visibleSince = Date.now(); beat();
+      }
+    });
+    window.addEventListener('pagehide', away);
+    // first beat once the live record has loaded, then every 20 seconds
+    setTimeout(beat, 800); setInterval(beat, PING);
+  }
+
+  // ------------------------------------------------------------ instant "ping" pop-up and remote refresh, both sent from admin
+  function watchAdminSignals() {
+    var loadedAt = Date.now();
+    function check() {
+      var st = DB.state, p = st.ping;
+      if (p && p.id && K.store.get('kiwi-ping') !== p.id && Date.now() - (p.at || 0) < 12 * 3600e3) {
+        K.store.set('kiwi-ping', p.id);
+        K.queueModal('<div class="em">' + K.esc(p.emoji || '💚') + '</div><h3>' + K.esc(p.title || 'Chengxuan says…') + '</h3>' +
+          (p.text ? '<p class="desc" style="white-space:pre-wrap">' + K.esc(p.text) + '</p>' : '') + '<p class="muted">From Chengxuan · ' + K.herTime(p.at) + ' 💚</p>', 'call', function () {
+          K.confetti({ count: 90 });
+          DB.setLive({ pingSeen: { id: p.id, at: Date.now(), page: document.body.dataset.page } }).catch(function () { /* */ });
+        });
+      }
+      if (st.reloadAt && st.reloadAt > loadedAt && Date.now() - st.reloadAt < 3600e3) {
+        loadedAt = Date.now() + 5000;
+        if (!K.hasUnsent()) K.refresh();
+        else if (!document.getElementById('update-bar')) {
+          var b = document.createElement('button'); b.id = 'update-bar'; b.className = 'update-bar'; b.type = 'button';
+          b.textContent = '✨ New update! Tap to refresh'; b.addEventListener('click', K.refresh); document.body.appendChild(b);
+        }
+      }
+    }
+    DB.subscribe(check); check(); setInterval(check, 15000);
+  }
+
+  // ------------------------------------------------------------ feature switches: admin can hide parts of her site
+  function applyFeatures() {
+    var off = (DB.state && DB.state.hide) || {};
+    document.querySelectorAll('[data-feature]').forEach(function (el) { el.classList.toggle('f-off', !!off[el.dataset.feature]); });
+  }
+
   // ------------------------------------------------------------ boot: only admin needs a login; guests get a lighter site
   var readyFns = [];
   K.onReady = function (f) { readyFns.push(f); };
@@ -684,8 +820,11 @@
       if (!u) document.body.classList.add('guest');
       chrome(page);
       document.documentElement.classList.remove('locked');
+      if (u && u.role === 'admin') document.body.classList.add('is-admin');
+      applyFeatures(); DB.subscribe(applyFeatures);
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });
+        startPresence(page); watchAdminSignals();
         pointsNotice(); DB.subscribe(pointsNotice); setInterval(pointsNotice, 60000);
         // Once a day, the first time she opens the site: the check-in pop-up (waits for other pop-ups to close)
         var tries = 0, ckTimer = setInterval(function () {

@@ -38,6 +38,7 @@ Kiwi.onReady(function () {
     if (!t || !gid) return;
     DB.setHer({ guesses: (DB.her.guesses || []).concat([{ id: uid(), giftId: gid, text: t, at: Date.now() }]).slice(-100) });
     $('#g-text').value = '';
+    K.logEvent('🤔', 'Guessed a present: "' + t + '"');
     K.confetti({ count: 30 });
   });
   $('#wish-form').addEventListener('submit', function (e) {
@@ -45,6 +46,7 @@ Kiwi.onReady(function () {
     var t = $('#w-text').value.trim(); if (!t) return;
     DB.setHer({ wishes: (DB.her.wishes || []).concat([{ id: uid(), text: t, at: Date.now() }]).slice(-100) });
     $('#w-text').value = '';
+    K.logEvent('💭', 'Made a wish: "' + t + '"');
     K.confetti({ count: 30 });
   });
   render(); DB.subscribe(render);

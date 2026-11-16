@@ -11,6 +11,20 @@ Kiwi.onReady(function () {
 
   K.missButton();
 
+  // ---------------------------------------------------------------- kiwi clicker card
+  (function () {
+    var el = $('#clicker-sub'); if (!el || !DB.user) return;
+    var mini = $('#clicker-mini'); if (mini) mini.innerHTML = K.sliceSVG();
+    function show() {
+      var c = (DB.live && DB.live.clicker) || null, loc = null;
+      try { loc = JSON.parse(localStorage.getItem('kiwi-clicker') || 'null'); } catch (e) { /* */ }
+      if (loc && (!c || (loc.savedAt || 0) > (c.savedAt || 0))) c = loc;
+      function f(n) { n = Math.floor(n || 0); return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n); }
+      el.textContent = c && c.total ? f(c.k) + ' kiwis 🥝 Tap to keep growing!' : 'Tap the kiwi, grow a kiwi empire 🐦🌳🏭';
+    }
+    show(); DB.subscribe(show);
+  })();
+
   // ---------------------------------------------------------------- messages for him
   // All messages live in one database record (Firebase caps a record at ~1 MB).
   // If they ever get close, drop the oldest archived ones first, then the oldest overall.
@@ -33,7 +47,8 @@ Kiwi.onReady(function () {
 
   if (DB.user && $('#msg-form')) {
     // Newest first, grouped by day. Only the latest few are open; older ones fold away.
-    var SHOW = 4;
+    var SHOW = 4, redrawT = null;
+    function schedule(at) { clearTimeout(redrawT); redrawT = setTimeout(function () { drawMsgs(); }, Math.max(200, at - Date.now() + 50)); }
     var drawMsgs = function () {
       var list = (DB.her.messages || []).slice().reverse();
       function one(m) {
@@ -41,7 +56,12 @@ Kiwi.onReady(function () {
           ? '<details class="msg-long"><summary><span>' + K.esc(m.text.slice(0, 600)) + '…</span><span class="more">Read all</span></summary>' + K.esc(m.text) + '</details>'
           : K.esc(m.text);
         var state = m.reply ? '💚 replied' : m.read ? 'seen ✓' : 'sent';
-        return '<div class="bubble-me">' + txt + '<small>' + window.KiwiTime.fmtTime(m.at, K.HZ) + ' · ' + state + '</small></div>' +
+        var auto = '';
+        if (m.auto && m.auto.text) {
+          if (Date.now() < m.auto.at) { auto = '<div class="bubble-him typing" aria-label="Chengxuan is typing"><i></i><i></i><i></i></div>'; schedule(m.auto.at); }
+          else auto = '<div class="bubble-him"><b>Chengxuan 🥝</b>' + K.esc(m.auto.text) + '</div>';
+        }
+        return '<div class="bubble-me">' + txt + '<small>' + window.KiwiTime.fmtTime(m.at, K.HZ) + ' · ' + state + '</small></div>' + auto +
           (m.reply ? '<div class="bubble-him"><b>Chengxuan 🥝</b>' + K.esc(m.reply) + '</div>' : '');
       }
       function group(ms) {
@@ -64,7 +84,10 @@ Kiwi.onReady(function () {
     $('#msg-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var t = $('#msg-text').value.trim(); if (!t) return;
-      DB.setHer({ messages: fitMessages((DB.her.messages || []).concat([{ id: Math.random().toString(36).slice(2, 9), text: t, at: Date.now() }])) });
+      var msg = { id: Math.random().toString(36).slice(2, 9), text: t, at: Date.now() };
+      var ar = K.autoReplyFor(t); if (ar) msg.auto = { text: ar, at: Date.now() + Math.max(1, +K.autoCfg().delay || 6) * 1000 };
+      DB.setHer({ messages: fitMessages((DB.her.messages || []).concat([msg])) });
+      K.logEvent('💌', 'Sent you a message (' + words(t) + (words(t) === 1 ? ' word' : ' words') + ')');
       $('#msg-text').value = '';
       showCount();
       K.confetti({ count: 40 });
@@ -101,6 +124,7 @@ Kiwi.onReady(function () {
       if (movies().some(function (m) { return !m.watched && m.title.toLowerCase() === t.toLowerCase(); })) { K.toast('That one\'s already on the list 🍿'); return; }
       save(movies().concat([{ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: t, by: me(), at: Date.now(), watched: false }]));
       $('#mv-title').value = ''; view = 'to'; draw();
+      K.logEvent('🍿', 'Added a movie: ' + t);
       K.toast('Added to the list 🍿');
     });
     document.addEventListener('click', function (e) {
@@ -112,7 +136,7 @@ Kiwi.onReady(function () {
           if (m.id !== id) return m;
           var y = Object.assign({}, m); y.watched = !m.watched; nowWatched = y.watched; if (y.watched) y.watchedAt = Date.now(); else delete y.watchedAt; return y;
         }));
-        if (nowWatched) { K.confetti({ x: r.left + r.width / 2, y: r.top, count: 50 }); K.toast('Movie night ✓ 💚'); }
+        if (nowWatched) { K.confetti({ x: r.left + r.width / 2, y: r.top, count: 50 }); K.toast('Movie night ✓ 💚'); var mw = movies().find(function (m) { return m.id === id; }); K.logEvent('✅', 'Marked watched: ' + (mw ? mw.title : '')); }
         return;
       }
       if (dl) {

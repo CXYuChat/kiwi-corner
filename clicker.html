@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kiwi Clicker 🥝</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="clicker">
+  <main class="wrap stack">
+    <div class="card member-only" style="text-align:center">🔑 <a href="login.html?next=clicker.html">Log in</a> to play Kiwi Clicker.</div>
+    <section class="card ck-game" data-auth>
+      <div class="ck-boost" id="ck-boost" hidden></div>
+      <div class="ck-count"><b id="ck-kiwis">0</b><span>kiwis</span></div>
+      <div class="ck-rate"><span id="ck-kps">0</span> per second</div>
+      <div class="ck-stage">
+        <button type="button" class="ck-kiwi" id="ck-kiwi" aria-label="Tap the kiwi"><span data-slice></span></button>
+        <div class="ck-fx" id="ck-fx"></div>
+        <button type="button" class="ck-golden" id="ck-golden" hidden aria-label="Golden kiwi!">🥝</button>
+      </div>
+      <div class="ck-tap">+<span id="ck-per">1</span> per tap</div>
+    </section>
+    <section class="card" data-auth>
+      <div class="ck-shop-head">
+        <div class="seg" role="group">
+          <button type="button" data-shop="helpers" aria-pressed="true">🐦 Helpers</button>
+          <button type="button" data-shop="upgrades" aria-pressed="false">✨ Upgrades <b id="ck-upn"></b></button>
+        </div>
+        <div class="seg sm" role="group" id="ck-qty">
+          <button type="button" data-qty="1" aria-pressed="true">×1</button>
+          <button type="button" data-qty="10" aria-pressed="false">×10</button>
+        </div>
+      </div>
+      <div class="ck-shop" id="ck-shop"></div>
+    </section>
+    <section class="card" data-auth>
+      <h2>📊 Stats</h2>
+      <ul class="log" id="ck-stats"></ul>
+      <div class="ck-ms" id="ck-ms"></div>
+    </section>
+  </main>
+  <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="questions.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="clicker.js"></script>
+</body>
+</html>

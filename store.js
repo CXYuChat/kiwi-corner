@@ -31,7 +31,9 @@
   }
   function defaultHer() { return { missCount: 0, gameBest: 0, opened: {}, lastSeen: 0, seenSurprise: '', guesses: [], wishes: [], bought: {}, seenPoints: 0, messages: [], moods: [], checkins: [], unlockedBonus: {}, movies: null }; }
 
-  var state = defaultState(), her = defaultHer(), user = null, subs = [], photos = [], herPhotos = [];
+  // live: small record that changes often (presence, activity, clicker game). Kept apart so her big record isn't rewritten every minute.
+  function defaultLive() { return { presence: null, sessions: [], events: [], clicker: null }; }
+  var state = defaultState(), her = defaultHer(), user = null, subs = [], photos = [], herPhotos = [], live = defaultLive(), liveDenied = false;
   function fill(d, def) { var o = def(); if (d) Object.keys(d).forEach(function (k) { if (d[k] !== undefined) o[k] = d[k]; }); return o; }
   function emit() { subs.forEach(function (f) { try { f(state, her, user); } catch (e) { console.error(e); } }); }
 
@@ -52,11 +54,11 @@
         try { state = fill(JSON.parse(localStorage.getItem('kiwi-db-state') || 'null'), defaultState); } catch (e) { state = defaultState(); }
         try { her = fill(JSON.parse(localStorage.getItem('kiwi-db-her') || 'null'), defaultHer); } catch (e) { her = defaultHer(); }
       }
-      load(); local.loadPhotos();
+      load(); local.loadPhotos(); local.loadLive();
       var s = null; try { s = localStorage.getItem('kiwi-session'); } catch (e) { /* */ }
       var u = s && userByName(s);
       user = u ? Object.assign({ username: s }, u) : null;
-      window.addEventListener('storage', function (e) { if (/^kiwi-db-/.test(e.key || '')) { load(); emit(); } });
+      window.addEventListener('storage', function (e) { if (/^kiwi-db-/.test(e.key || '')) { load(); local.loadPhotos(); local.loadLive(); emit(); } });
       return Promise.resolve();
     },
     login: async function (name, pin) {
@@ -70,6 +72,8 @@
     logout: function () { try { localStorage.removeItem('kiwi-session'); } catch (e) { /* */ } user = null; return Promise.resolve(); },
     saveState: function () { localStorage.setItem('kiwi-db-state', JSON.stringify(state)); return Promise.resolve(); },
     saveHer: function () { localStorage.setItem('kiwi-db-her', JSON.stringify(her)); return Promise.resolve(); },
+    loadLive: function () { try { live = fill(JSON.parse(localStorage.getItem('kiwi-db-live') || 'null'), defaultLive); } catch (e) { live = defaultLive(); } },
+    saveLive: function (patch) { local.loadLive(); live = Object.assign({}, live, patch); localStorage.setItem('kiwi-db-live', JSON.stringify(live)); emit(); return Promise.resolve(); },
     loadPhotos: function () {
       try { photos = JSON.parse(localStorage.getItem('kiwi-db-photos') || '[]'); } catch (e) { photos = []; }
       try { herPhotos = JSON.parse(localStorage.getItem('kiwi-db-herphotos') || '[]'); } catch (e) { herPhotos = []; }
@@ -98,15 +102,20 @@
       fb.photosRef = db.collection('photos');
       fb.herPhotosRef = db.collection('herPhotos');
       fb.herRef = db.collection('kiwi').doc('her');
+      fb.liveRef = db.collection('kiwi').doc('live');
       return new Promise(function (resolve) {
         var first = true;
         firebase.auth().onAuthStateChanged(function (fu) {
           fb.unsub.forEach(function (f) { f(); }); fb.unsub = [];
           user = fu ? userByEmail(fu.email) : null;
-          var need = user ? 2 : 1, got = 0, done = function () { if (++got === need && first) { first = false; resolve(); } };
+          var need = user ? 3 : 1, got = 0, done = function () { if (++got === need && first) { first = false; resolve(); } };
           if (!user) her = defaultHer();
           fb.unsub.push(fb.stateRef.onSnapshot(function (d) { state = fill(d.data(), defaultState); emit(); done(); }, function (e) { console.error(e); done(); }));
-          photos = []; herPhotos = [];
+          photos = []; herPhotos = []; live = defaultLive(); liveDenied = false;
+          if (user) fb.unsub.push(fb.liveRef.onSnapshot(function (d) { live = fill(d.data(), defaultLive); emit(); done(); }, function (e) {
+            // Rules for kiwi/live not published yet: keep the same data inside her record instead.
+            console.warn('live doc unavailable, using fallback', e && e.code); liveDenied = true; emit(); done();
+          }));
           if (user) fb.unsub.push(fb.herPhotosRef.orderBy('at', 'desc').limit(30).onSnapshot(function (q) {
             herPhotos = q.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); emit();
           }, function (e) { console.error(e); }));
@@ -127,6 +136,15 @@
     logout: function () { return firebase.auth().signOut(); },
     saveState: function () { return fb.stateRef.set(JSON.parse(JSON.stringify(state))); },
     saveHer: function () { return fb.herRef.set(JSON.parse(JSON.stringify(her))); },
+    saveLive: function (patch) {
+      var clean = JSON.parse(JSON.stringify(patch));
+      if (liveDenied) { her = Object.assign({}, her, { live: Object.assign({}, her.live || {}, clean) }); emit(); return fb.herRef.set({ live: clean }, { merge: true }); }
+      live = Object.assign({}, live, clean); emit();
+      return fb.liveRef.set(clean, { merge: true }).catch(function (e) {
+        if (e && e.code === 'permission-denied') { liveDenied = true; return fb.herRef.set({ live: clean }, { merge: true }); }
+        throw e;
+      });
+    },
     addPhoto: function (p) { var id = p.id; var d = Object.assign({}, p); delete d.id; return fb.photosRef.doc(id).set(d); },
     deletePhoto: function (id) { return fb.photosRef.doc(id).delete(); },
     updatePhoto: function (id, patch) { return fb.photosRef.doc(id).set(patch, { merge: true }); },
@@ -158,10 +176,13 @@
     deletePhoto: function (id) { return B.deletePhoto(id); },
     updatePhoto: function (id, patch) { return B.updatePhoto(id, patch); },
     get herPhotos() { return herPhotos; },
+    get live() { return (liveDenied ? fill(her.live, defaultLive) : live); },
+    setLive: function (patch) { return B.saveLive(patch); },
     addHerPhoto: function (p) { return B.addHerPhoto(p); },
     deleteHerPhoto: function (id) { return B.deleteHerPhoto(id); },
     updateHerPhoto: function (id, patch) { return B.updateHerPhoto(id, patch); },
-    defaults: { state: defaultState, her: defaultHer },
+    defaults: { state: defaultState, her: defaultHer, live: defaultLive },
+    resetLive: function () { var d = defaultLive(); return B.saveLive(d); },
     subscribe: function (f) { subs.push(f); return function () { subs = subs.filter(function (x) { return x !== f; }); }; },
     login: function (n, p) { return B.login(n, p).then(function () { emit(); }); },
     logout: function () { return B.logout().then(function () { emit(); }); },

@@ -42,9 +42,9 @@
       <a class="status-pill" id="status-pill" href="schedule.html"><span class="dot"></span><span id="status-pill-text">Checking what Chengxuan is up to…</span></a>
     </section>
 
-    <section class="card cd-card" id="big-cd"></section>
+    <section class="card cd-card" id="big-cd" data-feature="countdown"></section>
 
-    <section class="card checkin-card" id="checkin-card" data-auth>
+    <section class="card checkin-card" id="checkin-card" data-auth data-feature="checkin">
       <div class="ck-row">
         <div><h2 id="ck-h">Daily check-in ✅</h2><div class="muted" id="ck-sub"></div></div>
         <div class="flame" id="ck-flame" title="Your streak">🔥<b>0</b></div>
@@ -74,13 +74,13 @@
       </div>
     </section>
 
-    <figure class="card quote">
+    <figure class="card quote" data-feature="quote">
       <blockquote id="quote-text"></blockquote>
       <figcaption id="quote-by"></figcaption>
       <div class="slice-deco" data-slice></div>
     </figure>
 
-    <section class="card miss" id="miss-card" data-auth>
+    <section class="card miss" id="miss-card" data-auth data-feature="miss">
       <h2 id="miss-h">Missing him? 🥺</h2>
       <button class="btn pink" id="miss-btn">I miss you 💚</button>
       <div class="miss-count" id="miss-count">0</div>
@@ -88,7 +88,7 @@
       <div class="miss-react" id="miss-react"></div>
     </section>
 
-    <a class="card points-card" data-auth href="gifts.html" style="display:block;text-decoration:none;color:inherit">
+    <a class="card points-card" data-auth data-feature="points" href="gifts.html" style="display:block;text-decoration:none;color:inherit">
       <div class="mini-row"><div class="row"><span class="num" id="pts-big">0</span><span class="muted">kiwi points ⭐</span></div><span class="tag">Gifts →</span></div>
       <div class="bar"><i id="pts-bar" style="width:0"></i></div>
       <div class="help" id="pts-next"></div>

@@ -77,6 +77,7 @@ Kiwi.onReady(function () {
       var opened = Object.assign({}, DB.her.opened); opened[g.id] = Date.now();
       busy = false;
       DB.setHer({ opened: opened });
+      K.logEvent('🎁', 'Opened present: ' + (g.name || g.id));
     }, 900);
   }
   $('#gifts').addEventListener('click', function (e) {
@@ -88,6 +89,7 @@ Kiwi.onReady(function () {
         if (!ok) return;
         var b = Object.assign({}, DB.her.bought); b[g.id] = g.cost;
         DB.setHer({ bought: b });
+        K.logEvent('⭐', 'Spent ' + g.cost + ' points to unlock present #' + g.n);
         render(true);
         var el2 = document.querySelector('.gift[data-id="' + g.id + '"]'); if (el2) unwrap(el2);
       });

@@ -20,7 +20,7 @@
 </head>
 <body data-page="fun">
   <main class="wrap stack">
-    <section class="card" style="text-align:center">
+    <section class="card" style="text-align:center" data-feature="notes">
       <h2>Love note jar 💌</h2>
       <div class="mascot" id="mascot" role="button" tabindex="0" aria-label="Tap the kiwi for a love note" style="width:150px;margin:96px auto 0">
         <div class="bubble" id="bubble" aria-live="polite" style="left:50%;translate:-50% 0;transform-origin:bottom center;width:max-content;max-width:min(270px,78vw)"></div>
@@ -29,7 +29,13 @@
       <p class="muted">Tap the kiwi for a note 👆</p>
     </section>
 
-    <section class="card" data-auth id="msg-card">
+    <a class="card clicker-card" href="clicker.html" data-auth data-feature="clicker">
+      <span class="ck-mini" id="clicker-mini"></span>
+      <span><b>Kiwi Clicker 🥝</b><span class="muted" id="clicker-sub">Tap the kiwi, grow a kiwi empire</span></span>
+      <span class="go">›</span>
+    </a>
+
+    <section class="card" data-auth id="msg-card" data-feature="messages">
       <h2>Messages for him 💌</h2>
       <p class="muted">Write him anything: a thought, a rant, a love letter. He'll see it and can write back.</p>
       <form id="msg-form" class="form">
@@ -41,7 +47,7 @@
       <div class="chat" id="msg-list"></div>
     </section>
 
-    <section class="card movies-card" data-auth id="movies-card">
+    <section class="card movies-card" data-auth id="movies-card" data-feature="movies">
       <h2>Movies to watch together 🍿</h2>
       <p class="muted">Our watch list. Add anything you want to watch with him, and tick it off after movie night.</p>
       <form id="mv-form" class="mv-add">
@@ -58,7 +64,7 @@
       <ul class="mv-list" id="mv-list"></ul>
     </section>
 
-    <section class="card miss" data-auth>
+    <section class="card miss" data-auth data-feature="miss">
       <h2 id="miss-h">Missing him? 🥺</h2>
       <button class="btn pink" id="miss-btn">I miss you 💚</button>
       <div class="miss-count" id="miss-count">0</div>
@@ -66,7 +72,7 @@
       <div class="miss-react" id="miss-react"></div>
     </section>
 
-    <section class="card">
+    <section class="card" data-feature="game">
       <h2>Catch the kiwis 🧺</h2>
       <p class="muted">Drag the bowl (or use ← →). Golden kiwis are worth 3! Best: <b id="best">0</b></p>
       <div class="game">

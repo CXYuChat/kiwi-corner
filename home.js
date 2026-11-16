@@ -47,6 +47,7 @@ Kiwi.onReady(function () {
       '<p class="desc" style="white-space:pre-wrap">' + K.esc(sp.text || '') + '</p><p class="muted">From Chengxuan 💚</p>', 'call');
     K.confetti({ count: 110 });
     DB.setHer({ seenSurprise: sp.id });
+    K.logEvent('💌', 'Opened your surprise: ' + (sp.title || ''));
   });
 
   $('#hi-name').textContent = K.name();
@@ -103,6 +104,8 @@ Kiwi.onReady(function () {
         var a = Object.assign({}, DB.her.answers || {}); a[id] = { choice: picked[id], note: note, at: Date.now() };
         var r2 = s.getBoundingClientRect();
         DB.setHer({ answers: a }).then(function () { K.toast('Sent to Chengxuan 💚'); });
+        var qq = K.questions().find(function (x) { return x.id === id; }), oo = qq && (qq.options || [])[a[id].choice];
+        K.logEvent('❓', 'Answered your question: ' + (oo ? oo.label : '') + (note ? ' · "' + note + '"' : ''));
         delete picked[id];
         if (t) { t.value = ''; try { localStorage.removeItem('kiwi-draft:home:' + t.id); } catch (x) { /* */ } }
         K.confetti({ x: r2.left + r2.width / 2, y: r2.top, count: 90 });
@@ -190,7 +193,7 @@ Kiwi.onReady(function () {
         var id = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         return DB.addHerPhoto({ id: id, data: data, at: Date.now(), forBonus: bp.id, status: 'pending' });
       }).then(function () {
-        draw(); K.toast('Sent! Waiting for Chengxuan to approve ⏳');
+        draw(); K.toast('Sent! Waiting for Chengxuan to approve ⏳'); K.logEvent('📸', 'Sent a selfie for the bonus photo');
       }).catch(function (err) { console.error(err); K.toast('Couldn\'t send that photo. Try another one'); });
       e.target.value = '';
     });
