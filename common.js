@@ -532,6 +532,11 @@
           '<button type="button" class="pill acct" id="acct" aria-label="Account">' + (u.role === 'admin' ? '🥝' : '🌸') + '</button>') +
       '</div>';
     document.body.insertBefore(top, document.body.firstChild);
+    if (u && u.role === 'admin' && page !== 'admin' && !/[?&]mirror=1/.test(location.search)) {
+      var pv = document.createElement('div'); pv.className = 'preview-bar';
+      pv.innerHTML = '👀 <b>Her view</b> · just looking: nothing you open or tap here counts for her' + (page === 'fun' ? ' (except the movie list)' : '');
+      top.after(pv);
+    }
     if (page !== 'admin') {
       var nav = document.createElement('nav');
       nav.className = 'tabbar';

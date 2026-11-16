@@ -746,3 +746,4 @@ body.mirror .topbar, body.mirror .tabbar { pointer-events: none; }
 mark { background: #ffe48a; border-radius: 4px; padding: 0 2px; }
 .hist-row { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 10px; border-radius: 12px; background: rgba(122, 82, 48, .04); }
 .hist-row .help { margin: 0; }
+.preview-bar { position: sticky; top: 0; z-index: 30; margin: 0 auto; width: fit-content; max-width: calc(100% - 24px); text-align: center; font-size: .78rem; background: #2a2320; color: #fff; border-radius: 0 0 14px 14px; padding: 5px 12px; }

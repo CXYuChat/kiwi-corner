@@ -163,6 +163,7 @@
     }
   } catch (e) { /* */ }
   var B = (C.firebase && !demo) ? fb : local;
+  function isPreview() { return !!(user && user.role === 'admin' && document.body && document.body.dataset.page && document.body.dataset.page !== 'admin'); }
   var ready = B.init().catch(function (e) { console.error('KiwiDB init failed', e); });
 
   window.KiwiDB = {
@@ -177,8 +178,11 @@
     updatePhoto: function (id, patch) { return B.updatePhoto(id, patch); },
     get herPhotos() { return herPhotos; },
     get live() { return (liveDenied ? fill(her.live, defaultLive) : live); },
-    setLive: function (patch) { return B.saveLive(patch); },
-    addHerPhoto: function (p) { return B.addHerPhoto(p); },
+    setLive: function (patch) {
+      if (isPreview() && Object.keys(patch || {}).some(function (k) { return !/^(adminDevices|watching)$/.test(k); })) { live = Object.assign({}, live, patch); emit(); return Promise.resolve(); }
+      return B.saveLive(patch);
+    },
+    addHerPhoto: function (p) { if (isPreview()) { herPhotos = [p].concat(herPhotos); emit(); return Promise.resolve(); } return B.addHerPhoto(p); },
     deleteHerPhoto: function (id) { return B.deleteHerPhoto(id); },
     updateHerPhoto: function (id, patch) { return B.updateHerPhoto(id, patch); },
     defaults: { state: defaultState, her: defaultHer, live: defaultLive },
@@ -188,7 +192,14 @@
     logout: function () { return B.logout().then(function () { emit(); }); },
     // patch = { key: newValue } (top-level keys are replaced)
     setState: function (patch) { state = Object.assign({}, state, patch); emit(); return B.saveState(); },
-    setHer: function (patch) { her = Object.assign({}, her, patch); emit(); return B.saveHer(); },
+    // Admin looking at her pages = preview: taps there change only his screen, so she still gets to open everything herself.
+    // (The shared movie list is the one thing he can change from her pages.)
+    get preview() { return isPreview(); },
+    setHer: function (patch) {
+      her = Object.assign({}, her, patch); emit();
+      if (isPreview() && Object.keys(patch || {}).some(function (k) { return k !== 'movies'; })) return Promise.resolve();
+      return B.saveHer();
+    },
     resetState: function () { state = defaultState(); emit(); return B.saveState(); },
     resetHer: function () { her = defaultHer(); emit(); return B.saveHer(); }
   };
