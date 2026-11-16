@@ -32,6 +32,7 @@
         <button class="btn" type="submit" id="go" style="margin-top:6px">Log in 💚</button>
       </form>
       <p class="login-msg" id="msg" aria-live="polite"></p>
+        <script>if (/[?&]out=1/.test(location.search)) document.getElementById('msg').textContent = 'You were signed out on this device. Log in again 🥝';</script>
       <p class="demo-note"><a href="index.html">Just looking? Continue without logging in →</a></p>
       <p class="demo-note" id="demo" hidden>Demo mode: this login only works on this device for now.</p>
     </div>

@@ -184,7 +184,7 @@
     defaults: { state: defaultState, her: defaultHer, live: defaultLive },
     resetLive: function () { var d = defaultLive(); return B.saveLive(d); },
     subscribe: function (f) { subs.push(f); return function () { subs = subs.filter(function (x) { return x !== f; }); }; },
-    login: function (n, p) { return B.login(n, p).then(function () { emit(); }); },
+    login: function (n, p) { return B.login(n, p).then(function () { try { localStorage.setItem('kiwi-login-at', String(Date.now())); } catch (e) { /* */ } emit(); }); },
     logout: function () { return B.logout().then(function () { emit(); }); },
     // patch = { key: newValue } (top-level keys are replaced)
     setState: function (patch) { state = Object.assign({}, state, patch); emit(); return B.saveState(); },

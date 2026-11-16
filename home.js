@@ -19,8 +19,8 @@ Kiwi.onReady(function () {
     var st = DB.state, her = DB.her;
     $('#quote-text').textContent = st.quote.text;
     $('#quote-by').textContent = st.quote.by;
-    $('#banner').hidden = !st.banner; $('#banner').textContent = st.banner || '';
-    var sp = st.surprise;
+    var bn = K.banner(); $('#banner').hidden = !bn; $('#banner').textContent = bn;
+    var sp = K.surprise();
     $('#surprise-btn').hidden = !(sp && sp.active && her.seenSurprise !== sp.id);
     pointsCard();
     status();
@@ -42,7 +42,7 @@ Kiwi.onReady(function () {
   }
 
   $('#surprise-btn').addEventListener('click', function () {
-    var sp = DB.state.surprise; if (!sp) return;
+    var sp = K.surprise(); if (!sp) return;
     K.modal('<div class="em">' + K.esc(sp.emoji || '💌') + '</div><h3>' + K.esc(sp.title || 'A surprise for you') + '</h3>' +
       '<p class="desc" style="white-space:pre-wrap">' + K.esc(sp.text || '') + '</p><p class="muted">From Chengxuan 💚</p>', 'call');
     K.confetti({ count: 110 });
@@ -56,11 +56,11 @@ Kiwi.onReady(function () {
   // ---------------------------------------------------------------- questions from him
   (function () {
     var box = $('#questions'); if (!DB.user || !box) return;
-    var DAY = 864e5, picked = {};
+    var DAY = 864e5, picked = {}, qNames = {};
     function visible() {
       var now = Date.now();
       return K.questions().filter(function (q) {
-        if (q.active === false) return false;
+        if (q.active === false || (q.atMs && q.atMs > now)) return false;
         if (q.answer) return now - q.answer.at < DAY;          // her answer stays for a day
         return !q.untilMs || now < q.untilMs;
       });
@@ -72,7 +72,8 @@ Kiwi.onReady(function () {
       if (sig === last) return; last = sig;
       var keep = {}; box.querySelectorAll('[data-qnote]').forEach(function (t) { keep[t.dataset.qnote] = t.value; });
       box.innerHTML = qs.map(function (q) {
-        var head = '<div class="q-from">💌 Chengxuan asks…</div><div class="q-em">' + K.esc(q.emoji || '💭') + '</div><p class="q-text">' + K.esc(K.qText(q)) + '</p>';
+        if (!qNames[q.id]) qNames[q.id] = K.qText(q);   // keep the same pet name while the card is up
+        var head = '<div class="q-from">💌 Chengxuan asks…</div><div class="q-em">' + K.esc(q.emoji || '💭') + '</div><p class="q-text">' + K.esc(qNames[q.id]) + '</p>';
         if (q.answer) {
           var opt = (q.options || [])[q.answer.choice] || {};
           return '<section class="card q-card answered">' + head +
@@ -111,7 +112,7 @@ Kiwi.onReady(function () {
         K.confetti({ x: r2.left + r2.width / 2, y: r2.top, count: 90 });
       }
     });
-    draw(); DB.subscribe(draw); setInterval(function () { last = ''; draw(); }, 60000);
+    draw(); DB.subscribe(draw); setInterval(function () { last = ''; draw(); }, 20000);
   })();
 
   // ---------------------------------------------------------------- daily check-in card
@@ -224,4 +225,5 @@ Kiwi.onReady(function () {
   render();
   DB.subscribe(render);
   setInterval(status, 30000);
+  setInterval(render, 20000);   // scheduled surprises/banners show up on time
 });

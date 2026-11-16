@@ -714,3 +714,35 @@ details.older[open] { display: grid; gap: 8px; }
 .f-off { display: none !important; }
 body.is-admin .f-off { display: block !important; opacity: .45; outline: 3px dashed #ff8fa3; outline-offset: 2px; position: relative; }
 body.is-admin .f-off::before { content: '🙈 Hidden from her'; position: absolute; top: 6px; right: 8px; font-size: .75rem; background: #ff8fa3; color: #fff; padding: 2px 8px; border-radius: 999px; z-index: 3; }
+
+/* themes */
+html[data-theme="christmas"] { --green: #2e9e4f; --green-d: #1d6b35; --flesh: #a8dcb4; --brown: #a3262a; --brown-d: #741b1e; --cream: #fff6f0; --card: #fffdfb; --pink: #ffd6d6; --pink-d: #b3262b; }
+html[data-theme="valentine"] { --green: #ff6f91; --green-d: #d6456b; --flesh: #ffc2d1; --brown: #a8325a; --brown-d: #7a2142; --cream: #fff1f5; --card: #fffafc; --pink: #ffd0dc; --pink-d: #c2185b; }
+html[data-theme="birthday"] { --green: #ffb703; --green-d: #c98a00; --flesh: #ffe08a; --brown: #8a4fbf; --brown-d: #5f3487; --cream: #fffaf0; --card: #fffefa; --pink: #ffd6f0; --pink-d: #c2459a; }
+html[data-theme="sakura"] { --green: #f4a6c0; --green-d: #c96f90; --flesh: #fbd3e0; --brown: #8b5a6b; --brown-d: #613c48; --cream: #fff7fa; --card: #fffcfd; --pink: #ffe1ea; --pink-d: #c2456a; }
+html[data-theme="ocean"] { --green: #38b6d8; --green-d: #1e7f9b; --flesh: #a8e0f0; --brown: #1f5a7a; --brown-d: #143d54; --cream: #f2fbff; --card: #fbfeff; --pink: #d6f1ff; --pink-d: #1e6f9b; }
+html[data-theme="autumn"] { --green: #e07a2e; --green-d: #a8551b; --flesh: #f4c38f; --brown: #7a3e1d; --brown-d: #552a12; --cream: #fff6ec; --card: #fffcf7; --pink: #ffe0c7; --pink-d: #b5541c; }
+html[data-theme="night"] { --green: #9b8cff; --green-d: #6a5acd; --flesh: #cfc6ff; --brown: #3d3477; --brown-d: #28224f; --cream: #eeebff; --card: #faf9ff; --pink: #e3ddff; --pink-d: #6a5acd; }
+html[data-theme] body { background-color: var(--cream); }
+#theme-fx { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+#theme-fx span { position: absolute; top: -40px; animation: themeFall linear infinite; opacity: .75; }
+@keyframes themeFall { to { transform: translateY(110vh) rotate(360deg); } }
+.mascot[data-hat]::after { content: attr(data-hat); position: absolute; top: -6px; right: 6px; font-size: 2.1rem; transform: rotate(14deg); pointer-events: none; z-index: 2; }
+.mascot { position: relative; }
+.theme-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.theme-pick button { font: inherit; font-size: .9rem; cursor: pointer; border: 2px solid rgba(122, 82, 48, .15); background: #fff; border-radius: 14px; padding: 8px; color: var(--ink); }
+.theme-pick button[aria-pressed="true"] { border-color: var(--green-d); background: var(--pink); font-weight: 600; }
+
+/* admin: her screen mirror */
+.mirror-wrap { display: grid; justify-items: center; gap: 8px; }
+.phone { position: relative; border: 10px solid #2a2320; border-radius: 34px; overflow: hidden; background: #fff; box-shadow: 0 12px 30px rgba(0, 0, 0, .2); }
+.phone iframe { border: 0; display: block; transform-origin: 0 0; background: var(--cream); }
+.phone .cover { position: absolute; inset: 0; }
+.phone .tapdot { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(255, 111, 145, .45); border: 3px solid #ff6f91; animation: tapPing 1.2s ease-out forwards; pointer-events: none; }
+@keyframes tapPing { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.phone .modal-mirror { position: absolute; left: 6%; right: 6%; bottom: 6%; background: #fff; border-radius: 18px; padding: 12px; font-size: .8rem; white-space: pre-wrap; box-shadow: 0 6px 20px rgba(0, 0, 0, .25); max-height: 60%; overflow: hidden; }
+.phone .typing-mirror { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: #2a2320; color: #fff; border-radius: 999px; padding: 4px 12px; font-size: .75rem; white-space: nowrap; }
+body.mirror .topbar, body.mirror .tabbar { pointer-events: none; }
+mark { background: #ffe48a; border-radius: 4px; padding: 0 2px; }
+.hist-row { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 10px; border-radius: 12px; background: rgba(122, 82, 48, .04); }
+.hist-row .help { margin: 0; }

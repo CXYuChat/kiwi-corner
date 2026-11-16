@@ -93,7 +93,7 @@ Kiwi.onReady(function () {
     '<section class="card stack"><h3>⚡ Quick actions</h3><div class="quick">' +
       '<button type="button" class="btn sm" data-quick="10">+10 ⭐</button><button type="button" class="btn sm" data-quick="25">+25 ⭐</button>' +
       '<button type="button" class="btn sm ghost" data-goto="photos">📸 Post a photo</button><button type="button" class="btn sm ghost" data-goto="messages">💌 Send a surprise</button>' +
-      '<button type="button" class="btn sm ghost" data-goto="ask">❓ Ask her something</button><button type="button" class="btn sm ghost" data-goto="control">📲 Ping her</button><button type="button" class="btn sm ghost" data-goto="clicker">🥝 Send clicker kiwis</button>' +
+      '<button type="button" class="btn sm ghost" data-goto="ask">❓ Ask her something</button><button type="button" class="btn sm ghost" data-goto="control">📲 Ping her</button><button type="button" class="btn sm ghost" data-goto="clicker">🥝 Send clicker kiwis</button><button type="button" class="btn sm ghost" data-goto="schedule">⏰ Schedule something</button><button type="button" class="btn sm ghost" data-goto="screen">📱 See her screen</button>' +
       '<a class="btn sm ghost" href="fun.html#movies-card" style="text-decoration:none">🍿 Movie list</a>' + '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
   }
 
@@ -669,6 +669,301 @@ Kiwi.onReady(function () {
     $('#ar-test-out').textContent = e.target.value ? (r ? '🤖 Would reply: "' + r + '"' : 'No auto-reply for that one') : '';
   });
 
+  // ================================================================ MORE POWER: schedule, notifications, history, theme, screen, devices, search
+  function dtInput(id, label) {
+    return '<label>' + label + ' (Barcelona time)<input class="field" id="' + id + '" type="datetime-local"><span class="help sg"></span></label>';
+  }
+  function parseDt(v) { try { return v ? T.parse(v.replace(' ', 'T').slice(0, 16), HZ) : 0; } catch (e) { return 0; } }
+
+  // ---- ⏰ Schedule
+  var SCHED_TYPES = [['ping', '📲 Ping'], ['surprise', '💌 Surprise'], ['points', '⭐ Points'], ['kiwis', '🥝 Clicker kiwis'], ['question', '❓ Question'], ['banner', '🏷️ Banner'], ['theme', '🎨 Theme']];
+  var schedType = 'ping';
+  function schedFields(t) {
+    if (t === 'ping') return '<div class="row2"><label>Emoji<input class="field" id="sc-emoji" value="💚" maxlength="4"></label><span></span></div><label>Title<input class="field" id="sc-title" maxlength="60" placeholder="e.g. Good morning baby ☀️"></label><label>Message (optional)<textarea class="field" id="sc-text"></textarea></label>';
+    if (t === 'surprise') return '<div class="row2"><label>Emoji<input class="field" id="sc-emoji" value="💌" maxlength="4"></label><span></span></div><label>Title<input class="field" id="sc-title" placeholder="e.g. Open me 🥰"></label><label>Message<textarea class="field" id="sc-text"></textarea></label>';
+    if (t === 'points') return '<div class="row2"><label>Points (minus to take away)<input class="field" id="sc-amt" type="number" inputmode="numeric" placeholder="e.g. 20"></label><span></span></div><label>Reason (she sees it)<input class="field" id="sc-reason" maxlength="80" placeholder="e.g. Good luck on your exam! 📚"></label>';
+    if (t === 'kiwis') return '<div class="row2"><label>Kiwis<input class="field" id="sc-amt" type="number" inputmode="numeric" placeholder="e.g. 5000"></label><span></span></div><label>Note (optional)<input class="field" id="sc-reason" maxlength="120"></label>';
+    if (t === 'question') return '<div class="row2"><label>Emoji<input class="field" id="sc-emoji" value="💭" maxlength="4"></label><span></span></div><label>Question ({name} = pet name)<textarea class="field" id="sc-text"></textarea></label><label>Answer buttons (one per line)<textarea class="field" id="sc-opts" placeholder="Yes! 💚\nNot today 🥲"></textarea></label><label>Box for her to add a line (optional)<input class="field" id="sc-note"></label>';
+    if (t === 'banner') return '<label>Banner text<input class="field" id="sc-text" maxlength="90" placeholder="e.g. Happy Friday baby! 🎉"></label><label>Show for (hours, 0 = until changed)<input class="field" id="sc-hours" type="number" min="0" value="24"></label>';
+    if (t === 'theme') return '<label>Theme<select class="field" id="sc-theme">' + K.THEMES.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</select></label>';
+    return '';
+  }
+  function schedSummary(s) {
+    var d = s.data || {};
+    return { ping: '📲 ' + (d.emoji || '') + ' ' + (d.title || ''), surprise: '💌 ' + (d.title || 'Surprise'), points: '⭐ ' + (d.amt > 0 ? '+' : '') + d.amt + ' points · ' + (d.reason || ''),
+      kiwis: '🥝 ' + d.amount + ' kiwis' + (d.note ? ' · ' + d.note : ''), question: '❓ ' + (d.text || '').slice(0, 80), banner: '🏷️ ' + (d.text || ''), theme: '🎨 ' + ((K.THEMES.find(function (x) { return x[0] === d.theme; }) || [0, d.theme])[1]) }[s.type] || s.type;
+  }
+  P.schedule = function () {
+    var all = K.scheduled(null, true), now = Date.now();
+    var up = all.filter(function (s) { return s.at > now; }), past = all.filter(function (s) { return s.at <= now; }).reverse();
+    return '<section class="card stack"><h3>⏰ Schedule something</h3><p class="help" style="margin:0">Write it now, it goes out by itself at the time you pick, even while you sleep. If her site is open it appears within ~20 seconds; otherwise the next time she opens it.</p>' +
+        '<div class="chips">' + SCHED_TYPES.map(function (t) { return '<button type="button" data-schedtype="' + t[0] + '" aria-pressed="' + (schedType === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+        '<div class="form">' + schedFields(schedType) + dtInput('sc-at', 'Send at') + '</div>' +
+        '<div class="quick">' + [['in 1 hour', 1], ['tomorrow 7:30 AM', 'm'], ['tonight 9 PM', 'n']].map(function (q) { return '<button class="btn sm ghost" data-schedquick="' + q[1] + '">' + q[0] + '</button>'; }).join('') + '</div>' +
+        '<div class="btns"><button class="btn sm pink" id="sc-add">⏰ Schedule it</button></div></section>' +
+      '<section class="card stack"><h3>📅 Coming up</h3>' + (up.length ? up.map(function (s) {
+        return '<div class="hist-row"><div><b>' + esc(schedSummary(s)) + '</b><p class="help">' + K.herDateTime(s.at) + ' Barcelona · ' + T.fmtDay(s.at, 'Asia/Singapore') + ' ' + T.fmtTime(s.at, 'Asia/Singapore') + ' Singapore · in ' + dur(s.at - now) + '</p></div>' +
+          '<div class="btns"><button class="btn sm ghost" data-schednow="' + esc(s.id) + '">Send now</button><button class="btn sm danger" data-scheddel="' + esc(s.id) + '">🗑️</button></div></div>';
+      }).join('') : '<p class="muted">Nothing scheduled</p>') + '</section>' +
+      (past.length ? '<section class="card stack"><h3>✓ Already sent</h3>' + past.slice(0, 15).map(function (s) {
+        return '<div class="hist-row"><div><b>' + esc(schedSummary(s)) + '</b><p class="help">' + K.herDateTime(s.at) + ' Barcelona</p></div><button class="btn sm danger" data-scheddel="' + esc(s.id) + '">🗑️</button></div>';
+      }).join('') + '<p class="help" style="margin:0">Deleting a sent one takes it back (e.g. its points).</p></section>' : '');
+  };
+
+  // ---- 🔔 Notifications to your phone (ntfy)
+  P.notify = function () {
+    var c = K.notifyCfg(), ev = c.events || {};
+    var KINDS = [['message', '💌 She sends you a message'], ['online', '🟢 She opens the site'], ['checkin', '✅ She checks in'], ['answer', '❓ She answers a question'], ['wish', '💭 Guesses and wishes'], ['gift', '🎁 She opens or unlocks a present'], ['photo', '📸 She sends a selfie'], ['miss', '🥺 She presses "I miss you"'], ['movie', '🍿 Movie list changes'], ['clicker', '🥝 Clicker milestones']];
+    return '<section class="card stack"><h3>🔔 Notifications on your phone</h3>' +
+        '<p class="help" style="margin:0">Uses the free <b>ntfy</b> app. Her site sends a notification to a private channel only you know.</p>' +
+        '<ol class="steps"><li>Install <b>ntfy</b> from the App Store or Google Play.</li><li>Tap <b>＋</b>, then subscribe to this channel:<br><b class="mono" style="user-select:all">' + esc(c.topic || '(press "Make my channel" first)') + '</b></li><li>Turn it on below and press <b>Send a test</b>.</li></ol>' +
+        '<div class="btns"><button class="btn sm ghost" id="nt-topic">' + (c.topic ? '🔁 Make a new channel' : '✨ Make my channel') + '</button>' + (c.topic ? '<button class="btn sm ghost" id="nt-copy">📋 Copy channel</button>' : '') + '</div>' +
+        '<label class="switch"><span><b>Notifications on</b></span><input type="checkbox" id="nt-on"' + (c.on ? ' checked' : '') + '></label>' +
+        '<div class="switches">' + KINDS.map(function (k) { return '<label class="switch"><span>' + k[1] + '</span><input type="checkbox" data-ntev="' + k[0] + '"' + (ev[k[0]] ? ' checked' : '') + '></label>'; }).join('') + '</div>' +
+        '<label class="switch"><span><b>Include her message text</b><br><span class="help">Off = just "Sent you a message (12 words)". On = the words go through ntfy\'s servers.</span></span><input type="checkbox" id="nt-text"' + (c.withText ? ' checked' : '') + '></label>' +
+        '<div class="btns"><button class="btn sm" id="nt-save">💾 Save</button><button class="btn sm ghost" id="nt-test">📲 Send a test</button></div></section>';
+  };
+
+  // ---- 🕘 History + undo (every change made from this admin page, kept on this device)
+  var HKEY = 'kiwi-admin-history', pendingLabel = [];
+  function hist() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } }
+  function saveHist(h) {
+    while (h.length) { try { localStorage.setItem(HKEY, JSON.stringify(h)); return; } catch (e) { h = h.slice(Math.ceil(h.length / 4)); } }
+    try { localStorage.removeItem(HKEY); } catch (e) { /* */ }
+  }
+  function wrap(name, doc, getter) {
+    var orig = DB[name];
+    DB[name] = function (patch) {
+      if (!wrap.off && patch && typeof patch === 'object') {
+        var cur = getter() || {}, before = {};
+        Object.keys(patch).forEach(function (k) { before[k] = cur[k] === undefined ? null : JSON.parse(JSON.stringify(cur[k])); });
+        var keys = Object.keys(patch).filter(function (k) { return JSON.stringify(before[k]) !== JSON.stringify(patch[k]); });
+        if (keys.length && !(doc === 'live' && keys.every(function (k) { return /^(adminDevices|watching)$/.test(k); }))) {
+          var b2 = {}; keys.forEach(function (k) { b2[k] = before[k]; });
+          var e = { id: uid(), at: Date.now(), doc: doc, keys: keys, before: b2, label: '' };
+          var h = hist(); h.push(e); saveHist(h.slice(-80)); pendingLabel.push(e.id);
+          setTimeout(function () { pendingLabel = pendingLabel.filter(function (x) { return x !== e.id; }); }, 1500);
+        }
+      }
+      return orig.apply(DB, arguments);
+    };
+  }
+  wrap('setState', 'state', function () { return DB.state; });
+  wrap('setHer', 'her', function () { return DB.her; });
+  wrap('setLive', 'live', function () { return DB.live; });
+  // the toast right after a change becomes its label ("+10 points sent 💚")
+  var toast0 = toast;
+  toast = function (msg) {
+    if (pendingLabel.length) { var h = hist(); h.forEach(function (e) { if (pendingLabel.indexOf(e.id) !== -1 && !e.label) e.label = String(msg); }); saveHist(h); pendingLabel = []; }
+    toast0(msg);
+  };
+  var DOCNAME = { state: 'Site settings', her: 'Her data', live: 'Live data' };
+  P.history = function () {
+    var h = hist().slice().reverse();
+    return '<section class="card stack"><h3>🕘 History</h3><p class="help" style="margin:0">Every change you made from admin on this device (last 80). Undo puts those things back to how they were just before.</p>' +
+      (h.length ? h.map(function (e) {
+        return '<div class="hist-row"><div><b>' + esc(e.label || 'Changed ' + e.keys.join(', ')) + '</b><p class="help">' + esc(T.fmtDayShort(e.at, HZ) + ' ' + T.fmtTime(e.at, HZ)) + ' · ' + agoP(e.at) + ' · ' + DOCNAME[e.doc] + ': ' + esc(e.keys.join(', ')) + (e.undone ? ' · <b>undone</b>' : '') + '</p></div>' +
+          '<button class="btn sm ghost" data-undo="' + esc(e.id) + '">↶ Undo</button></div>';
+      }).join('') + '<div class="btns"><button class="btn sm ghost" id="hist-clear">Clear history</button></div>' : '<p class="muted">No changes yet</p>') + '</section>';
+  };
+
+  // ---- 🎨 Theme
+  P.theme = function () {
+    var st = DB.state, cur = K.adminTheme(), up = K.scheduled('theme', true).filter(function (s) { return s.at > Date.now(); });
+    return '<section class="card stack"><h3>🎨 Her site\'s theme</h3><p class="help" style="margin:0">Colours, a little hat on the kiwi, and things floating down the screen.</p>' +
+        '<div class="theme-pick">' + K.THEMES.map(function (t) { return '<button type="button" data-settheme="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+        '<label class="switch"><span><b>Let her pick her own theme</b><br><span class="help">Adds a theme picker to her 🌸 menu. Her pick wins over yours.</span></span><input type="checkbox" id="th-choice"' + (st.themeChoice ? ' checked' : '') + '></label>' +
+        (st.themeChoice && DB.her.theme ? '<p class="help" style="margin:0">She picked: ' + esc((K.THEMES.find(function (x) { return x[0] === DB.her.theme; }) || [0, DB.her.theme])[1]) + '</p>' : '') +
+        (up.length ? '<p class="help" style="margin:0">Scheduled: ' + up.map(function (s) { return esc(schedSummary(s)) + ' on ' + K.herDateTime(s.at); }).join(', ') + ' (see ⏰ Schedule)</p>' : '<p class="help" style="margin:0">Tip: schedule a theme (e.g. 🎄 on Dec 24) in ✍️ Write → ⏰ Schedule.</p>') + '</section>';
+  };
+
+  // ---- 📱 Her screen (live mirror)
+  var watchTimer = null, mirrorPage = '', mirrorFrame = null;
+  P.screen = function () {
+    return '<section class="card stack"><h3>📱 Her screen</h3><div data-presence="small">' + presenceHtml(false) + '</div>' +
+      '<p class="help" style="margin:0">While this tab is open, her site shares where she is and what she taps (every ~1.5 s). It shows your copy of that page scrolled to where she is. It never shows what she types until she sends it.</p>' +
+      '<div class="mirror-wrap" id="mirror"><p class="muted">Waiting for her screen… (she needs to have the site open)</p></div></section>';
+  };
+  function drawMirror() {
+    var box = $('#mirror'); if (!box || current !== 'screen') return;
+    var sc = (DB.live || {}).screen, pr = presence();
+    if (!sc || Date.now() - (sc.at || 0) > 60000 || pr.cls !== 'on') {
+      if (!box.querySelector('.muted')) { box.innerHTML = '<p class="muted">Waiting for her screen… (she needs to have the site open)</p>'; mirrorPage = ''; mirrorFrame = null; }
+      return;
+    }
+    var W = Math.min(300, panels.clientWidth - 60), scale = W / sc.vw, H = Math.round(sc.vh * scale);
+    var file = { home: 'index.html', timers: 'countdowns.html', week: 'schedule.html', gifts: 'gifts.html', fun: 'fun.html', clicker: 'clicker.html' }[sc.page] || 'index.html';
+    if (mirrorPage !== file || !mirrorFrame) {
+      mirrorPage = file;
+      box.innerHTML = '<div class="help" id="mirror-cap"></div><div class="phone" style="width:' + W + 'px;height:' + H + 'px"><iframe id="mirror-frame" src="' + file + '?mirror=1" style="width:' + sc.vw + 'px;height:' + sc.vh + 'px;transform:scale(' + scale + ')"></iframe><div class="cover" id="mirror-cover"></div></div>';
+      mirrorFrame = $('#mirror-frame');
+      mirrorFrame.addEventListener('load', function () { mirrorFrame.dataset.loaded = '1'; scrollMirror(); });
+    }
+    scrollMirror();
+    var cover = $('#mirror-cover');
+    cover.innerHTML = (sc.typing ? '<div class="typing-mirror">✍️ typing in "' + esc(sc.typing) + '"…</div>' : '') + (sc.modal ? '<div class="modal-mirror">' + esc(sc.modal) + '</div>' : '');
+    if (sc.tap && Date.now() - sc.tap.at < 4000 && cover.dataset.tap !== String(sc.tap.at)) {
+      cover.dataset.tap = sc.tap.at;
+      var d = document.createElement('div'); d.className = 'tapdot'; d.style.left = (sc.tap.x * 100) + '%'; d.style.top = (sc.tap.y * 100) + '%'; cover.appendChild(d);
+    }
+    $('#mirror-cap').innerHTML = '<b>' + esc(K.pageName(sc.page)) + '</b> · scrolled ' + Math.round(sc.sy / Math.max(1, sc.sh - sc.vh) * 100 || 0) + '% · updated ' + agoP(sc.at) +
+      (sc.tap ? '<br>Last tap: "' + esc(sc.tap.label || '?') + '" ' + agoP(sc.tap.at) : '');
+  }
+  function scrollMirror() {
+    var sc = (DB.live || {}).screen; if (!sc || !mirrorFrame || !mirrorFrame.dataset.loaded) return;
+    try {
+      var w = mirrorFrame.contentWindow, dh = w.document.documentElement.scrollHeight - sc.vh, ratio = sc.sy / Math.max(1, sc.sh - sc.vh);
+      w.scrollTo({ top: Math.round(ratio * dh), behavior: 'smooth' });
+    } catch (e) { /* */ }
+  }
+  function watchBeat() { if (current === 'screen' && !document.hidden) DB.setLive({ watching: Date.now() }).catch(function () { /* */ }); }
+  setInterval(function () {
+    if (current === 'screen') { if (!watchTimer) { watchTimer = setInterval(watchBeat, 8000); watchBeat(); } drawMirror(); }
+    else if (watchTimer) { clearInterval(watchTimer); watchTimer = null; mirrorPage = ''; mirrorFrame = null; }
+  }, 1000);
+
+  // ---- 🔐 Devices + sign out
+  P.devices = function () {
+    var lv = DB.live || {}, ad = lv.adminDevices || {}, me = K.deviceId(), so = DB.state.signout || {};
+    var herDevs = {}; (lv.sessions || []).forEach(function (s) { var k = s.devId || s.d; if (!herDevs[k] || herDevs[k].last < s.end) herDevs[k] = { name: s.d, last: s.end || s.start, id: s.devId }; });
+    function row(id, d, who) {
+      var gone = (so.kick || {})[id] > (d.loginAt || 0);
+      return '<div class="hist-row"><div><b>' + esc(d.name || '?') + (id === me ? ' (this device)' : '') + '</b><p class="help">Last active ' + agoP(d.last) + (d.page ? ' · ' + esc(K.pageName(d.page)) : '') + (gone ? ' · signed out' : '') + '</p></div>' +
+        (id && id !== me && !gone ? '<button class="btn sm danger" data-kick="' + esc(id) + '" data-who="' + who + '">Sign out</button>' : '') + '</div>';
+    }
+    return '<section class="card stack"><h3>🔐 Your admin devices</h3><p class="help" style="margin:0">Everywhere you\'re logged in as admin.</p>' +
+        Object.keys(ad).sort(function (a, b) { return ad[b].last - ad[a].last; }).map(function (id) { return row(id, ad[id], 'admin'); }).join('') +
+        '<div class="btns"><button class="btn sm danger" id="so-admin">Sign out all my other devices</button></div></section>' +
+      '<section class="card stack"><h3>🌸 Her devices</h3>' + (Object.keys(herDevs).length ? Object.keys(herDevs).map(function (k) { var d = herDevs[k]; return row(d.id, d, 'her'); }).join('') : '<p class="muted">None yet</p>') +
+        '<div class="btns"><button class="btn sm danger" id="so-her">Sign her out everywhere</button></div><p class="help" style="margin:0">She can log back in with her username and PIN. Use this if a phone gets lost.</p></section>';
+  };
+
+  // ---- 🔎 Search everything
+  var searchQ = '';
+  function searchItems() {
+    var her = DB.her, lv = DB.live || {}, out = [];
+    (her.messages || []).forEach(function (m) { out.push({ k: '💌 Message', at: m.at, t: m.text, go: 'inbox' }); if (m.reply) out.push({ k: '↩️ Your reply', at: m.replyAt || m.at, t: m.reply, go: 'inbox' }); if (m.auto) out.push({ k: '🤖 Auto-reply', at: m.auto.at, t: m.auto.text, go: 'inbox' }); });
+    (her.guesses || []).forEach(function (x) { out.push({ k: '🤔 Guess', at: x.at, t: x.text + (x.note ? ' · ' + x.note : ''), go: 'inbox' }); });
+    (her.wishes || []).forEach(function (x) { out.push({ k: '💭 Wish', at: x.at, t: x.text + (x.note ? ' · ' + x.note : ''), go: 'inbox' }); });
+    (her.moods || []).forEach(function (x) { var i = K.moodInfo(x.mood); out.push({ k: '💭 Mood', at: x.at, t: i[1] + ' ' + i[2] + (x.note ? ' · ' + x.note : ''), go: 'overview' }); });
+    K.questions().forEach(function (q) { if (q.answer) { var o = (q.options || [])[q.answer.choice] || {}; out.push({ k: '❓ Answer', at: q.answer.at, t: K.qText(q) + ' → ' + (o.label || '') + (q.answer.note ? ' · ' + q.answer.note : ''), go: 'ask' }); } });
+    (Array.isArray(her.movies) ? her.movies : []).forEach(function (m) { out.push({ k: '🍿 Movie', at: m.at, t: m.title + (m.watched ? ' (watched)' : ''), go: '' }); });
+    (lv.events || []).forEach(function (e) { out.push({ k: (e.e || '•') + ' Activity', at: e.at, t: e.t, go: 'live' }); });
+    return out;
+  }
+  function hl(text, q) {
+    var t = String(text), i = t.toLowerCase().indexOf(q.toLowerCase());
+    if (i === -1) return esc(t.slice(0, 200));
+    var s = Math.max(0, i - 80), part = t.slice(s, i + q.length + 120);
+    var j = i - s;
+    return (s ? '…' : '') + esc(part.slice(0, j)) + '<mark>' + esc(part.slice(j, j + q.length)) + '</mark>' + esc(part.slice(j + q.length)) + (i + q.length + 120 < t.length ? '…' : '');
+  }
+  function searchResults() {
+    var q = searchQ.trim(); if (!q) return '<p class="muted">Type to search her messages, your replies, wishes, guesses, moods, answers, movies and activity.</p>';
+    var res = searchItems().filter(function (x) { return String(x.t || '').toLowerCase().indexOf(q.toLowerCase()) !== -1; }).sort(function (a, b) { return b.at - a.at; });
+    return '<p class="help" style="margin:0">' + res.length + ' result' + (res.length === 1 ? '' : 's') + '</p>' + res.slice(0, 100).map(function (x) {
+      return '<div class="hist-row"><div><span class="kind">' + esc(x.k) + '</span><span class="help">' + K.herDateTime(x.at) + '</span><div class="msg-text" style="margin-top:4px">' + hl(x.t, q) + '</div></div>' + (x.go ? '<button class="btn sm ghost" data-goto="' + x.go + '">›</button>' : '') + '</div>';
+    }).join('');
+  }
+  P.search = function () {
+    return '<section class="card stack"><h3>🔎 Search everything</h3><input class="field" id="search-q" placeholder="e.g. miss, movie, exam…" value="' + esc(searchQ) + '" autocomplete="off"><div id="search-out" class="stack">' + searchResults() + '</div></section>';
+  };
+
+  // ---- clicks for the tabs above
+  function morePowerClick(b, d, id) {
+    if (d.schedtype) { schedType = d.schedtype; render(); return true; }
+    if (d.schedquick) {
+      var now = Date.now(), at;
+      if (d.schedquick === '1') at = now + 3600e3;
+      else {
+        var p = T.parts(now, HZ), hh = d.schedquick === 'm' ? 7 : 21, mm = d.schedquick === 'm' ? 30 : 0;
+        at = T.wall(p.y, p.m, p.d, hh, mm, HZ); if (at <= now) at = T.addDays(at, 1, HZ);
+      }
+      var q = T.parts(at, HZ), pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var inp = $('#sc-at'); inp.value = q.y + '-' + pad(q.m) + '-' + pad(q.d) + 'T' + pad(q.h) + ':' + pad(q.mi); inp.dispatchEvent(new Event('input')); return true;
+    }
+    if (id === 'sc-add') {
+      var at2 = parseDt(val('sc-at')); if (!at2) { toast('Pick when to send it'); return true; }
+      if (at2 < Date.now() - 60000) { toast('That time has already passed'); return true; }
+      var t = schedType, data = {};
+      if (t === 'ping' || t === 'surprise') { data = { emoji: val('sc-emoji'), title: val('sc-title'), text: val('sc-text') }; if (!data.title && !data.text) { toast('Write something first'); return true; } }
+      if (t === 'points') { data = { amt: Math.round(+val('sc-amt') || 0), reason: val('sc-reason') }; if (!data.amt) { toast('How many points?'); return true; } }
+      if (t === 'kiwis') { data = { amount: Math.round(+val('sc-amt') || 0), note: val('sc-reason') }; if (!data.amount) { toast('How many kiwis?'); return true; } }
+      if (t === 'question') {
+        var opts = val('sc-opts').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+        if (!val('sc-text') || !opts.length) { toast('Write the question and at least one answer'); return true; }
+        data = { emoji: val('sc-emoji') || '💭', text: val('sc-text'), options: opts.map(function (o) { return { label: o }; }) }; if (val('sc-note')) data.note = val('sc-note');
+      }
+      if (t === 'banner') { data = { text: val('sc-text'), hours: Math.max(0, +val('sc-hours') || 0) }; if (!data.text) { toast('Write the banner'); return true; } }
+      if (t === 'theme') data = { theme: $('#sc-theme').value };
+      DB.setState({ scheduled: (DB.state.scheduled || []).concat([{ id: 's' + uid(), type: t, at: at2, data: data }]).slice(-200) });
+      toast('Scheduled for ' + K.herDateTime(at2) + ' ⏰'); render(); return true;
+    }
+    if (d.scheddel) {
+      K.confirm({ emoji: '🗑️', title: 'Delete this?', yes: 'Delete', danger: true }).then(function (ok) {
+        if (ok) { DB.setState({ scheduled: (DB.state.scheduled || []).filter(function (s) { return s.id !== d.scheddel; }) }); toast('Deleted'); render(); }
+      });
+      return true;
+    }
+    if (d.schednow) { DB.setState({ scheduled: (DB.state.scheduled || []).map(function (s) { return s.id === d.schednow ? Object.assign({}, s, { at: Date.now() }) : s; }) }); toast('Sent now ✓'); render(); return true; }
+    // notifications
+    if (id === 'nt-topic') {
+      var c0 = K.notifyCfg(), a = new Uint8Array(12); crypto.getRandomValues(a);
+      c0.topic = 'kiwi-' + Array.from(a).map(function (x) { return (x % 36).toString(36); }).join('');
+      DB.setHer({ notifyCfg: c0 }); toast('New channel made. Subscribe to it in ntfy'); render(); return true;
+    }
+    if (id === 'nt-copy') { try { navigator.clipboard.writeText(K.notifyCfg().topic); toast('Copied 📋'); } catch (e) { toast('Couldn\'t copy. Select it and copy by hand'); } return true; }
+    if (id === 'nt-save' || id === 'nt-test') {
+      var c1 = K.notifyCfg(), evs = {};
+      panels.querySelectorAll('[data-ntev]').forEach(function (x) { evs[x.dataset.ntev] = x.checked; });
+      c1.on = $('#nt-on').checked; c1.events = evs; c1.withText = $('#nt-text').checked;
+      DB.setHer({ notifyCfg: c1 });
+      if (id === 'nt-test') {
+        if (!c1.topic) { toast('Make your channel first'); return true; }
+        K.sendNtfy(c1, '🥝 Kiwi Corner test', 'It works! You\'ll get notifications here when she does things 💚').then(function () { toast('Test sent. Check your phone 📲'); });
+      } else toast('Notifications saved 🔔');
+      render(); return true;
+    }
+    // history
+    if (d.undo) {
+      var e = hist().find(function (x) { return x.id === d.undo; }); if (!e) return true;
+      K.confirm({ emoji: '↶', title: 'Undo "' + (e.label || e.keys.join(', ')) + '"?', text: 'Puts ' + e.keys.join(', ') + ' back to how it was ' + agoP(e.at) + '.', yes: 'Undo' }).then(function (ok) {
+        if (!ok) return;
+        (e.doc === 'state' ? DB.setState(e.before) : e.doc === 'her' ? DB.setHer(e.before) : DB.setLive(e.before)).then(function () {
+          var h = hist(); h.forEach(function (x) { if (x.id === e.id) x.undone = true; }); saveHist(h); toast('Undone ↶'); render();
+        });
+      });
+      return true;
+    }
+    if (id === 'hist-clear') { saveHist([]); try { localStorage.removeItem(HKEY); } catch (x) { /* */ } toast('History cleared'); render(); return true; }
+    // theme
+    if (d.settheme) { DB.setState({ theme: d.settheme, themeAt: Date.now() }); K.applyTheme(); toast('Theme set: ' + b.textContent); render(); return true; }
+    // devices
+    if (d.kick) {
+      K.confirm({ emoji: '🔐', title: 'Sign out this device?', yes: 'Sign out', danger: true }).then(function (ok) {
+        if (!ok) return; var so = Object.assign({}, DB.state.signout || {}); so.kick = Object.assign({}, so.kick || {}); so.kick[d.kick] = Date.now();
+        DB.setState({ signout: so }); toast('Signed out 🔐'); render();
+      });
+      return true;
+    }
+    if (id === 'so-admin' || id === 'so-her') {
+      var mine = id === 'so-admin';
+      K.confirm({ emoji: '🔐', title: mine ? 'Sign out all your other devices?' : 'Sign her out everywhere?', text: mine ? 'This device stays logged in.' : 'She\'ll need to log in again.', yes: 'Sign out', danger: true }).then(function (ok) {
+        if (!ok) return; var so = Object.assign({}, DB.state.signout || {}), now = Date.now();
+        so[mine ? 'admin' : 'her'] = now; if (mine) K.store.set('kiwi-login-at', String(now + 1000));
+        DB.setState({ signout: so }); toast(mine ? 'Your other devices are signed out' : 'She\'s signed out everywhere'); render();
+      });
+      return true;
+    }
+    return false;
+  }
+  panels.addEventListener('change', function (e) {
+    if (e.target.id === 'th-choice') { DB.setState({ themeChoice: e.target.checked }); toast(e.target.checked ? 'She can pick her theme now 🎨' : 'Theme picker hidden'); render(); }
+  });
+  panels.addEventListener('input', function (e) {
+    if (e.target.id === 'search-q') { searchQ = e.target.value; $('#search-out').innerHTML = searchResults(); }
+  });
+
   // ---------------------------------------------------------------- render + tabs
   function render() {
     renderNav();
@@ -678,10 +973,10 @@ Kiwi.onReady(function () {
   // ---- navigation: 5 groups, each with its own tabs
   var GROUPS = [
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
-    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['live', '🛰️ Live'], ['photos', '📸 Photos']] },
+    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
-    { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
   // Things waiting for you, per tab
@@ -734,7 +1029,7 @@ Kiwi.onReady(function () {
     }
     var b = e.target.closest('button'); if (!b) return;
     var d = b.dataset, id = b.id;
-    if (powerClick(b, d, id)) return;
+    if (powerClick(b, d, id) || morePowerClick(b, d, id)) return;
     if (d.qr !== undefined) {
       var qtext = quickList()[+d.qr]; if (!qtext) return;
       DB.setHer({ messages: (DB.her.messages || []).map(function (m) { return m.id === d.mid ? Object.assign({}, m, { read: true, reply: qtext, replyAt: Date.now(), archived: true }) : m; }) });

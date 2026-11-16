@@ -265,15 +265,16 @@
     return out;
   };
   K.pointsLog = function () {
-    return (DB.state.pointsLog || []).concat(K.autoAwards(), K.checkinAwards()).sort(function (x, y) { return x.at - y.at; });
+    return (DB.state.pointsLog || []).concat(K.autoAwards(), K.checkinAwards(), K.scheduledPoints()).sort(function (x, y) { return x.at - y.at; });
   };
-  K.earned = function () { return (DB.state.points || 0) + K.autoAwards().concat(K.checkinAwards()).reduce(function (a, x) { return a + x.amt; }, 0); };
+  K.earned = function () { return (DB.state.points || 0) + K.autoAwards().concat(K.checkinAwards(), K.scheduledPoints()).reduce(function (a, x) { return a + x.amt; }, 0); };
   // Points she can spend = points given (by hand + nightly) − points spent on presents
   K.spent = function () { var b = DB.her.bought || {}; return Object.keys(b).reduce(function (a, k) { return a + (+b[k] || 0); }, 0); };
   K.balance = function () { return Math.max(0, K.earned() - K.spent()); };
   // ------------------------------------------------------------ questions he asks her
   K.questions = function () {
     var q = DB && DB.state.questions; q = (q && q.length) ? q : (window.QUESTIONS || []);
+    q = q.concat(K.scheduled ? K.scheduled('question').map(function (x) { return Object.assign({ id: x.id, at: x.at }, x.data); }) : []);
     return q.map(function (x) {
       var at = 0, until = 0;
       try { at = typeof x.at === 'number' ? x.at : x.at ? T.parse(x.at, HZ) : 0; } catch (e) { /* */ }
@@ -549,7 +550,17 @@
         '<div class="btns" style="flex-direction:column;align-items:stretch">' +
           '<button type="button" class="btn" id="m-refresh">🔄 Refresh (get the latest)</button>' +
           (K.standalone() ? '' : '<button type="button" class="btn pink" id="m-install">📱 Add to home screen</button>') +
-          '<button type="button" class="btn brown" id="logout">Log out</button></div>');
+          '<button type="button" class="btn brown" id="logout">Log out</button></div>' +
+        (u.role === 'livina' && DB.state.themeChoice ? '<h3 style="margin-top:18px">🎨 Pick a theme</h3><div class="theme-pick">' + K.THEMES.map(function (t) {
+          return '<button type="button" data-theme-pick="' + t[0] + '" aria-pressed="' + (K.theme() === t[0]) + '">' + t[1] + '</button>';
+        }).join('') + '</div>' : ''));
+      document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          DB.setHer({ theme: b.dataset.themePick }); K.applyTheme();
+          document.querySelectorAll('[data-theme-pick]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+          K.logEvent('🎨', 'Picked the ' + b.textContent + ' theme');
+        });
+      });
       K.$('#m-refresh').addEventListener('click', K.refresh);
       var mi = K.$('#m-install'); if (mi) mi.addEventListener('click', K.installHelp);
       K.$('#logout').addEventListener('click', function () { DB.logout().then(function () { location.href = 'login.html'; }); });
@@ -685,6 +696,130 @@
     setTimeout(function () { noticeOpen = false; }, 1500);
   }
 
+  // ------------------------------------------------------------ scheduled actions (set up in admin, go live at their time; no server needed)
+  // state.scheduled = [{ id, type, at, data }]. Everything below reads "due" items as if they had been sent at that moment.
+  K.scheduled = function (type, all) {
+    var now = T.now();
+    return ((DB && DB.state.scheduled) || []).filter(function (s) { return (!type || s.type === type) && (all || s.at <= now); })
+      .sort(function (a, b) { return a.at - b.at; });
+  };
+  function latestDue(type) { var l = K.scheduled(type); return l[l.length - 1] || null; }
+  K.surprise = function () {
+    var sp = DB.state.surprise, s = latestDue('surprise');
+    var fromSched = s ? Object.assign({ active: true, id: s.id, at: s.at }, s.data) : null;
+    if (!fromSched) return sp;
+    return (!sp || !sp.active || (sp.at || 0) < fromSched.at) ? fromSched : sp;
+  };
+  K.banner = function () {
+    var s = latestDue('banner');
+    if (s && (!+s.data.hours || T.now() < s.at + s.data.hours * 3600e3) && s.at > (DB.state.bannerAt || 0)) return s.data.text || '';
+    return DB.state.banner || '';
+  };
+  K.ping = function () {
+    var p = DB.state.ping, s = latestDue('ping');
+    var sp = s ? Object.assign({ id: s.id, at: s.at }, s.data) : null;
+    return (sp && (!p || (p.at || 0) < sp.at)) ? sp : p;
+  };
+  K.scheduledPoints = function () { return K.scheduled('points').map(function (s) { return { amt: +s.data.amt || 0, reason: s.data.reason || '', at: s.at, sched: true }; }); };
+  K.scheduledKiwis = function () { return K.scheduled('kiwis').map(function (s) { return { id: s.id, amount: +s.data.amount || 0, note: s.data.note || '', at: s.at }; }); };
+
+  // ------------------------------------------------------------ themes
+  K.THEMES = [
+    ['kiwi', '🥝 Kiwi (normal)', ''], ['christmas', '🎄 Christmas', '❄️'], ['valentine', '💘 Valentine', '💕'], ['birthday', '🎂 Birthday', '🎈'],
+    ['sakura', '🌸 Sakura', '🌸'], ['ocean', '🌊 Ocean', '🫧'], ['autumn', '🍂 Autumn', '🍂'], ['night', '🌙 Starry night', '✨']
+  ];
+  K.HATS = { christmas: '🎅', birthday: '🥳', valentine: '💘', night: '🌙', ocean: '🐚', autumn: '🍁', sakura: '🌸' };
+  K.adminTheme = function () {
+    var s = latestDue('theme'), st = DB.state;
+    if (s && s.at > (st.themeAt || 0)) return s.data.theme;
+    return st.theme || 'kiwi';
+  };
+  K.theme = function () {
+    if (DB.state.themeChoice && DB.user && DB.user.role === 'livina' && DB.her.theme) return DB.her.theme;
+    return K.adminTheme();
+  };
+  var themeNow = null;
+  function applyTheme() {
+    var th = K.theme(); if (th === themeNow) return; themeNow = th;
+    document.documentElement.dataset.theme = th;
+    var old = document.getElementById('theme-fx'); if (old) old.remove();
+    var t = K.THEMES.find(function (x) { return x[0] === th; });
+    var meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--cream').trim() || '#FFF8E7';
+    document.querySelectorAll('.mascot').forEach(function (m) { if (K.HATS[th]) m.setAttribute('data-hat', K.HATS[th]); else m.removeAttribute('data-hat'); });
+    if (!t || !t[2] || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    var fx = document.createElement('div'); fx.id = 'theme-fx'; fx.setAttribute('aria-hidden', 'true');
+    for (var i = 0; i < 14; i++) {
+      var s = document.createElement('span'); s.textContent = t[2];
+      s.style.left = (Math.random() * 100) + '%'; s.style.animationDuration = (9 + Math.random() * 10) + 's';
+      s.style.animationDelay = (-Math.random() * 18) + 's'; s.style.fontSize = (12 + Math.random() * 14) + 'px';
+      fx.appendChild(s);
+    }
+    document.body.appendChild(fx);
+  }
+  K.applyTheme = function () { themeNow = null; applyTheme(); };
+
+  // ------------------------------------------------------------ phone notifications for Chengxuan (ntfy). Settings live in her record (private).
+  var EMOJI_KIND = { '💌': 'message', '✅': 'checkin', '❓': 'answer', '💭': 'wish', '🤔': 'wish', '🎁': 'gift', '⭐': 'gift', '🥺': 'miss', '🥝': 'clicker', '🐦': 'clicker', '📸': 'photo', '🍿': 'movie' };
+  K.notifyCfg = function () { return Object.assign({ on: false, topic: '', server: 'https://ntfy.sh', events: { message: true, online: true, checkin: true, answer: true, wish: true, gift: true, photo: true }, withText: false }, DB.her.notifyCfg || {}); };
+  K.sendNtfy = function (cfg, title, body, tags) {
+    if (!cfg.topic) return Promise.resolve();
+    return fetch(String(cfg.server || 'https://ntfy.sh').replace(/\/+$/, '') + '/', {
+      method: 'POST', body: JSON.stringify({ topic: cfg.topic, title: title, message: body || ' ', tags: tags || ['kiwi_fruit'], click: location.origin + '/admin.html' })
+    }).catch(function () { /* offline */ });
+  };
+  K.notify = function (kind, title, body) {
+    if (!DB.user || DB.user.role !== 'livina') return;
+    var cfg = K.notifyCfg(); if (!cfg.on || !cfg.topic || !(cfg.events || {})[kind]) return;
+    K.sendNtfy(cfg, title, body);
+  };
+
+  // ------------------------------------------------------------ this device's id + sign-out from admin
+  K.deviceId = function () {
+    var id = K.store.get('kiwi-dev', ''); if (!id) { id = 'd' + Math.random().toString(36).slice(2, 10); K.store.set('kiwi-dev', id); } return id;
+  };
+  function checkSignout() {
+    var u = DB.user; if (!u) return;
+    var so = DB.state.signout || {}, at = +K.store.get('kiwi-login-at', '0');
+    if (!at) { K.store.set('kiwi-login-at', String(Date.now())); return; }
+    var epoch = u.role === 'admin' ? +so.admin || 0 : +so.her || 0, kick = (so.kick || {})[K.deviceId()] || 0;
+    if (epoch > at || kick > at) {
+      K.store.set('kiwi-login-at', '0');
+      DB.logout().then(function () { location.replace('login.html?out=1'); });
+    }
+  }
+  function adminDeviceBeat() {
+    if (!DB.user || DB.user.role !== 'admin' || /[?&]mirror=1/.test(location.search)) return;
+    var m = Object.assign({}, DB.live.adminDevices || {});
+    m[K.deviceId()] = { name: K.deviceName(), last: Date.now(), page: document.body.dataset.page, loginAt: +K.store.get('kiwi-login-at', '0') || Date.now() };
+    DB.setLive({ adminDevices: m }).catch(function () { /* */ });
+  }
+
+  // ------------------------------------------------------------ "see her screen": only while Chengxuan is watching (his Screen tab is open)
+  function startScreenShare(page) {
+    var lastTap = null, lastSig = '', lastSent = 0;
+    document.addEventListener('pointerdown', function (e) {
+      var el = e.target.closest('button, a, [role=button], input, textarea, label, .mood, .q-opt') || e.target;
+      var label = (el.getAttribute('aria-label') || el.textContent || el.placeholder || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+      lastTap = { x: e.clientX / innerWidth, y: e.clientY / innerHeight, at: Date.now(), label: label };
+    }, true);
+    function snap() {
+      var w = DB.live.watching || 0;
+      if (document.hidden || Date.now() - w > 20000) return;
+      var a = document.activeElement, typing = '';
+      if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && !/^(button|submit|checkbox|radio|file)$/.test(a.type)) typing = (a.getAttribute('placeholder') || a.id || 'a box').slice(0, 40);
+      var sheet = K.isModalOpen() && document.querySelector('.sheet');
+      var sc = {
+        page: page, hash: location.hash || '', sy: Math.round(scrollY), sh: document.documentElement.scrollHeight, vw: innerWidth, vh: innerHeight,
+        modal: sheet ? sheet.innerText.replace(/\s+\n/g, '\n').trim().slice(0, 400) : '', typing: typing, tap: lastTap
+      };
+      var sig = JSON.stringify(sc);
+      if (sig === lastSig && Date.now() - lastSent < 15000) return;
+      lastSig = sig; lastSent = Date.now(); sc.at = Date.now();
+      DB.setLive({ screen: sc }).catch(function () { /* */ });
+    }
+    setInterval(snap, 1500); DB.subscribe(function () { if (Date.now() - lastSent > 3000) snap(); });
+  }
+
   // ------------------------------------------------------------ auto-replies to her messages (admin can change them)
   K.AUTO_DEFAULT = {
     on: true, delay: 6, fallbackOn: false,
@@ -722,10 +857,12 @@
 
   // ------------------------------------------------------------ activity log (what she does, for Chengxuan's Live tab)
   // merge: events with the same key within 10 minutes are combined ("Pressed I miss you ×5")
-  K.logEvent = function (emoji, text, merge) {
+  K.logEvent = function (emoji, text, merge, full) {
     if (!DB.user || DB.user.role !== 'livina' || !DB.setLive) return;
     var list = (DB.live.events || []).slice(), last = list[list.length - 1];
-    if (merge && last && last.k === merge && Date.now() - last.at < 600000) {
+    var merging = merge && last && last.k === merge && Date.now() - last.at < 600000;
+    if (!merging && EMOJI_KIND[emoji]) { var nc = K.notifyCfg(); K.notify(EMOJI_KIND[emoji], emoji + ' Livina', (nc.withText && full) ? full : text); }
+    if (merging) {
       var n = (last.n || 1) + 1; list[list.length - 1] = Object.assign({}, last, { t: String(text).slice(0, 160) + ' ×' + n, n: n, at: Date.now() });
       return DB.setLive({ events: list }).catch(function () { /* */ });
     }
@@ -742,14 +879,19 @@
     var prev = K.store.get(key, null);
     try { prev = typeof prev === 'string' ? JSON.parse(prev) : prev; } catch (e) { prev = null; }
     var sess = (prev && prev.end && Date.now() - prev.end < 120000 && prev.d === dev) ? prev : { id: Math.random().toString(36).slice(2, 9), start: start, d: dev, pages: [] };
+    function onlineNote() {
+      var ss = DB.live.sessions || [], lastEnd = ss.length ? Math.max.apply(null, ss.filter(function (x) { return x.id !== sess.id; }).map(function (x) { return x.end || 0; }).concat([0])) : 0;
+      if (Date.now() - lastEnd > 10 * 60000) K.notify('online', '🟢 Livina is on Kiwi Corner', 'On ' + K.pageName(page) + ' · ' + dev);
+    }
+    if (sess.start === start) setTimeout(onlineNote, 900);
     if (sess.pages[sess.pages.length - 1] !== page) sess.pages = sess.pages.concat([page]).slice(-30);
     function pres(visible) {
-      return { at: Date.now(), visible: visible, page: page, device: dev, start: sess.start, sessId: sess.id, since: visibleSince || Date.now(),
+      return { at: Date.now(), visible: visible, page: page, device: dev, devId: K.deviceId(), start: sess.start, sessId: sess.id, since: visibleSince || Date.now(),
         screen: Math.round(screen.width) + '×' + Math.round(screen.height), lang: navigator.language || '', tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '') };
     }
     function sessions(endNow) {
       var list = (DB.live.sessions || []).filter(function (x) { return x.id !== sess.id; });
-      var cur = { id: sess.id, start: sess.start, end: Date.now(), d: dev, pages: sess.pages, open: !endNow };
+      var cur = { id: sess.id, start: sess.start, end: Date.now(), d: dev, devId: K.deviceId(), pages: sess.pages, open: !endNow };
       return list.concat([cur]).slice(-60);
     }
     function beat() {
@@ -765,7 +907,7 @@
       if (document.hidden) { away(); visibleSince = 0; }
       else {
         // came back after a while = a new visit
-        if (sess.end && Date.now() - sess.end > 120000) { sess = { id: Math.random().toString(36).slice(2, 9), start: Date.now(), d: dev, pages: [page] }; }
+        if (sess.end && Date.now() - sess.end > 120000) { sess = { id: Math.random().toString(36).slice(2, 9), start: Date.now(), d: dev, pages: [page] }; onlineNote(); }
         visibleSince = Date.now(); beat();
       }
     });
@@ -778,7 +920,7 @@
   function watchAdminSignals() {
     var loadedAt = Date.now();
     function check() {
-      var st = DB.state, p = st.ping;
+      var st = DB.state, p = K.ping();
       if (p && p.id && K.store.get('kiwi-ping') !== p.id && Date.now() - (p.at || 0) < 12 * 3600e3) {
         K.store.set('kiwi-ping', p.id);
         K.queueModal('<div class="em">' + K.esc(p.emoji || '💚') + '</div><h3>' + K.esc(p.title || 'Chengxuan says…') + '</h3>' +
@@ -820,11 +962,16 @@
       if (!u) document.body.classList.add('guest');
       chrome(page);
       document.documentElement.classList.remove('locked');
-      if (u && u.role === 'admin') document.body.classList.add('is-admin');
+      var mirror = /[?&]mirror=1/.test(location.search);
+      if (u && u.role === 'admin' && !mirror) document.body.classList.add('is-admin');
+      if (mirror) document.body.classList.add('mirror');
       applyFeatures(); DB.subscribe(applyFeatures);
+      applyTheme(); DB.subscribe(applyTheme);
+      if (u && !mirror) { checkSignout(); DB.subscribe(checkSignout); }
+      if (u && u.role === 'admin' && !mirror) { setTimeout(adminDeviceBeat, 1500); setInterval(adminDeviceBeat, 60000); }
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });
-        startPresence(page); watchAdminSignals();
+        startPresence(page); watchAdminSignals(); startScreenShare(page);
         pointsNotice(); DB.subscribe(pointsNotice); setInterval(pointsNotice, 60000);
         // Once a day, the first time she opens the site: the check-in pop-up (waits for other pop-ups to close)
         var tries = 0, ckTimer = setInterval(function () {

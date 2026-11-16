@@ -87,7 +87,7 @@ Kiwi.onReady(function () {
       var msg = { id: Math.random().toString(36).slice(2, 9), text: t, at: Date.now() };
       var ar = K.autoReplyFor(t); if (ar) msg.auto = { text: ar, at: Date.now() + Math.max(1, +K.autoCfg().delay || 6) * 1000 };
       DB.setHer({ messages: fitMessages((DB.her.messages || []).concat([msg])) });
-      K.logEvent('💌', 'Sent you a message (' + words(t) + (words(t) === 1 ? ' word' : ' words') + ')');
+      K.logEvent('💌', 'Sent you a message (' + words(t) + (words(t) === 1 ? ' word' : ' words') + ')', null, t.slice(0, 3000));
       $('#msg-text').value = '';
       showCount();
       K.confetti({ count: 40 });

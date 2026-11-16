@@ -53,7 +53,7 @@ Kiwi.onReady(function () {
   // ---------------------------------------------------------------- save / load
   var LS = 'kiwi-clicker';
   // gifts sent before she started (or before a reset) don't count
-  function blank() { return { k: 0, total: 0, clicks: 0, owned: {}, up: {}, golden: 0, gifts: (DB.state.clickerGifts || []).map(function (g) { return g.id; }), ms: 0, savedAt: 0, started: Date.now() }; }
+  function blank() { return { k: 0, total: 0, clicks: 0, owned: {}, up: {}, golden: 0, gifts: (DB.state.clickerGifts || []).concat(K.scheduledKiwis()).map(function (g) { return g.id; }), ms: 0, savedAt: 0, started: Date.now() }; }
   function norm(c) { var b = blank(); if (c) Object.keys(c).forEach(function (x) { if (c[x] !== undefined) b[x] = c[x]; }); return b; }
   var local = null; try { local = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { /* */ }
   var cloud = DB.live && DB.live.clicker;
@@ -117,7 +117,7 @@ Kiwi.onReady(function () {
   }
   function applyGifts() {
     if (!isHer) return;
-    (DB.state.clickerGifts || []).forEach(function (g) {
+    (DB.state.clickerGifts || []).filter(function (g) { return !g.at || g.at <= Date.now(); }).concat(K.scheduledKiwis()).forEach(function (g) {
       if (c.gifts.indexOf(g.id) !== -1) return;
       c.gifts.push(g.id); c.gifts = c.gifts.slice(-100);
       var amt = +g.amount || 0; c.k = Math.max(0, c.k + amt); if (amt > 0) c.total += amt;
@@ -290,6 +290,7 @@ Kiwi.onReady(function () {
   }, 100);
   setInterval(function () { if (isHer) { saveLocal(); saveCloud(); } else { c = norm(DB.live.clicker); } if (!document.hidden) drawStats(); }, 3000);
   DB.subscribe(function () { checkReset(); applyGifts(); if (!isHer) c = norm(DB.live.clicker); });
+  setInterval(applyGifts, 20000);   // scheduled kiwi gifts arrive on time
   checkReset(); applyGifts(); draw(true);
   if (!isHer) K.toast('You\'re watching her game 👀');
   if (isHer && !c.savedAt && K.logEvent) K.logEvent('🥝', 'Started playing Kiwi Clicker');
