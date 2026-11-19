@@ -1236,11 +1236,6 @@ html.xr-open, html.xr-open body { overflow: hidden; }
 .lights-off .xl { animation: none; opacity: .15; filter: none; }
 .lights-rainbow .xl { animation: xrRainbow 1.2s linear infinite; }
 @keyframes xrRainbow { 0% { fill: #ff4d4d; } 25% { fill: #ffd23f; } 50% { fill: #7dff7a; } 75% { fill: #4dc3ff; } 100% { fill: #ff7ad9; } }
-.adv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
-.adv-d { aspect-ratio: 1; border: 0; border-radius: 12px; font: inherit; cursor: pointer; display: grid; place-items: center; background: #eee; color: #999; padding: 2px; }
-.adv-d b { font-size: .95rem; } .adv-d span { font-size: .9rem; }
-.adv-d.can { background: linear-gradient(135deg, #c62828, #8e1b1b); color: #fff; box-shadow: 0 3px 0 #5e1010; }
-.adv-d.op { background: #e8f5ea; color: #1b6e37; }
 .xmas-tree-home.deco-christmas { pointer-events: auto; text-decoration: none; }
 .deco-tip { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); font-size: .7rem; font-weight: 600; color: var(--brown); background: var(--card); padding: 2px 8px; border-radius: 999px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); animation: sGlow 1.5s ease-in-out infinite alternate; }
 .xr-full * { animation-play-state: running; }

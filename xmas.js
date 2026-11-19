@@ -1,6 +1,6 @@
 /* xmas.js: the interactive Christmas room (Gifts page, Christmas theme). Tap the scene to open it full screen.
    Decorate the tree (shared), pet the cat, feed the fire, peek in stockings, sip cocoa, eat cookies, kiss under the mistletoe,
-   switch the tree lights, call Santa's sleigh past the window, play the music box, and open the advent calendar.
+   switch the tree lights, call Santa's sleigh past the window and play the music box.
    Shared state lives in kiwi/dm → xmas (both can write). */
 Kiwi.onReady(function () {
   'use strict';
@@ -105,7 +105,7 @@ Kiwi.onReady(function () {
     overlay.innerHTML = '<div class="xr-top"><b>🎄 Our Christmas room</b><span>' + (d > 0 ? d + ' day' + (d > 1 ? 's' : '') + ' until Christmas' : 'Merry Christmas! 🎅') + '</span><button type="button" class="xr-x" aria-label="Close">✕</button></div>' +
       '<div class="xr-stage"><div id="xr-room"></div><div class="xr-pop" id="xr-pop"></div><div class="xr-fx" id="xr-fx"></div></div>' +
       '<div class="xr-tools"><div class="xr-orn" id="xr-orn">' + Object.keys(ORN).map(function (k) { return '<button type="button" data-orn="' + k + '"><svg viewBox="-8 -8 16 16" width="22" height="22">' + ornSVG({ x: 0, y: 0, k: k }) + '</svg></button>'; }).join('') + '</div>' +
-      '<div class="xr-btns"><button type="button" data-t="undo">↶ Undo ornament</button><button type="button" data-t="lights">💡 Lights</button><button type="button" data-t="advent">📅 Advent calendar</button>' + (me === 'him' ? '<button type="button" data-t="clear">🧹 Clear tree</button>' : '') + '</div>' +
+      '<div class="xr-btns"><button type="button" data-t="undo">↶ Undo ornament</button><button type="button" data-t="lights">💡 Lights</button>' + (me === 'him' ? '<button type="button" data-t="clear">🧹 Clear tree</button>' : '') + '</div>' +
       '<p class="xr-hint" id="xr-hint">Pick an ornament, then tap the tree to hang it. Tap anything in the room 👀</p></div>';
     document.body.appendChild(overlay); document.documentElement.classList.add('xr-open');
     drawRoom();
@@ -144,7 +144,6 @@ Kiwi.onReady(function () {
       if (t === 'undo') { var o = (x.orn || []).slice(); for (var i = o.length - 1; i >= 0; i--) if (o[i].by === me) { o.splice(i, 1); break; } setX({ orn: o }); }
       if (t === 'lights') { var modes = ['on', 'rainbow', 'off'], cur = modes.indexOf(x.lights || 'on'); setX({ lights: modes[(cur + 1) % 3] }); ding(cur === 1 ? 523 : 1046); say(['🌈 Rainbow lights!', '🌑 Lights off… cozy', '✨ Lights on!'][cur]); }
       if (t === 'clear') K.confirm({ emoji: '🧹', title: 'Take all ornaments off the tree?', yes: 'Clear', danger: true }).then(function (ok) { if (ok) setX({ orn: [] }); });
-      if (t === 'advent') advent();
       return;
     }
     var hit = e.target.closest('[data-x]'); if (!hit) return;
@@ -193,27 +192,6 @@ Kiwi.onReady(function () {
     if (what === 'window') { setX({ storm: !X0.storm }); say(X0.storm ? '🌤️ The snow calms down' : '❄️ Snowstorm outside! Stay cozy'); sleigh(); return; }
     if (what === 'music') { jingle(); burst('🎵', 6, cx, cy); say('🎵 Jingle bells, jingle bells…'); return; }
     if (what === 'gift') { var g = hit.dataset.gift; close(); var el = document.querySelector('.gift[data-id="' + g + '"]'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1400); } }
-  }
-
-  // ---------------------------------------------------------------- 📅 advent calendar (Dec 1–24, her time)
-  var ADVENT_DEFAULT = ['You\'re my favourite person in the whole world 💚', 'Go drink something warm and think of me ☕', 'Countdown to us: every day is one day closer 🥺', 'You have the cutest laugh. Don\'t forget it 😄', 'Today\'s mission: take a selfie for me 📸', 'I\'m so proud of you, always 🥹', 'Imagine us under the lights in Barcelona ✨',
-    'You make everything better, even from far away 🌍', 'Hug yourself from me right now 🫂', 'One day we\'ll decorate a real tree together 🎄', 'Tell me one thing that made you smile today 💬', 'Fun fact: I think about you way too much 🙈', 'Halfway to Christmas! You\'re doing amazing 🎉', 'Watch a Christmas movie tonight and tell me about it 🍿',
-    'I love you more than all the kiwis in the world 🥝', 'Look outside: same sky, same moon, same us 🌙', 'You deserve the best day today ❤️', 'Send me your favourite song right now 🎶', 'Tonight: call me before you sleep? 📞', 'Our first Christmas was just the beginning 💫', 'Almost there! Tell me your Christmas wish 🎁', 'Three days left! Are you excited? 🎅', 'Christmas Eve Eve! I miss you so much 🥺', 'Merry Christmas Eve, my love. Open your heart (and your presents soon) 🎄💚'];
-  function advent() {
-    var y = +K.todayKey().slice(0, 4), today = K.todayKey(), opened = X().adv || {}, custom = DB.state.advent || {};
-    var html = '<h3>📅 Advent calendar</h3><p class="help">A new door opens every day from Dec 1 to 24 (her time).</p><div class="adv-grid">';
-    for (var n = 1; n <= 24; n++) {
-      var key = y + '-12-' + ('0' + n).slice(-2), can = today >= key, op = !!opened[n];
-      html += '<button type="button" class="adv-d' + (op ? ' op' : can ? ' can' : '') + '" data-adv="' + n + '"' + (can ? '' : ' disabled') + '><b>' + n + '</b>' + (op ? '<span>✨</span>' : can ? '<span>🎁</span>' : '<span>🔒</span>') + '</button>';
-    }
-    var sh = K.modal(html + '</div>', 'adv-sheet');
-    sh.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-adv]'); if (!b) return;
-      var n = +b.dataset.adv, msg = custom[n] || ADVENT_DEFAULT[n - 1];
-      var o = {}; o[n] = Date.now(); if (me === 'her' && !opened[n]) { setX({ adv: o }); K.logEvent('📅', 'Opened advent door ' + n); }
-      ding(880); K.confetti({ count: 40 });
-      K.closeModal(); setTimeout(function () { K.modal('<div class="em">🎄</div><h3>December ' + n + '</h3><p class="desc" style="white-space:pre-wrap">' + esc(msg) + '</p><p class="muted">From Chengxuan 💚</p>', 'call'); }, 250);
-    });
   }
 
   // open the room from the scene (presents still jump to their card)

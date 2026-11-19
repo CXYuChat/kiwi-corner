@@ -1017,18 +1017,8 @@ Kiwi.onReady(function () {
       '<div class="btns"><button class="btn sm" id="st-save">💾 Save</button><a class="btn sm ghost" href="story.html" style="text-decoration:none">📖 Open Our story</a></div></section>';
   };
 
-  // ---- 🎄 Advent calendar messages (empty = a built-in sweet note)
-  P.advent = function () {
-    var a = DB.state.advent || {}, opened = ((DB.dmMeta || {}).xmas || {}).adv || {}, x = ((DB.dmMeta || {}).xmas || {});
-    var rows = ''; for (var n = 1; n <= 24; n++) rows += '<label class="help">Dec ' + n + (opened[n] ? ' · <b style="color:var(--green-d)">opened ✓</b>' : '') + '<input class="field" data-adv="' + n + '" value="' + esc(a[n] || '') + '" placeholder="(built-in note)"></label>';
-    return '<section class="card stack"><h3>🎄 Advent calendar</h3><p class="help" style="margin:0">In the Christmas room (Gifts page, Christmas theme) a new door opens each day from Dec 1–24, her time. Write what is behind each door, or leave it empty for a built-in note.</p>' + rows +
-      '<div class="btns"><button class="btn sm" id="adv-save">💾 Save advent messages</button></div></section>' +
-      '<section class="card stack"><h3>🏠 Christmas room</h3><p class="help" style="margin:0">Ornaments on the tree: ' + (x.orn || []).length + ' · cat petted ' + (x.pets || 0) + ' times · logs on the fire: ' + (x.logs || 0) + '</p></section>';
-  };
-
   // ---- clicks for the tabs above
   function morePowerClick(b, d, id) {
-    if (id === 'adv-save') { var av = {}; panels.querySelectorAll('[data-adv]').forEach(function (inp) { if (inp.value.trim()) av[inp.dataset.adv] = inp.value.trim(); }); DB.setState({ advent: av }); toast('Advent messages saved 🎄'); render(); return true; }
     if (id === 'lt-preview') { letterPreview({ when: val('lt-when'), text: val('lt-text') }); return true; }
     if (id === 'lt-add') {
       if (!val('lt-when') || !val('lt-text')) { toast('Write "open when…" and the letter'); return true; }
@@ -1197,7 +1187,7 @@ Kiwi.onReady(function () {
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
     { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['qotd', '❓ Daily question'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['advent', '🎄 Advent'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
     { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['billing', '💳 Spending'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
