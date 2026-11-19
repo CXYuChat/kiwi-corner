@@ -109,7 +109,8 @@ Kiwi.onReady(function () {
   // gifts sent before she started (or before a reset) don't count
   function blank() {
     return { k: 0, total: 0, clicks: 0, owned: {}, up: {}, golden: 0, gifts: (DB.state.clickerGifts || []).concat(K.scheduledKiwis()).map(function (g) { return g.id; }),
-      ms: 0, savedAt: 0, started: Date.now(), totalEver: 0, clicksEver: 0, goldenEver: 0, ach: {}, seeds: 0, spent: 0, perks: {}, rebirths: 0, baskets: 0, lastBasket: '', skin: 'classic', bestStorm: 0 };
+      ms: 0, savedAt: 0, started: Date.now(), totalEver: 0, clicksEver: 0, goldenEver: 0, ach: {}, seeds: 0, spent: 0, perks: {}, rebirths: 0, baskets: 0, lastBasket: '', skin: 'classic', bestStorm: 0,
+      rec: { days: {}, allK: 0, allTaps: 0, allMs: 0, allGolden: 0 } };   // rec: all-time records, never reset
   }
   function norm(x) {
     var b = blank(); if (x) Object.keys(x).forEach(function (k) { if (x[k] !== undefined) b[k] = x[k]; });
@@ -137,7 +138,7 @@ Kiwi.onReady(function () {
   function checkReset() {
     var r = DB.state.clickerReset || 0;
     if (isHer && r && (c.started || 0) < r && (c.resetSeen || 0) < r) {
-      var keep = c.gifts; c = blank(); c.gifts = keep; c.resetSeen = r; saveCloud(true); K.toast('Your kiwi farm got a fresh start 🌱'); draw(true);
+      var keep = c.gifts, recs = c.rec, wks = c.weeks, bw = c.bestWeek; c = blank(); c.gifts = keep; c.rec = recs; c.weeks = wks; c.bestWeek = bw; c.resetSeen = r; saveCloud(true); K.toast('Your kiwi farm got a fresh start 🌱'); draw(true);
     }
   }
 
@@ -175,7 +176,16 @@ Kiwi.onReady(function () {
     if (Date.now() < fx.tapFrenzy) v *= 77;
     return v;
   }
-  function earn(n) { c.k += n; if (n > 0) { c.total += n; c.totalEver += n; } dirty = true; }
+  // ---- records (per her day: kiwis, taps, time played)
+  function today() {
+    var k = K.todayKey(); c.rec = c.rec || { days: {}, allK: 0, allTaps: 0, allMs: 0, allGolden: 0 }; c.rec.days = c.rec.days || {};
+    if (!c.rec.days[k]) {
+      c.rec.days[k] = { k: 0, t: 0, ms: 0 };
+      var keys = Object.keys(c.rec.days).sort(); if (keys.length > 200) delete c.rec.days[keys[0]];   // keep ~6 months of days
+    }
+    return c.rec.days[k];
+  }
+  function earn(n) { c.k += n; if (n > 0) { c.total += n; c.totalEver += n; if (isHer) { today().k += n; c.rec.allK += n; } } dirty = true; }
   function fmtShort(n) { return fmt(n); }
   function fmt(n, dec) {
     n = Math.max(0, n || 0);
@@ -187,10 +197,36 @@ Kiwi.onReady(function () {
   K.fmtKiwis = fmt;
   function seedsFor(total) { return Math.floor(Math.cbrt(total / 1e7)); }   // first seed at 10M kiwis in one farm
 
+  // ================================================================ weekly restart: every Monday at exactly 00:00 her time, the whole game goes back to 0
+  var T = window.KiwiTime;
+  function weekly() { return DB.state.clickerWeekly !== false; }
+  function weekStart(now) {
+    var p = T.parts(now, K.HZ), dow = new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay(), back = (dow + 6) % 7;
+    return T.wall(p.y, p.m, p.d - back, 0, 0, K.HZ);
+  }
+  function weekKey(now) { return T.dayKey(weekStart(now || Date.now()), K.HZ); }
+  function weekCheck() {
+    if (!isHer || !weekly()) return false;
+    var wk = weekKey();
+    if (!c.week) { c.week = wk; dirty = true; return false; }
+    if (c.week === wk) return false;
+    var helpers = HELPERS.reduce(function (a, h) { return a + owned(h.id); }, 0);
+    var rec = { week: c.week, total: Math.floor(c.total), kps: kps(true), helpers: helpers, trophies: achCount(), taps: c.clicks, golden: c.golden };
+    var hist = (c.weeks || []).concat([rec]).slice(-52), best = Math.max(c.bestWeek || 0, rec.total);
+    var keep = { gifts: c.gifts, weeks: hist, bestWeek: best, resetSeen: c.resetSeen, skin: 'classic', rec: c.rec };
+    c = blank(); Object.keys(keep).forEach(function (k) { c[k] = keep[k]; }); c.week = wk; c.started = Date.now();
+    dirty = true; saveCloud(true);
+    K.queueModal('<div class="em">🗓️🥝</div><h3>New week, new farm!</h3><p class="desc">Last week you grew <b>' + fmt(rec.total) + ' kiwis</b>' + (rec.total >= best && rec.total > 0 ? ' 🏆 Your best week ever!' : ' (best week: ' + fmt(best) + ')') + '</p><p class="desc">Everything is back to 0. Can you beat it this week? 💪</p>', 'call', function () { K.confetti({ count: 90 }); });
+    if (K.logEvent) K.logEvent('🗓️', 'Clicker: new week started (last week: ' + fmt(rec.total) + ' kiwis)');
+    return true;
+  }
+  var resetThisLoad = weekCheck();
+
   // ================================================================ offline earnings + gifts from him + daily basket
-  if (isHer && c.savedAt) {
+  if (isHer && c.savedAt && !resetThisLoad) {
     var maxAway = perk('owl') ? 24 : 12, share = perk('owl') ? 1 : 0.5;
-    var away = Math.min(Date.now() - c.savedAt, maxAway * 3600e3) / 1000, made = kps(true) * away * share;
+    var since = weekly() ? Math.max(c.savedAt, weekStart(Date.now())) : c.savedAt;
+    var away = Math.min(Date.now() - since, maxAway * 3600e3) / 1000, made = kps(true) * away * share;
     if (made >= 1 && away > 60) {
       earn(made);
       K.queueModal('<div class="em">🐦💤</div><h3>Welcome back!</h3><p class="desc">While you were away, your helpers grew <b>' + fmt(made) + ' kiwis</b> 🥝</p>', 'call');
@@ -226,7 +262,7 @@ Kiwi.onReady(function () {
   kiwiBtn.addEventListener('pointerdown', function (e) {
     e.preventDefault();
     if (!isHer) { K.toast('This is her game 🥝 You\'re just watching'); return; }
-    var n = perTap(); earn(n); c.clicks++; c.clicksEver++;
+    var n = perTap(); earn(n); c.clicks++; c.clicksEver++; today().t++; c.rec.allTaps++;
     kiwiBtn.classList.remove('pop'); void kiwiBtn.offsetWidth; kiwiBtn.classList.add('pop');
     var r = kiwiBtn.parentNode.getBoundingClientRect();
     floatText(e.clientX - r.left, e.clientY - r.top, '+' + fmt(n, true), Date.now() < fx.tapFrenzy ? 'hot' : '');
@@ -248,7 +284,7 @@ Kiwi.onReady(function () {
     scheduleGold();
   }
   gold.addEventListener('click', function () {
-    gold.hidden = true; c.golden++; c.goldenEver++;
+    gold.hidden = true; c.golden++; c.goldenEver++; if (c.rec) c.rec.allGolden = (c.rec.allGolden || 0) + 1;
     var r = Math.random(), stormOdds = perk('storm') ? 0.3 : 0.18;
     if (r < stormOdds) startStorm();
     else if (r < stormOdds + 0.27) { fx.frenzy = Date.now() + dur(30); K.toast('✨ Kiwi frenzy! 7× kiwis for ' + dur(30) / 1000 + ' seconds'); }
@@ -320,13 +356,15 @@ Kiwi.onReady(function () {
         ACH.map(function (a) { var got = (c.ach || {})[a.id]; return '<div class="ck-a' + (got ? ' got' : '') + '" title="' + esc(a.name + ': ' + a.desc) + '"><span>' + (got ? a.em : '🔒') + '</span><b>' + esc(a.name) + '</b><small>' + esc(a.desc) + '</small></div>'; }).join('') + '</div>';
     } else if (shop === 'seeds') {
       var gain = seedsFor(c.total), free = (c.seeds || 0) - (c.spent || 0);
-      html = '<div class="ck-seedbox"><div class="em">🌱</div><b>' + (c.seeds || 0) + ' Love Seeds</b><small>Each seed makes everything +3% faster, forever (now +' + Math.round((seedBonus() - 1) * 100) + '%). ' + free + ' to spend on perks.</small>' +
+      html = '<div class="ck-seedbox"><div class="em">🌱</div><b>' + (c.seeds || 0) + ' Love Seeds</b><small>Each seed makes everything +3% faster' + (weekly() ? ' until the weekly restart' : ', forever') + ' (now +' + Math.round((seedBonus() - 1) * 100) + '%). ' + free + ' to spend on perks.</small>' +
           '<p class="help">Start over with a fresh farm and plant <b>' + gain + ' new seed' + (gain === 1 ? '' : 's') + '</b>. ' + (gain ? '' : 'You need ' + fmt(1e7 * Math.pow(seedsFor(c.total) + 1, 3)) + ' kiwis in this farm for the next one.') + '</p>' +
           '<button type="button" class="btn ' + (gain ? 'pink' : 'ghost') + '" id="ck-rebirth"' + (gain && isHer ? '' : ' disabled') + '>🌱 Start over (+' + gain + ' seeds)</button></div>' +
         '<h3 style="margin:14px 0 6px">Perks</h3>' + PERKS.map(function (p) {
           var got = perk(p.id), can = !got && free >= p.cost && isHer;
           return '<button type="button" class="ck-item up' + (can || got ? ' can' : '') + '" data-perk="' + p.id + '"' + (can ? '' : ' aria-disabled="true"') + '><span class="ck-em">' + p.em + '</span><span class="ck-info"><b>' + esc(p.name) + (got ? ' ✓' : '') + '</b><small>' + esc(p.desc) + '</small>' + (got ? '' : '<span class="ck-cost">🌱 ' + p.cost + '</span>') + '</span></button>';
         }).join('');
+    } else if (shop === 'records') {
+      html = recordsHtml();
     } else if (shop === 'skins') {
       html = '<div class="ck-skins">' + SKINS.map(function (s) {
         var ok = s.test(), on = (c.skin || 'classic') === s.id;
@@ -335,6 +373,46 @@ Kiwi.onReady(function () {
     }
     $('#ck-shop').innerHTML = html;
   }
+  // ---- 🏅 Records panel
+  var DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function dowOf(key) { var p = key.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay(); }
+  function niceDay(key) { var p = key.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2], 12)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+  function hm(ms) { var m = Math.round((ms || 0) / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; }
+  function recordsHtml() {
+    var r = c.rec || { days: {} }, days = r.days || {}, keys = Object.keys(days);
+    function best(field) { var b = null; keys.forEach(function (k) { if (!b || days[k][field] > days[b][field]) b = k; }); return b && days[b][field] > 0 ? b : null; }
+    var bk = best('k'), bt = best('t'), bm = best('ms');
+    var wk = weekKey(), weekK = 0, weekT = 0, weekMs = 0;
+    keys.forEach(function (k) { if (k >= wk) { weekK += days[k].k; weekT += days[k].t; weekMs += days[k].ms; } });
+    // best of each weekday (Mon first) + total per weekday
+    var per = [1, 2, 3, 4, 5, 6, 0].map(function (d) {
+      var ks = keys.filter(function (k) { return dowOf(k) === d; }), top = null, sum = 0;
+      ks.forEach(function (k) { sum += days[k].k; if (!top || days[k].k > days[top].k) top = k; });
+      return { d: d, top: top, best: top ? days[top].k : 0, sum: sum, n: ks.length };
+    });
+    var maxBest = Math.max.apply(null, per.map(function (x) { return x.best; }).concat([1]));
+    var fav = per.slice().sort(function (a, b) { return b.sum - a.sum; })[0];
+    function tile(em, label, val, sub) { return '<div class="rec-tile"><span>' + em + '</span><b>' + val + '</b><small>' + label + (sub ? '<br>' + sub : '') + '</small></div>'; }
+    return '<h3 class="rec-h">🏆 High scores</h3><div class="rec-grid">' +
+        tile('🗓️', 'Best week', fmt(c.bestWeek || 0) + ' 🥝', '') +
+        tile('☀️', 'Best day', bk ? fmt(days[bk].k) + ' 🥝' : '–', bk ? niceDay(bk) : '') +
+        tile('👆', 'Most taps in a day', bt ? fmt(days[bt].t) : '–', bt ? niceDay(bt) : '') +
+        tile('⏱️', 'Longest play day', bm ? hm(days[bm].ms) : '–', bm ? niceDay(bm) : '') +
+      '</div>' +
+      '<h3 class="rec-h">📅 Best of each weekday</h3>' +
+      (fav && fav.sum > 0 ? '<p class="help" style="margin:0 0 8px">You grow the most on <b>' + DOW[fav.d] + 's</b> 💪</p>' : '') +
+      '<div class="rec-days">' + per.map(function (x) {
+        return '<div class="rec-day' + (fav && x.d === fav.d && x.sum > 0 ? ' fav' : '') + '"><b>' + DOW[x.d].slice(0, 3) + '</b><div class="rec-bar"><i style="width:' + Math.round(x.best / maxBest * 100) + '%"></i></div><span>' + (x.best ? fmt(x.best) : '–') + '</span><small>' + (x.top ? niceDay(x.top) : '') + '</small></div>';
+      }).join('') + '</div>' +
+      '<h3 class="rec-h">📊 This week</h3><div class="rec-grid">' +
+        tile('🥝', 'Kiwis grown', fmt(weekK), '') + tile('👆', 'Taps', fmt(weekT), '') + tile('⏱️', 'Time played', hm(weekMs), '') +
+      '</div>' +
+      '<h3 class="rec-h">🌍 All time (never resets)</h3><div class="rec-grid">' +
+        tile('🥝', 'Kiwis grown', fmt(r.allK || 0), '') + tile('👆', 'Taps', fmt(r.allTaps || 0), '') + tile('⏱️', 'Time played', hm(r.allMs), '') +
+        tile('🌟', 'Golden kiwis', fmt(r.allGolden || 0), '') + tile('🗓️', 'Weeks played', (c.weeks || []).length + 1, '') + tile('📆', 'Days played', keys.filter(function (k) { return days[k].t > 0 || days[k].ms > 60000; }).length, '') +
+      '</div>';
+  }
+
   $('#ck-shop').addEventListener('click', function (e) {
     var b = e.target.closest('[data-buy],[data-up],[data-perk],[data-skin],#ck-rebirth'); if (!b || !isHer) return;
     if (b.dataset.buy) {
@@ -417,6 +495,14 @@ Kiwi.onReady(function () {
     if (now < fx.storm) parts.push('⛈️ Kiwi storm!');
     if (b && b.until > now && b.mult > 1) parts.push('💚 ' + (b.label || 'Boost from Chengxuan') + ': ' + b.mult + '× until ' + K.herTime(b.until));
     $('#ck-boost').hidden = !parts.length; $('#ck-boost').textContent = parts.join('  ·  ');
+    var wkEl = $('#ck-week');
+    if (wkEl) {
+      wkEl.hidden = !weekly();
+      if (weekly()) {
+        var left = weekStart(now) + 7 * 864e5 - now, dd = Math.floor(left / 864e5), hh = Math.floor(left % 864e5 / 3600e3), mm = Math.floor(left % 3600e3 / 60000);
+        wkEl.textContent = '🗓️ New week (everything back to 0) in ' + (dd ? dd + 'd ' + hh + 'h' : hh ? hh + 'h ' + mm + 'm' : mm + 'm ' + Math.floor(left % 60000 / 1000) + 's') + (c.bestWeek ? ' · best week ' + fmt(c.bestWeek) : '');
+      }
+    }
     $('#ck-basket').hidden = !basketReady();
     if (basketReady()) $('#ck-basket-n').textContent = '+' + fmt(basketSize());
     var ups = visibleUpgrades(), affordable = ups.filter(function (u) { return c.k >= u.cost; }).length;
@@ -434,7 +520,7 @@ Kiwi.onReady(function () {
       ['🥝 Kiwis this farm', fmt(c.total)], ['🌍 Kiwis ever', fmt(c.totalEver)], ['👆 Taps ever', fmt(c.clicksEver)], ['🐦 Helpers', helpers],
       ['✨ Upgrades', Object.keys(c.up).length + ' / ' + UPGRADES.length], ['🏆 Trophies', achCount() + ' / ' + ACH.length], ['🌟 Golden kiwis', c.goldenEver],
       ['🌱 Love Seeds', (c.seeds || 0) + ' (' + (c.rebirths || 0) + ' restarts)'], ['🧺 Baskets', c.baskets || 0], ['⛈️ Best storm', (c.bestStorm || 0) + ' kiwis'],
-      ['📅 Playing since', K.herDay(c.started || Date.now())]
+      ['📅 This week since', K.herDay(c.started || Date.now())], ['🏆 Best week', fmt(c.bestWeek || 0)], ['🗓️ Weeks played', (c.weeks || []).length + 1]
     ].map(function (r) { return '<li><span>' + r[0] + '</span><span class="amt">' + r[1] + '</span></li>'; }).join('');
     var next = MILESTONES[c.ms];
     $('#ck-ms').innerHTML = next ? '<div class="help">Next milestone: ' + fmt(next[0]) + ' kiwis</div><div class="bar"><i style="width:' + Math.min(100, c.totalEver / next[0] * 100) + '%"></i></div>' : '<div class="help">Every milestone done 👑</div>';
@@ -444,10 +530,10 @@ Kiwi.onReady(function () {
   var last = Date.now();
   setInterval(function () {
     var now = Date.now(), dt = Math.min(5, (now - last) / 1000); last = now;
-    if (isHer) { var g = kps() * dt; if (g) earn(g); }
+    if (isHer) { var g = kps() * dt; if (g) earn(g); if (!document.hidden) { today().ms += dt * 1000; c.rec.allMs += dt * 1000; } }
     draw();
   }, 100);
-  setInterval(function () { if (isHer) { saveLocal(); saveCloud(); } else { c = norm(DB.live.clicker); } if (!document.hidden) drawStats(); }, 3000);
+  setInterval(function () { if (weekCheck()) draw(true); if (isHer) { saveLocal(); saveCloud(); } else { c = norm(DB.live.clicker); } if (!document.hidden) { drawStats(); if (shop === 'records') drawShop(); } }, 3000);
   DB.subscribe(function () { checkReset(); applyGifts(); if (!isHer) c = norm(DB.live.clicker); });
   setInterval(applyGifts, 20000);
   setTabs(); checkReset(); applyGifts(); draw(true);

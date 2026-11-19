@@ -52,7 +52,24 @@ Kiwi.onReady(function () {
       '<div class="gift-body">' + body + '</div></div>';
   }
   var sig = '', busy = false;
+  // Christmas theme: presents piled by the fireplace, under the tree
+  function scene() {
+    var box = $('#xmas-scene'); if (!box) return;
+    var on = K.theme && K.theme() === 'christmas';
+    box.hidden = !on; if (!on) { box.innerHTML = ''; return; }
+    var sig = JSON.stringify(K.gifts().map(function (g) { return [g.id, g.opened, g.unlocked, g.color, g.ribbon]; }));
+    if (box.dataset.sig === sig) return; box.dataset.sig = sig;
+    box.innerHTML = K.xmasScene(K.gifts());
+  }
+  $('#xmas-scene') && $('#xmas-scene').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-gift]'); if (!b) return;
+    var el = document.querySelector('.gift[data-id="' + b.dataset.gift + '"]') || $('#gifts');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1400);
+  });
+  document.addEventListener('kiwi:theme', function () { var b = $('#xmas-scene'); if (b) b.dataset.sig = ''; scene(); });
+  DB.subscribe(scene);
   function render(force) {
+    scene();
     if (busy) return;
     var gs = K.gifts();
     var s = JSON.stringify(gs.map(function (g) { return [g.id, g.unlocked, g.opened, g.canBuy, g.name, g.hint, g.cost, g.at, g.color]; })) + K.balance();

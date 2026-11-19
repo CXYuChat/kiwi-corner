@@ -754,7 +754,7 @@
   var themeNow = null;
   // What each theme sprinkles on the screen: kind of particle, how many, and the strip at the top
   var THEME_FX = {
-    christmas: { kind: 'snow', n: 60, strip: '🎄 ❄️ 🎁 ⛄ 🦌 ❄️ 🎄 ⭐ 🎁 ❄️ ⛄ 🎄', ground: 'snow' },
+    christmas: { kind: 'snow', n: 110, ground: 'snow', tree: true },
     valentine: { kind: 'fall', items: ['💕', '💖', '💘', '❤️', '💗'], n: 26, strip: '💕 💘 💖 💝 💗 💞 💕 💘 💖 💝' },
     birthday: { kind: 'confetti', n: 50, items: ['🎈', '🎉'], strip: '🎈 🎉 🎂 🎁 🥳 🎈 🎉 🎂 🎁 🥳' },
     sakura: { kind: 'petal', items: ['🌸', '🌸', '💮'], n: 28, strip: '🌸 💮 🌸 🌷 🌸 💮 🌸 🌷 🌸' },
@@ -766,6 +766,8 @@
     var th = K.theme(); if (th === themeNow) return; themeNow = th;
     document.documentElement.dataset.theme = th;
     ['theme-fx', 'theme-strip', 'theme-ground'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
+    document.querySelectorAll('.xmas-tree-home').forEach(function (t) { t.remove(); });
+    try { document.dispatchEvent(new CustomEvent('kiwi:theme', { detail: th })); } catch (e) { /* */ }
     var meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--cream').trim() || '#FFF8E7';
     document.querySelectorAll('.mascot').forEach(function (m) { if (K.HATS[th]) m.setAttribute('data-hat', K.HATS[th]); else m.removeAttribute('data-hat'); });
     var cfg = THEME_FX[th]; if (!cfg || document.body.dataset.page === 'chat') return;
@@ -778,7 +780,7 @@
       if (still) p.style.top = (r() * 100) + '%';
       p.style.animationDuration = (cfg.kind === 'stars' ? 2 + r() * 3 : cfg.kind === 'snow' ? 7 + r() * 9 : 8 + r() * 10) + 's';
       p.style.animationDelay = (-r() * 18) + 's';
-      if (cfg.kind === 'snow') { var sz = 3 + r() * 7; p.style.width = p.style.height = sz + 'px'; p.style.opacity = 0.55 + r() * 0.45; p.style.setProperty('--drift', (r() * 60 - 30) + 'px'); if (r() < 0.18) { p.textContent = '❄️'; p.className = 'flake'; p.style.fontSize = (12 + r() * 12) + 'px'; } }
+      if (cfg.kind === 'snow') { var sz = 4 + r() * 9; p.style.width = p.style.height = sz + 'px'; p.style.opacity = 0.55 + r() * 0.45; p.style.setProperty('--drift', (r() * 60 - 30) + 'px'); if (r() < 0.28) { p.textContent = '❄️'; p.className = 'flake'; p.style.fontSize = (14 + r() * 16) + 'px'; } }
       else if (cfg.kind === 'confetti') { if (r() < 0.2) { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.className = 'emo'; p.style.fontSize = (16 + r() * 12) + 'px'; } else { p.style.background = ['#ff6f91', '#ffb703', '#8EE000', '#38b6d8', '#9b8cff'][Math.floor(r() * 5)]; p.style.setProperty('--spin', (r() * 720 - 360) + 'deg'); } }
       else if (cfg.kind === 'bubble') { var bs = 6 + r() * 18; p.style.width = p.style.height = bs + 'px'; }
       else if (cfg.kind === 'stars') { p.style.top = (r() * 100) + '%'; var ss = 2 + r() * 3; p.style.width = p.style.height = ss + 'px'; if (r() < 0.15) { p.textContent = '✨'; p.className = 'emo'; p.style.fontSize = (10 + r() * 10) + 'px'; } }
@@ -791,8 +793,85 @@
       st.innerHTML = '<span>' + cfg.strip + ' ' + cfg.strip + '</span>';
       var top = document.querySelector('.topbar'); if (top) top.after(st); else document.body.prepend(st);
     }
+    if (cfg.tree) {   // a big decorated tree next to the kiwi on Home
+      var hero = document.querySelector('.hero');
+      if (hero) { var t = document.createElement('div'); t.className = 'xmas-tree-home'; t.setAttribute('aria-hidden', 'true'); t.innerHTML = K.xmasTreeSVG(); hero.appendChild(t); }
+    }
     if (cfg.ground) { var g = document.createElement('div'); g.id = 'theme-ground'; g.className = 'tg-' + cfg.ground; g.setAttribute('aria-hidden', 'true'); document.body.appendChild(g); }
   }
+  // ------------------------------------------------------------ Christmas: a decorated tree and a cozy fireplace scene (SVG + CSS animation)
+  K.xmasTreeSVG = function () {
+    var lights = '', orn = '', cols = ['#ff4d4d', '#ffd23f', '#4dc3ff', '#ff7ad9', '#7dff7a'];
+    [[60, 52], [48, 70], [74, 74], [40, 96], [62, 92], [84, 100], [34, 122], [56, 118], [78, 124], [96, 128]].forEach(function (p, i) {
+      lights += '<circle class="xl" cx="' + p[0] + '" cy="' + p[1] + '" r="3.2" fill="' + cols[i % 5] + '" style="animation-delay:' + (i * 0.23).toFixed(2) + 's"/>';
+    });
+    [[52, 60, '#d32f2f'], [70, 84, '#ffd23f'], [44, 108, '#1e88e5'], [88, 114, '#d32f2f'], [66, 106, '#e91e63'], [30, 132, '#ffd23f'], [74, 136, '#1e88e5']].forEach(function (o) {
+      orn += '<circle cx="' + o[0] + '" cy="' + o[1] + '" r="5.5" fill="' + o[2] + '"/><circle cx="' + (o[0] - 1.8) + '" cy="' + (o[1] - 1.8) + '" r="1.6" fill="#fff" opacity=".7"/>';
+    });
+    return '<svg viewBox="0 0 120 170" class="xtree" aria-hidden="true">' +
+      '<rect x="52" y="140" width="16" height="20" rx="2" fill="#7a4a2a"/>' +
+      '<path d="M60 22 L98 70 L80 70 L108 108 L86 108 L114 146 L6 146 L34 108 L12 108 L40 70 L22 70 Z" fill="#1f8a44"/>' +
+      '<path d="M60 22 L98 70 L80 70 L108 108 L86 108 L114 146 L60 146 Z" fill="#17703a" opacity=".55"/>' +
+      '<path d="M26 96 Q60 110 96 92 M18 132 Q60 146 104 126 M38 64 Q60 74 84 62" stroke="#ffd23f" stroke-width="2" fill="none" stroke-dasharray="3 4" opacity=".9"/>' +
+      orn + lights +
+      '<g class="xstar"><path d="M60 6 L64.5 17 L76 17.5 L67 24.5 L70 36 L60 29.5 L50 36 L53 24.5 L44 17.5 L55.5 17 Z" fill="#ffd23f" stroke="#f5a700" stroke-width="1"/></g>' +
+      '</svg>';
+  };
+  K.xmasScene = function (gifts) {
+    gifts = gifts || [];
+    // presents piled next to the fireplace, biggest at the bottom
+    var boxes = '', slots = [[20, 168, 46, 34], [68, 172, 38, 30], [108, 170, 42, 32], [36, 136, 36, 30], [78, 140, 34, 28], [56, 110, 30, 26], [118, 142, 30, 26], [6, 146, 28, 22]];
+    gifts.slice(0, slots.length).forEach(function (g, i) {
+      var sl = slots[i], x = sl[0], y = sl[1], w = sl[2], h = sl[3], wrap = g.color || '#d32f2f', rib = g.ribbon || '#ffd23f';
+      var lid = g.opened ? '<rect x="' + (x - 3) + '" y="' + (y - h - 14) + '" width="' + (w + 6) + '" height="8" rx="2" fill="' + wrap + '" transform="rotate(-18 ' + (x + w / 2) + ' ' + (y - h) + ')"/>' : '<rect x="' + (x - 3) + '" y="' + (y - h - 2) + '" width="' + (w + 6) + '" height="8" rx="2" fill="' + wrap + '" stroke="rgba(0,0,0,.12)"/>';
+      boxes += '<g class="xbox' + (g.opened ? ' open' : g.unlocked ? ' ready' : '') + '" data-gift="' + K.esc(g.id) + '" tabindex="0" role="button" aria-label="Present ' + g.n + '">' +
+        '<rect x="' + x + '" y="' + (y - h) + '" width="' + w + '" height="' + h + '" rx="3" fill="' + wrap + '" stroke="rgba(0,0,0,.15)"/>' +
+        '<rect x="' + (x + w / 2 - 3) + '" y="' + (y - h) + '" width="6" height="' + h + '" fill="' + rib + '"/>' + lid +
+        (g.opened ? '<text x="' + (x + w / 2) + '" y="' + (y - h - 8) + '" font-size="12" text-anchor="middle">✨</text>' : '<path d="M' + (x + w / 2) + ' ' + (y - h - 2) + ' q-9 -10 -12 -2 q4 5 12 2 q9 -10 12 -2 q-4 5 -12 2" fill="' + rib + '"/>') +
+        '<text x="' + (x + w / 2) + '" y="' + (y - h / 2 + 4) + '" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" style="paint-order:stroke" stroke="rgba(0,0,0,.35)" stroke-width="2">' + g.n + '</text></g>';
+    });
+    return '<div class="xscene" aria-label="Christmas scene with your presents">' +
+      '<svg viewBox="0 0 400 230" class="xroom">' +
+        '<defs><radialGradient id="xglow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb347" stop-opacity=".75"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>' +
+        '<linearGradient id="xfloor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a86b45"/><stop offset="1" stop-color="#7a4a2a"/></linearGradient>' +
+        '<pattern id="xbrick" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#b5523b"/><path d="M0 11.5 H24 M12 0 V6 M0 6 H24 M0 6 V12 M24 6 V12" stroke="#8e3b29" stroke-width="1.2"/></pattern></defs>' +
+        '<rect width="400" height="230" fill="#3b2a4d"/>' +
+        '<rect width="400" height="178" fill="#5a3f6e"/>' +
+        '<path d="M0 0 H400 V30 H0 Z" fill="#4a3360"/>' +
+        // window with snow outside
+        '<g><rect x="300" y="34" width="70" height="62" rx="6" fill="#1b2a4a" stroke="#f3e6d0" stroke-width="5"/><path d="M335 34 V96 M300 65 H370" stroke="#f3e6d0" stroke-width="4"/>' +
+          '<g class="xwsnow"><circle cx="310" cy="45" r="1.6" fill="#fff"/><circle cx="325" cy="58" r="1.3" fill="#fff"/><circle cx="350" cy="44" r="1.8" fill="#fff"/><circle cx="360" cy="75" r="1.4" fill="#fff"/><circle cx="318" cy="84" r="1.7" fill="#fff"/><circle cx="345" cy="88" r="1.3" fill="#fff"/></g>' +
+          '<circle cx="355" cy="50" r="7" fill="#fff6c9" opacity=".9"/></g>' +
+        // floor + rug
+        '<rect y="178" width="400" height="52" fill="url(#xfloor)"/>' +
+        '<ellipse cx="200" cy="205" rx="120" ry="16" fill="#b8323a" opacity=".85"/><ellipse cx="200" cy="205" rx="104" ry="11" fill="none" stroke="#ffd23f" stroke-dasharray="4 5" opacity=".7"/>' +
+        // fireplace
+        '<ellipse class="xfloorglow" cx="200" cy="186" rx="110" ry="26" fill="url(#xglow)"/>' +
+        '<rect x="120" y="70" width="160" height="110" fill="url(#xbrick)" rx="4"/>' +
+        '<rect x="108" y="62" width="184" height="16" rx="4" fill="#f3e6d0"/><rect x="112" y="76" width="176" height="4" fill="#d9c7aa"/>' +
+        '<path d="M150 180 V122 Q150 102 170 102 H230 Q250 102 250 122 V180 Z" fill="#1d1414"/>' +
+        '<g class="xfire">' +
+          '<path class="xf f1" d="M168 176 Q160 150 178 130 Q176 148 188 154 Q186 132 200 116 Q204 140 214 146 Q216 132 226 128 Q240 152 232 176 Z" fill="#ff7b1c"/>' +
+          '<path class="xf f2" d="M176 176 Q172 156 186 142 Q186 156 196 160 Q196 142 206 132 Q210 150 218 154 Q228 160 224 176 Z" fill="#ffb21c"/>' +
+          '<path class="xf f3" d="M186 176 Q184 164 194 154 Q196 164 202 166 Q204 154 210 150 Q216 162 214 176 Z" fill="#ffe07a"/>' +
+        '</g>' +
+        '<g class="xembers"><circle cx="190" cy="150" r="1.6" fill="#ffd23f"/><circle cx="206" cy="146" r="1.3" fill="#ff9a3c"/><circle cx="214" cy="152" r="1.5" fill="#ffd23f"/><circle cx="196" cy="140" r="1.2" fill="#ff7b1c"/></g>' +
+        '<rect x="160" y="170" width="80" height="9" rx="4" fill="#5b3a22"/><rect x="170" y="164" width="60" height="8" rx="4" fill="#6e4429" transform="rotate(-6 200 168)"/>' +
+        // garland + lights on the mantel
+        '<path d="M110 66 Q150 82 200 70 Q250 82 290 66" stroke="#1f8a44" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+        [130, 155, 180, 205, 230, 255, 278].map(function (x, i) { return '<circle class="xl" cx="' + x + '" cy="' + (72 + (i % 2) * 5) + '" r="3" fill="' + ['#ff4d4d', '#ffd23f', '#4dc3ff', '#ff7ad9'][i % 4] + '" style="animation-delay:' + (i * .3) + 's"/>'; }).join('') +
+        // stockings
+        '<g class="xsock" style="transform-origin:150px 80px"><path d="M140 80 h18 v26 q0 8 8 12 l-4 9 q-18 -6 -22 -16 Z" fill="#d32f2f"/><rect x="138" y="78" width="22" height="8" rx="2" fill="#fff"/><text x="149" y="98" font-size="8" text-anchor="middle" fill="#fff">L</text></g>' +
+        '<g class="xsock s2" style="transform-origin:250px 80px"><path d="M242 80 h18 v26 q0 8 8 12 l-4 9 q-18 -6 -22 -16 Z" fill="#1f8a44"/><rect x="240" y="78" width="22" height="8" rx="2" fill="#fff"/><text x="251" y="98" font-size="8" text-anchor="middle" fill="#fff">C</text></g>' +
+        // tree on the left, presents piled in front
+        '<g transform="translate(4 40) scale(.98)">' + K.xmasTreeSVG().replace('<svg viewBox="0 0 120 170" class="xtree" aria-hidden="true">', '<svg viewBox="0 0 120 170" width="120" height="170" class="xtree" aria-hidden="true">') + '</g>' +
+        '<g transform="translate(0 40) scale(.98)">' + boxes + '</g>' +
+        // cat sleeping by the fire (why not)
+        '<g transform="translate(290 172)"><ellipse cx="0" cy="0" rx="18" ry="9" fill="#e8a25a"/><circle cx="14" cy="-6" r="7" fill="#e8a25a"/><path d="M10 -12 l2 -6 l3 5 M16 -12 l3 -5 l1 6" fill="#e8a25a"/><path d="M12 -6 h3 M17 -6 h3" stroke="#5a3a1a" stroke-width="1"/><text x="-6" y="-12" font-size="8" class="xz">z</text></g>' +
+      '</svg>' +
+      '<p class="xcap">Tap a present to find it below 🎁</p></div>';
+  };
+
   K.applyTheme = function () { themeNow = null; applyTheme(); };
 
   // ------------------------------------------------------------ phone notifications for Chengxuan (ntfy). Settings live in her record (private).

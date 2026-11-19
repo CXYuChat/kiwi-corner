@@ -542,6 +542,9 @@ Kiwi.onReady(function () {
         '<label>For how long<select class="field" id="cb-hours"><option value="0.5">30 minutes</option><option value="1" selected>1 hour</option><option value="3">3 hours</option><option value="12">12 hours</option><option value="24">1 day</option><option value="168">1 week</option></select></label></div>' +
         '<label>Banner text<input class="field" id="cb-label" maxlength="60" placeholder="e.g. Movie night bonus 🍿"></label></div>' +
         '<div class="btns"><button class="btn sm" id="cb-on">⚡ Start boost</button>' + (boostOn ? '<button class="btn sm ghost" id="cb-off">Stop boost</button>' : '') + '</div></section>' +
+      '<section class="card stack"><h3>🗓️ Weekly restart</h3>' +
+        '<label class="switch"><span><b>Back to 0 every Monday at midnight (her time)</b><br><span class="help">Kiwis, helpers, upgrades, seeds, perks and trophies all reset. She sees last week\'s score.</span></span><input type="checkbox" id="ck-weekly"' + (DB.state.clickerWeekly !== false ? ' checked' : '') + '></label>' +
+        (c && (c.weeks || []).length ? '<ul class="log">' + c.weeks.slice().reverse().slice(0, 12).map(function (w) { return '<li><span>Week of ' + esc(w.week) + '<br><small>' + w.helpers + ' helpers · ' + f(w.taps) + ' taps · ' + w.trophies + ' trophies</small></span><span class="amt">' + f(w.total) + ' 🥝</span></li>'; }).join('') + '</ul><p class="help" style="margin:0">Best week: ' + f(c.bestWeek || 0) + ' kiwis</p>' : '<p class="help" style="margin:0">Her week-by-week scores show up here after the first Monday.</p>') + '</section>' +
       '<section class="card stack"><h3>🌱 Restart her game</h3><p class="help" style="margin:0">Sets her kiwis, helpers and upgrades back to zero.</p><div class="btns"><button class="btn sm danger" id="cr-go">Restart her game</button></div></section>';
   };
 
@@ -1064,6 +1067,7 @@ Kiwi.onReady(function () {
     return false;
   }
   panels.addEventListener('change', function (e) {
+    if (e.target.id === 'ck-weekly') { DB.setState({ clickerWeekly: e.target.checked }); toast(e.target.checked ? 'Her game restarts every Monday 🗓️' : 'Weekly restart off'); return; }
     if (e.target.id === 'cap-keep') { DB.setBilling({ capKeep: e.target.checked }); toast('Saved'); return; }
     if (e.target.id === 'th-choice') { DB.setState({ themeChoice: e.target.checked }); toast(e.target.checked ? 'She can pick her theme now 🎨' : 'Theme picker hidden'); render(); }
   });
