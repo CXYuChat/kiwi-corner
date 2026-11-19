@@ -17,6 +17,11 @@ Kiwi.onReady(function () {
   $('#dm-ava').textContent = other === 'him' ? '🥝' : '🌸';
   $('#dm-back').href = me === 'him' ? 'admin.html' : 'index.html';
   $('#dm-gear').hidden = false;
+  (function () {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'dm-gear dm-selbtn'; b.textContent = 'Select'; b.setAttribute('aria-label', 'Select messages');
+    $('#dm-gear').before(b);
+    b.addEventListener('click', function () { if (selecting) stopSelect(); else startSelect(); b.textContent = selecting ? 'Done' : 'Select'; });
+  })();
   // 🔔 in the header until notifications are on for this phone
   (function () {
     var st = K.pushState(); if (st === 'on' || st === 'unsupported') return;
@@ -260,12 +265,32 @@ Kiwi.onReady(function () {
     row.style.transform = '';
     if (selecting && !moved) { toggleSel(row.dataset.id); return; }
     if (!selecting && dx > 55 && e.pointerType !== 'mouse') { setReply(msgById(row.dataset.id)); return; }
-    if (!moved) {   // double-tap = ❤️
-      var now = Date.now();
-      if (lastTapId === row.dataset.id && now - lastTap < 320) { react(msgById(row.dataset.id), '❤️', true); lastTap = 0; }
-      else { lastTap = now; lastTapId = row.dataset.id; }
+    if (!moved) {   // double-tap = ❤️, single tap = quick bar (Reply · ❤️ · 😂 · More)
+      var now = Date.now(), rid = row.dataset.id;
+      if (lastTapId === rid && now - lastTap < 320) { clearTimeout(qbarT); hideQbar(); react(msgById(rid), '❤️', true); lastTap = 0; }
+      else { lastTap = now; lastTapId = rid; clearTimeout(qbarT); qbarT = setTimeout(function () { showQbar(rid); }, 330); }
     }
   }
+  // quick bar under a tapped message
+  var qbarT = null, qbarId = null;
+  function hideQbar() { var q = document.getElementById('dm-qbar'); if (q) q.remove(); qbarId = null; }
+  function showQbar(id) {
+    var m = msgById(id); if (!m || m.unsent) return;
+    if (qbarId === id) { hideQbar(); return; }
+    hideQbar(); qbarId = id;
+    var n = nodes[id]; if (!n) return;
+    var q = document.createElement('div'); q.id = 'dm-qbar'; q.className = 'dm-qbar ' + (m.from === me ? 'me' : 'them');
+    q.innerHTML = '<button type="button" data-q="reply">↩️ Reply</button><button type="button" data-q="❤️">❤️</button><button type="button" data-q="😂">😂</button><button type="button" data-q="🥺">🥺</button><button type="button" data-q="more">⋯</button>' +
+      '<span class="dm-qtime">' + timeLabel(m.at) + '</span>';
+    n.appendChild(q);
+    q.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-q]'); if (!b) return; e.stopPropagation();
+      var k = b.dataset.q; hideQbar();
+      if (k === 'reply') setReply(m); else if (k === 'more') actions(m); else react(m, k, true);
+    });
+    if (atBottom || n === box.lastElementChild) requestAnimationFrame(function () { q.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+  }
+  document.addEventListener('pointerdown', function (e) { if (!e.target.closest('#dm-qbar') && !e.target.closest('.dm-row')) hideQbar(); });
   box.addEventListener('pointerup', endPress);
   box.addEventListener('pointercancel', function () { clearTimeout(pressT); if (swipeRow) swipeRow.style.transform = ''; swipeRow = null; });
   box.addEventListener('contextmenu', function (e) { var row = e.target.closest('.dm-row'); if (!row) return; e.preventDefault(); clearTimeout(pressT); actions(msgById(row.dataset.id)); });
@@ -330,6 +355,7 @@ Kiwi.onReady(function () {
   function stopSelect() { selecting = false; selected = {}; nodes = {}; box.innerHTML = ''; draw(); }
   function toggleSel(id) { if (selected[id]) delete selected[id]; else selected[id] = true; draw(); }
   function drawSelectBar() {
+    var sb = document.querySelector('.dm-selbtn'); if (sb) sb.textContent = selecting ? 'Done' : 'Select';
     var bar = $('#dm-selbar');
     if (!selecting) { if (bar) bar.remove(); $('#dm-form').hidden = false; var o = $('#dm-ours'); if (o) o.hidden = false; return; }
     if (!bar) { bar = document.createElement('div'); bar.id = 'dm-selbar'; bar.className = 'dm-selbar'; $('#dm-form').after(bar); }

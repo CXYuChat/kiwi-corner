@@ -46,7 +46,8 @@ Kiwi.onReady(function () {
     K.modal('<div class="em">' + K.esc(sp.emoji || '💌') + '</div><h3>' + K.esc(sp.title || 'A surprise for you') + '</h3>' +
       '<p class="desc" style="white-space:pre-wrap">' + K.esc(sp.text || '') + '</p><p class="muted">From Chengxuan 💚</p>', 'call');
     K.confetti({ count: 110 });
-    DB.setHer({ seenSurprise: sp.id });
+    var ss = Object.assign({}, DB.her.seenSurprises || {}); ss[sp.id] = Date.now();
+    DB.setHer({ seenSurprise: sp.id, seenSurprises: ss });
     K.logEvent('💌', 'Opened your surprise: ' + (sp.title || ''));
   });
 

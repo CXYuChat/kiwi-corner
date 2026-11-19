@@ -752,22 +752,46 @@
     return K.adminTheme();
   };
   var themeNow = null;
+  // What each theme sprinkles on the screen: kind of particle, how many, and the strip at the top
+  var THEME_FX = {
+    christmas: { kind: 'snow', n: 60, strip: '🎄 ❄️ 🎁 ⛄ 🦌 ❄️ 🎄 ⭐ 🎁 ❄️ ⛄ 🎄', ground: 'snow' },
+    valentine: { kind: 'fall', items: ['💕', '💖', '💘', '❤️', '💗'], n: 26, strip: '💕 💘 💖 💝 💗 💞 💕 💘 💖 💝' },
+    birthday: { kind: 'confetti', n: 50, items: ['🎈', '🎉'], strip: '🎈 🎉 🎂 🎁 🥳 🎈 🎉 🎂 🎁 🥳' },
+    sakura: { kind: 'petal', items: ['🌸', '🌸', '💮'], n: 28, strip: '🌸 💮 🌸 🌷 🌸 💮 🌸 🌷 🌸' },
+    ocean: { kind: 'bubble', n: 34, strip: '🌊 🐚 🐠 🐬 🫧 🐳 🌊 🐚 🐠 🫧', ground: 'wave' },
+    autumn: { kind: 'fall', items: ['🍂', '🍁', '🍂', '🌰'], n: 26, strip: '🍂 🍁 🎃 🍂 🌰 🍁 🍂 🎃 🍁' },
+    night: { kind: 'stars', n: 70, strip: '⭐ 🌙 ✨ 🌟 ⭐ 🌙 ✨ 🌟 ⭐' }
+  };
   function applyTheme() {
     var th = K.theme(); if (th === themeNow) return; themeNow = th;
     document.documentElement.dataset.theme = th;
-    var old = document.getElementById('theme-fx'); if (old) old.remove();
-    var t = K.THEMES.find(function (x) { return x[0] === th; });
+    ['theme-fx', 'theme-strip', 'theme-ground'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
     var meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--cream').trim() || '#FFF8E7';
     document.querySelectorAll('.mascot').forEach(function (m) { if (K.HATS[th]) m.setAttribute('data-hat', K.HATS[th]); else m.removeAttribute('data-hat'); });
-    if (!t || !t[2] || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-    var fx = document.createElement('div'); fx.id = 'theme-fx'; fx.setAttribute('aria-hidden', 'true');
-    for (var i = 0; i < 14; i++) {
-      var s = document.createElement('span'); s.textContent = t[2];
-      s.style.left = (Math.random() * 100) + '%'; s.style.animationDuration = (9 + Math.random() * 10) + 's';
-      s.style.animationDelay = (-Math.random() * 18) + 's'; s.style.fontSize = (12 + Math.random() * 14) + 'px';
-      fx.appendChild(s);
+    var cfg = THEME_FX[th]; if (!cfg || document.body.dataset.page === 'chat') return;
+    var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;   // calm version: scattered, gently twinkling
+    var fx = document.createElement('div'); fx.id = 'theme-fx'; fx.className = 'tfx-' + cfg.kind + (still ? ' still' : ''); fx.setAttribute('aria-hidden', 'true');
+    var n = Math.round(cfg.n * (innerWidth < 500 ? 0.7 : 1));
+    for (var i = 0; i < n; i++) {
+      var p = document.createElement('i'), r = Math.random;
+      p.style.left = (r() * 100) + '%';
+      if (still) p.style.top = (r() * 100) + '%';
+      p.style.animationDuration = (cfg.kind === 'stars' ? 2 + r() * 3 : cfg.kind === 'snow' ? 7 + r() * 9 : 8 + r() * 10) + 's';
+      p.style.animationDelay = (-r() * 18) + 's';
+      if (cfg.kind === 'snow') { var sz = 3 + r() * 7; p.style.width = p.style.height = sz + 'px'; p.style.opacity = 0.55 + r() * 0.45; p.style.setProperty('--drift', (r() * 60 - 30) + 'px'); if (r() < 0.18) { p.textContent = '❄️'; p.className = 'flake'; p.style.fontSize = (12 + r() * 12) + 'px'; } }
+      else if (cfg.kind === 'confetti') { if (r() < 0.2) { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.className = 'emo'; p.style.fontSize = (16 + r() * 12) + 'px'; } else { p.style.background = ['#ff6f91', '#ffb703', '#8EE000', '#38b6d8', '#9b8cff'][Math.floor(r() * 5)]; p.style.setProperty('--spin', (r() * 720 - 360) + 'deg'); } }
+      else if (cfg.kind === 'bubble') { var bs = 6 + r() * 18; p.style.width = p.style.height = bs + 'px'; }
+      else if (cfg.kind === 'stars') { p.style.top = (r() * 100) + '%'; var ss = 2 + r() * 3; p.style.width = p.style.height = ss + 'px'; if (r() < 0.15) { p.textContent = '✨'; p.className = 'emo'; p.style.fontSize = (10 + r() * 10) + 'px'; } }
+      else { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.fontSize = (14 + r() * 14) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); }
+      fx.appendChild(p);
     }
     document.body.appendChild(fx);
+    if (cfg.strip && document.body.dataset.page !== 'admin') {
+      var st = document.createElement('div'); st.id = 'theme-strip'; st.setAttribute('aria-hidden', 'true');
+      st.innerHTML = '<span>' + cfg.strip + ' ' + cfg.strip + '</span>';
+      var top = document.querySelector('.topbar'); if (top) top.after(st); else document.body.prepend(st);
+    }
+    if (cfg.ground) { var g = document.createElement('div'); g.id = 'theme-ground'; g.className = 'tg-' + cfg.ground; g.setAttribute('aria-hidden', 'true'); document.body.appendChild(g); }
   }
   K.applyTheme = function () { themeNow = null; applyTheme(); };
 

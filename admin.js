@@ -211,7 +211,7 @@ Kiwi.onReady(function () {
 
   // ---- Everything from her in one place: messages, guesses, wishes, answers to your questions.
   // "Needs you" = waiting for your reply; "Done" = replied / archived.
-  var inboxView = 'inbox', inboxKind = 'all';
+  var inboxView = 'inbox', inboxKind = 'all', inboxSel = null, lastInboxList = [];
   function isArchived(m) { return m.archived === true || (m.archived !== false && !!m.reply); }
   function seenAnswers() { return DB.state.seenAnswers || {}; }
   function fromHer() {
@@ -278,7 +278,16 @@ Kiwi.onReady(function () {
       ? '<p class="help" style="margin:0">Newest first. Once you reply, it moves to Done.</p>'
       : '<p class="help" style="margin:0">Everything you\'ve answered. You can still change a reply.</p>';
     var empty = inboxView === 'inbox' ? '<p class="muted">All caught up 💚 Nothing from her is waiting.</p>' : '<p class="muted">Nothing here yet</p>';
-    return '<section class="card stack"><h3>📥 From her</h3>' + seg + chips + help + (list.map(itemHtml).join('') || empty) + '</section>';
+    var selBar = inboxSel
+      ? '<div class="sel-bar"><b>' + Object.keys(inboxSel).length + ' selected</b><button class="btn sm ghost" id="isel-all">All</button><button class="btn sm" id="isel-done">✓ Mark done</button><button class="btn sm danger" id="isel-del">🗑️ Delete</button><button class="btn sm ghost" id="isel-x">Cancel</button></div>'
+      : '<div class="btns" style="justify-content:flex-end;margin:0"><button class="btn sm ghost" id="isel-on">☑️ Select</button></div>';
+    var rows = list.map(function (it) {
+      if (!inboxSel) return itemHtml(it);
+      var key = it.kind + ':' + it.id;
+      return '<div class="sel-wrap' + (inboxSel[key] ? ' on' : '') + '" data-iselrow="' + esc(key) + '"><span class="sel-check">' + (inboxSel[key] ? '✓' : '') + '</span><div class="sel-body">' + itemHtml(it) + '</div></div>';
+    });
+    lastInboxList = list;
+    return '<section class="card stack"><h3>📥 From her</h3>' + seg + chips + help + selBar + (rows.join('') || empty) + '</section>';
   };
 
   // ---- Questions you ask her (show as a card on her Home page)
@@ -355,6 +364,7 @@ Kiwi.onReady(function () {
         '<label>Title<input class="field" id="s-title" value="' + esc(sp.title || '') + '" placeholder="e.g. Open me 🥰"></label>' +
         '<label>Message<textarea class="field" id="s-text" placeholder="Write anything…">' + esc(sp.text || '') + '</textarea></label></div>' +
         '<p class="help">' + (sp.active ? 'Showing now · ' + (her.seenSurprise === sp.id ? 'she opened it ✓' : 'not opened yet') : 'Not showing') + '</p>' +
+        '<div class="btns"><button class="btn sm ghost" id="s-preview">👀 Preview</button><button class="btn sm ghost" id="s-ideas">💡 Ideas</button></div>' +
         '<div class="btns"><button class="btn sm pink" id="s-send">✨ Send surprise</button>' + (sp.active ? '<button class="btn sm ghost" id="s-hide">Hide it</button>' : '') + '</div></section>' +
       '<section class="card stack"><h3>📣 Live status update</h3><p class="help">Replaces the "Right now Chengxuan is…" text for a while, e.g. "Just landed! 🛬".</p><div class="form">' +
         '<label>Status<input class="field" id="o-text" value="' + esc(ovOn ? ov.text : '') + '" placeholder="e.g. Just landed safe! 🛬" maxlength="80"></label>' +
@@ -363,6 +373,38 @@ Kiwi.onReady(function () {
         '<div class="btns"><button class="btn sm" id="o-save">📣 Show status</button>' + (ovOn ? '<button class="btn sm ghost" id="o-clear">Clear</button>' : '') + '</div></section>' +
       '<section class="card stack"><h3>🏷️ Home page banner</h3><div class="form"><label>Short line at the top of her home page (empty = hidden)<input class="field" id="b-text" value="' + esc(st.banner || '') + '" maxlength="90" placeholder="e.g. Good luck on your exam today! 📚💚"></label></div>' +
         '<div class="btns"><button class="btn sm" id="b-save">💾 Save banner</button></div></section>';
+  };
+
+  // ---- surprise helpers: what she sees, ideas, and everything you've sent
+  function surprisePreview(sp) {
+    K.modal('<div class="help" style="text-align:center;margin:0 0 6px">👀 Preview: this is exactly what she sees</div><div class="em">' + esc(sp.emoji || '💌') + '</div><h3>' + esc(sp.title || 'A surprise for you') + '</h3>' +
+      '<p class="desc" style="white-space:pre-wrap">' + esc(sp.text || '') + '</p><p class="muted">From Chengxuan 💚</p>', 'call');
+  }
+  var SURPRISE_IDEAS = [
+    ['🥝', 'Open me, dumpling', 'Just a reminder that somewhere in Singapore, someone is smiling at his phone because of you. That someone is me. 💚'],
+    ['🎟️', 'A coupon for you', 'This coupon is good for ONE (1) call where you get to talk about anything for as long as you want, and I just listen. No expiry date. 📞'],
+    ['🗺️', 'When I see you…', 'Top 3 things we\'re doing when I see you:\n1. A very long hug\n2. Your favourite food, my treat\n3. 10 Things I Hate About You, finally together 🍿'],
+    ['📸', 'Remember this?', 'I was thinking about the day we met and I still can\'t believe how lucky I got. Tell me your favourite memory of us tonight? 🥺'],
+    ['🌙', 'For tonight', 'Before you sleep: you are smart, you are so loved, and tomorrow is going to be a good day. Sweet dreams, baby 🌙💚'],
+    ['🎁', 'Points rain!', 'Check your points… I might have sent you a few for being the cutest person alive ⭐'],
+    ['🍜', 'Dinner date', 'Order your favourite dinner tonight, send me a photo, and I\'ll eat with you on call. Virtual date, my treat next time 🍜']
+  ];
+  function seenSurprise(id) { var h = DB.her; return h.seenSurprise === id || !!(h.seenSurprises || {})[id]; }
+  function surpriseHistory() {
+    var log = (DB.state.surpriseLog || []).slice();
+    K.scheduled('surprise', true).forEach(function (x) { log.push({ id: x.id, emoji: x.data.emoji, title: x.data.title, text: x.data.text, at: x.at, scheduled: x.at > Date.now() }); });
+    var cur = DB.state.surprise; if (cur && cur.id && !log.some(function (x) { return x.id === cur.id; })) log.push(Object.assign({ at: cur.at || 0 }, cur));
+    return log.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+  }
+  P.surprises = function () {
+    var h = surpriseHistory();
+    return '<section class="card stack"><h3>📜 Surprises you\'ve sent</h3><p class="help" style="margin:0">Tap 👀 to see one exactly as she did.</p>' +
+      (h.length ? h.map(function (x) {
+        var st = x.scheduled ? '⏰ scheduled' : seenSurprise(x.id) ? 'opened ✓' : 'not opened yet';
+        return '<div class="hist-row"><div><b>' + esc((x.emoji || '💌') + ' ' + (x.title || 'Surprise')) + '</b><p class="help">' + (x.at ? K.herDateTime(x.at) + ' · ' : '') + st + '</p>' +
+          (x.text ? '<p class="help" style="white-space:pre-wrap">' + esc(x.text.slice(0, 160)) + (x.text.length > 160 ? '…' : '') + '</p>' : '') + '</div>' +
+          '<div class="btns" style="flex-direction:column"><button class="btn sm ghost" data-spv="' + esc(x.id) + '">👀</button><button class="btn sm ghost" data-spcopy="' + esc(x.id) + '">↻ Reuse</button></div></div>';
+      }).join('') : '<p class="muted">None yet. Send one from 💌 Messages to her.</p>') + '</section>';
   };
 
   P.countdowns = function () {
@@ -586,6 +628,32 @@ Kiwi.onReady(function () {
 
   // power-tool buttons; returns true if it handled the click
   function powerClick(b, d, id) {
+    if (id === 'isel-on') { inboxSel = {}; render(); return true; }
+    if (id === 'isel-x') { inboxSel = null; render(); return true; }
+    if (id === 'isel-all') { lastInboxList.forEach(function (it) { inboxSel[it.kind + ':' + it.id] = true; }); render(); return true; }
+    if (id === 'isel-done' || id === 'isel-del') {
+      var keys = Object.keys(inboxSel || {}); if (!keys.length) { toast('Tap items to select them'); return true; }
+      var by = { msg: [], guess: [], wish: [], answer: [] }; keys.forEach(function (k) { var i = k.indexOf(':'); by[k.slice(0, i)].push(k.slice(i + 1)); });
+      var apply = function () {
+        var her = DB.her, patch = {};
+        if (id === 'isel-del') {
+          if (by.msg.length) patch.messages = (her.messages || []).filter(function (m) { return by.msg.indexOf(m.id) === -1; });
+          if (by.guess.length) patch.guesses = (her.guesses || []).filter(function (x) { return by.guess.indexOf(x.id) === -1; });
+          if (by.wish.length) patch.wishes = (her.wishes || []).filter(function (x) { return by.wish.indexOf(x.id) === -1; });
+          if (by.answer.length) { var an = Object.assign({}, her.answers || {}); by.answer.forEach(function (q) { delete an[q]; }); patch.answers = an; }
+        } else {
+          if (by.msg.length) patch.messages = (her.messages || []).map(function (m) { return by.msg.indexOf(m.id) !== -1 ? Object.assign({}, m, { read: true, archived: true }) : m; });
+          if (by.wish.length) patch.wishes = (her.wishes || []).map(function (x) { return by.wish.indexOf(x.id) !== -1 && !x.status ? Object.assign({}, x, { status: 'noted' }) : x; });
+          if (by.answer.length) { var sa = Object.assign({}, DB.state.seenAnswers || {}); K.questions().forEach(function (q) { if (by.answer.indexOf(q.id) !== -1 && q.answer) sa[q.id] = q.answer.at; }); DB.setState({ seenAnswers: sa }); }
+        }
+        if (Object.keys(patch).length) DB.setHer(patch);
+        toast((id === 'isel-del' ? 'Deleted ' : 'Marked done: ') + keys.length + (by.guess.length && id === 'isel-done' ? ' (guesses need a verdict)' : ''));
+        inboxSel = null; render();
+      };
+      if (id === 'isel-del') K.confirm({ emoji: '🗑️', title: 'Delete ' + keys.length + ' item' + (keys.length > 1 ? 's' : '') + '?', text: 'They disappear for both of you. (You can undo it in 🕘 History.)', yes: 'Delete', danger: true }).then(function (ok) { if (ok) apply(); });
+      else apply();
+      return true;
+    }
     if (id === 'ev-clear') {
       K.confirm({ emoji: '🧹', title: 'Clear her activity and visits?', yes: 'Clear', danger: true }).then(function (ok) { if (ok) DB.setLive({ events: [], sessions: [] }).then(function () { toast('Cleared'); render(); }); });
       return true;
@@ -1003,10 +1071,42 @@ Kiwi.onReady(function () {
     if (e.target.id === 'search-q') { searchQ = e.target.value; $('#search-out').innerHTML = searchResults(); }
   });
 
+  // ---------------------------------------------------------------- auto-save what you type (survives refresh, switching tabs, closing)
+  var ADR = 'kiwi-adraft:';
+  function draftKeyOf(el) {
+    if (!el || !/^(INPUT|TEXTAREA)$/.test(el.tagName) || /^(checkbox|radio|file|number|datetime-local|hidden)$/.test(el.type) || el.id === 'search-q' || el.id === 'ar-test' || el.id === 'raw-json') return null;
+    if (el.id) return 'id:' + el.id;
+    if (el.dataset.replyto) return 'reply:' + el.dataset.replyto;
+    if (el.dataset.xnote) return 'note:' + el.dataset.xnote;
+    return null;
+  }
+  var savedPill = null, savedT = null;
+  panels.addEventListener('input', function (e) {
+    var k = draftKeyOf(e.target); if (!k) return;
+    try { if (e.target.value.trim()) localStorage.setItem(ADR + k, e.target.value); else localStorage.removeItem(ADR + k); } catch (x) { /* */ }
+    if (!savedPill) { savedPill = document.createElement('div'); savedPill.className = 'draft-pill'; savedPill.textContent = '💾 Draft saved'; document.body.appendChild(savedPill); }
+    savedPill.classList.add('show'); clearTimeout(savedT); savedT = setTimeout(function () { savedPill.classList.remove('show'); }, 1200);
+  });
+  function restoreAdminDrafts() {
+    panels.querySelectorAll('input, textarea').forEach(function (el) {
+      var k = draftKeyOf(el); if (!k) return;
+      var v = null; try { v = localStorage.getItem(ADR + k); } catch (x) { /* */ }
+      if (v != null && v !== el.value) { el.value = v; el.classList.add('has-draft'); }
+    });
+  }
+  // A real "send / save" in a card clears that card's drafts (picking a type or a filter doesn't).
+  panels.addEventListener('click', function (e) {
+    var b = e.target.closest('button.btn'); if (!b || b.classList.contains('ghost')) return;
+    if (b.dataset.schedtype || b.dataset.inboxkind || b.dataset.cgquick || b.dataset.schedquick || b.dataset.raw) return;
+    var box = b.closest('.item, .card'); if (!box) return;
+    box.querySelectorAll('input, textarea').forEach(function (el) { var k = draftKeyOf(el); if (k) try { localStorage.removeItem(ADR + k); } catch (x) { /* */ } });
+  }, true);
+
   // ---------------------------------------------------------------- render + tabs
   function render() {
     renderNav();
     panels.innerHTML = '<div class="panel stack">' + P[current]() + '</div>';
+    restoreAdminDrafts();
     var pc = $('#push-card-admin'); if (pc) { var x = K.store.get('kiwi-push-x'); K.store.set('kiwi-push-x', '0'); K.pushCard(pc); if (x) K.store.set('kiwi-push-x', x); }
     wireSgHints(panels);
   }
@@ -1015,7 +1115,7 @@ Kiwi.onReady(function () {
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
     { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['surprises', '📜 Sent surprises'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
     { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['billing', '💳 Spending'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }
@@ -1061,6 +1161,8 @@ Kiwi.onReady(function () {
   function saveGifts(map, msg) { DB.setState({ gifts: map }); toast(msg || 'Saved 🎁'); render(); }
 
   panels.addEventListener('click', function (e) {
+    var sr = inboxSel && e.target.closest('[data-iselrow]');
+    if (sr && !e.target.closest('button, textarea, input, a')) { var key = sr.dataset.iselrow; if (inboxSel[key]) delete inboxSel[key]; else inboxSel[key] = true; return render(); }
     var un = e.target.closest('[data-apunskip]');
     if (un) {
       e.preventDefault();
@@ -1279,8 +1381,27 @@ Kiwi.onReady(function () {
     if (id === 'q-reset') { DB.setState({ quote: DB.defaults.state().quote }); toast('Original quote back'); return render(); }
     if (id === 's-send') {
       if (!val('s-text') && !val('s-title')) return toast('Write a title or message first');
-      DB.setState({ surprise: { id: uid(), emoji: val('s-emoji') || '💌', title: val('s-title'), text: val('s-text'), active: true } });
+      var sp1 = { id: uid(), emoji: val('s-emoji') || '💌', title: val('s-title'), text: val('s-text'), active: true, at: Date.now() };
+      DB.setState({ surprise: sp1, surpriseLog: (DB.state.surpriseLog || []).concat([{ id: sp1.id, emoji: sp1.emoji, title: sp1.title, text: sp1.text, at: sp1.at }]).slice(-100) });
       toast('Surprise sent 💌'); return render();
+    }
+    if (id === 's-preview') { surprisePreview({ emoji: val('s-emoji') || '💌', title: val('s-title'), text: val('s-text') }); return; }
+    if (id === 's-ideas') {
+      var sh2 = K.modal('<h3>💡 Surprise ideas</h3><p class="help">Tap one to put it in the box. You can change it before sending.</p><div class="stack" style="gap:8px">' + SURPRISE_IDEAS.map(function (x, i) {
+        return '<button type="button" class="hist-row" data-idea="' + i + '" style="text-align:left;border:0;font:inherit;cursor:pointer;width:100%"><div><b>' + esc(x[0] + ' ' + x[1]) + '</b><p class="help" style="white-space:pre-wrap">' + esc(x[2]) + '</p></div></button>';
+      }).join('') + '</div>');
+      sh2.addEventListener('click', function (e) {
+        var b2 = e.target.closest('[data-idea]'); if (!b2) return; var x = SURPRISE_IDEAS[+b2.dataset.idea];
+        $('#s-emoji').value = x[0]; $('#s-title').value = x[1]; $('#s-text').value = x[2];
+        ['s-emoji', 's-title', 's-text'].forEach(function (k) { $('#' + k).dispatchEvent(new Event('input', { bubbles: true })); });
+        K.closeModal(); toast('Idea added. Preview or send it 💌');
+      });
+      return;
+    }
+    if (d.spv || d.spcopy) {
+      var it = surpriseHistory().find(function (x) { return x.id === (d.spv || d.spcopy); }); if (!it) return;
+      if (d.spv) { surprisePreview(it); return; }
+      go('messages'); setTimeout(function () { $('#s-emoji').value = it.emoji || '💌'; $('#s-title').value = it.title || ''; $('#s-text').value = it.text || ''; toast('Copied into the surprise box'); }, 60); return;
     }
     if (id === 's-hide') { DB.setState({ surprise: Object.assign({}, DB.state.surprise, { active: false }) }); toast('Surprise hidden'); return render(); }
     if (id === 'o-save') {
