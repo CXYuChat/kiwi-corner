@@ -1260,3 +1260,8 @@ html.xr-open .toast { z-index: 960; }
 @keyframes xrRun { 0% { transform: translateX(0); } 10%, 30%, 50%, 70% { transform: translateX(var(--s, 0)) translateY(-4px); } 40% { transform: translateX(120px); } 41% { transform: translateX(120px) scaleX(-1); } 90% { transform: translateX(0) scaleX(-1); } 100% { transform: translateX(0); } }
 .xr-wave .xr-arm { transform-box: fill-box; transform-origin: 0 100%; animation: xrArm .8s ease-in-out infinite alternate; }
 @keyframes xrArm { from { transform: rotate(0); } to { transform: rotate(-30deg); } }
+.key-banner { display: grid; gap: 2px; text-align: center; margin: 4px 0 12px; padding: 12px; border-radius: 18px; background: linear-gradient(135deg, #fff3c4, #ffe08a); color: #6b4a00; box-shadow: 0 0 0 2px #f2c230, 0 6px 16px rgba(242, 194, 48, .35); animation: sGlow 1.6s ease-in-out infinite alternate; }
+.key-banner span { font-size: .85rem; }
+.key-btn { background: linear-gradient(135deg, #ffd23f, #f2a900) !important; color: #4a3000 !important; box-shadow: 0 3px 0 #b07c00 !important; margin-top: 6px; }
+.xr-found { pointer-events: none; position: absolute; left: 50%; top: 8px; transform: translateX(-50%); background: rgba(0, 0, 0, .65); color: #ffd27a; font-size: .8rem; font-weight: 600; padding: 5px 12px; border-radius: 999px; animation: dmIn .2s ease-out; white-space: nowrap; }
+#xr-room { position: relative; }

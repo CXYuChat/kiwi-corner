@@ -96,6 +96,10 @@ exports.onHer = onDocumentWritten('kiwi/her', async (ev) => {
   if ((a.guesses || []).length > (b.guesses || []).length) jobs.push(push('him', { title: '🤔 Livina guessed a present', body: clip(a.guesses[a.guesses.length - 1].text), url: '/admin.html', tag: 'guess' }));
   const bo = b.opened || {}, ao = a.opened || {};
   if (Object.keys(ao).length > Object.keys(bo).length) jobs.push(push('him', { title: '🎁 Livina opened a present!', body: 'She just unwrapped it', url: '/admin.html', tag: 'gift' }));
+  // Santa's Golden Key
+  const bk = b.xmasKey || {}, ak = a.xmasKey || {};
+  if (ak.got && !bk.got) jobs.push(push('him', { title: '🔑 Livina found every Christmas secret!', body: 'She earned Santa\'s Golden Key (one free present of her choice)', url: '/admin.html', tag: 'xmaskey' }));
+  if (ak.used && !bk.used) jobs.push(push('him', { title: '🔑 Livina used Santa\'s Golden Key', body: 'She unlocked a present with it 🎁', url: '/admin.html', tag: 'xmaskey' }));
   // open-when letters she opened
   const bl2 = {}; (b.letters || []).forEach((l) => { bl2[l.id] = l; });
   (a.letters || []).forEach((l) => { const o = bl2[l.id]; if (l.openedAt && (!o || !o.openedAt)) jobs.push(push('him', { title: '💌 Livina opened a letter', body: '"Open when ' + clip(l.when, 60) + '"', url: '/admin.html', tag: 'letter-open' })); });

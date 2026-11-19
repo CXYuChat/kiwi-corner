@@ -313,10 +313,10 @@
     var src = st.gifts ? Object.keys(st.gifts).map(function (k) { return Object.assign({ id: k }, st.gifts[k]); }) : (window.GIFTS || []).map(function (g, i) { return Object.assign({ order: i }, g); });
     var list = src.map(function (g) {
       var at = g.reveal ? T.parse(g.reveal, HZ) : null, cost = +g.points || 0;
-      var byDate = !!(at && now >= at), byPts = !!(her.bought || {})[g.id];
+      var byDate = !!(at && now >= at), byPts = !!(her.bought || {})[g.id], byKey = (her.xmasKey || {}).used === g.id;
       var wasOpened = !!(her.opened || {})[g.id];
-      var unlocked = !!(g.forceOpen || byDate || byPts || wasOpened);
-      return Object.assign({}, g, { at: at, cost: cost, unlocked: unlocked, canBuy: !unlocked && cost > 0 && bal >= cost, opened: unlocked && !!(her.opened || {})[g.id], why: g.forceOpen ? 'surprise' : byPts ? 'points' : byDate ? 'date' : '' });
+      var unlocked = !!(g.forceOpen || byDate || byPts || byKey || wasOpened);
+      return Object.assign({}, g, { at: at, cost: cost, unlocked: unlocked, canBuy: !unlocked && cost > 0 && bal >= cost, opened: unlocked && !!(her.opened || {})[g.id], why: g.forceOpen ? 'surprise' : byKey ? 'key' : byPts ? 'points' : byDate ? 'date' : '' });
     });
     list.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     list.forEach(function (g, i) { g.n = i + 1; });

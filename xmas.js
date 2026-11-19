@@ -9,6 +9,40 @@ Kiwi.onReady(function () {
   var me = DB.user.role === 'admin' ? 'him' : 'her', other = me === 'him' ? 'her' : 'him';
 
   function X() { return (DB.dmMeta || {}).xmas || {}; }
+  // 🔎 Find everything in the room → 🔑 Santa's Golden Key (unlock any one present, any time)
+  var SECRETS = { ornament: '🎄 Hang an ornament', star: '🌟 Wish on the star', cat: '🐱 Pet the cat', fire: '🔥 Feed the fire', stockL: '🧦 Your stocking', stockC: '🧦 His stocking',
+    cocoa: '☕ Sip the cocoa', cookies: '🍪 Eat a cookie', mistletoe: '🌿 The mistletoe', window: '❄️ The snowstorm', snowman: '⛄ Build the snowman', music: '🎵 The music box',
+    wreath: '🔔 The wreath', globe: '🔮 The snow globe', train: '🚂 The toy train', ginger: '🍪 The gingerbread man', candles: '🕯️ The candles' };
+  var SECRET_IDS = Object.keys(SECRETS);
+  function foundMap() { return X().found || {}; }
+  function foundCount() { var f = foundMap(); return SECRET_IDS.filter(function (k) { return f[k]; }).length; }
+  function find(id) {
+    if (me !== 'her' || !SECRETS[id] || foundMap()[id]) return;
+    var all = Object.assign({}, foundMap()); all[id] = 1;
+    var n = SECRET_IDS.filter(function (k) { return all[k]; }).length;   // counted before saving (works the same online and offline)
+    var o = {}; o[id] = Date.now(); setX({ found: o });
+    setTimeout(function () {
+      updateHint();
+      if (n === 1) say('🔎 Secret found! Find all ' + SECRET_IDS.length + ' things in this room for a special reward 🎁');
+      if (n >= SECRET_IDS.length && !(DB.her.xmasKey || {}).got) giveKey();
+      else if (n > 1) { var tag = document.createElement('div'); tag.className = 'xr-found'; tag.textContent = '🔎 ' + n + '/' + SECRET_IDS.length + ' · ' + SECRETS[id]; $('#xr-room').appendChild(tag); setTimeout(function () { tag.remove(); }, 2200); }
+    }, 60);
+  }
+  function giveKey() {
+    DB.setHer({ xmasKey: { got: Date.now(), used: null } });
+    K.logEvent('🔑', 'Found every secret in the Christmas room and earned Santa\'s Golden Key!');
+    K.confetti({ count: 200 }); [523, 659, 784, 1046, 1318].forEach(function (f, i) { tone(f, i * 0.12, 0.5, 'triangle', 0.14); });
+    setTimeout(function () {
+      K.modal('<div class="em" style="font-size:3.4rem">🔑✨</div><h3>Santa\'s Golden Key!</h3><p class="desc">You found every secret in the Christmas room 🎄</p>' +
+        '<p class="desc">This key unlocks <b>any one present you choose</b>, whenever you want. No points needed.</p><p class="muted">Use it on the Gifts page: tap 🔑 on the present you want.</p>', 'call');
+    }, 700);
+  }
+  function updateHint() {
+    var h = $('#xr-hint'); if (!h) return;
+    if (me !== 'her') { var f = foundMap(), n = foundCount(); h.textContent = 'She has found ' + n + '/' + SECRET_IDS.length + ' secrets' + ((DB.her.xmasKey || {}).got ? ' · 🔑 key earned' : ''); return; }
+    var key = DB.her.xmasKey || {};
+    h.innerHTML = key.got ? '🔑 You have Santa\'s Golden Key' + (key.used ? ' (used ✓)' : ': use it on any present 🎁') : '🔎 Secrets found: <b>' + foundCount() + '/' + SECRET_IDS.length + '</b> · find them all for a special reward';
+  }
   K.resetXmasRoom = function () { return DB.dmMetaSet({ xmas: { orn: [], pets: 0, logs: 0, cocoa: 5, cookies: 5, storm: false, lights: 'on', snow: 0, candles: true, fireBoost: 0 } }); };
   function setX(p) { return DB.dmMetaSet({ xmas: p }); }
 
@@ -132,7 +166,7 @@ Kiwi.onReady(function () {
       '<div class="xr-btns"><button type="button" data-t="undo">↶ Undo ornament</button><button type="button" data-t="lights">💡 Lights</button>' + (me === 'him' ? '<button type="button" data-t="clear">🧹 Clear tree</button><button type="button" data-t="reset">♻️ Reset room</button>' : '') + '</div>' +
       '<p class="xr-hint" id="xr-hint">Pick an ornament, then tap the tree to hang it. Tap anything in the room 👀</p></div>';
     document.body.appendChild(overlay); document.documentElement.classList.add('xr-open');
-    drawRoom();
+    drawRoom(); updateHint();
     overlay.addEventListener('click', onClick);
     setTimeout(sleigh, 2500);
   }
@@ -172,6 +206,7 @@ Kiwi.onReady(function () {
       return;
     }
     var hit = e.target.closest('[data-x]'); if (!hit) return;
+    if (hit.dataset.x !== 'tree' && hit.dataset.x !== 'gift') find(hit.dataset.x);
     var what = hit.dataset.x, r = $('#xr-room').getBoundingClientRect(), cx = e.clientX - r.left, cy = e.clientY - r.top;
     var X0 = X();
     if (what === 'tree') {
@@ -181,7 +216,7 @@ Kiwi.onReady(function () {
       var half = ty < 22 ? 0 : ty < 70 ? (ty - 22) * 0.8 : ty < 108 ? 30 + (ty - 70) * 0.6 : ty < 146 ? 40 + (ty - 108) * 0.5 : 0;
       if (ty < 26 || ty > 144 || Math.abs(tx - 60) > half) { say('Put it on the branches 🎄'); return; }
       var orn = (X0.orn || []).concat([{ x: Math.round(tx), y: Math.round(ty), k: tool, by: me, at: Date.now() }]).slice(-80);
-      setX({ orn: orn }); ding(784 + Math.random() * 600);
+      setX({ orn: orn }); ding(784 + Math.random() * 600); find('ornament');
       if (orn.length % 10 === 0) { K.confetti({ count: 40 }); say(orn.length + ' ornaments! Beautiful 🎄'); }
       if (me === 'her' && orn.filter(function (o) { return o.by === 'her'; }).length === 1) K.logEvent('🎄', 'Started decorating the Christmas tree');
       return;
@@ -233,6 +268,7 @@ Kiwi.onReady(function () {
 
   // 🌟 wish on the star: her wish goes onto her wish list for Chengxuan
   function wishOnStar() {
+    find('star');
     ding(1318); burst('✨', 8, $('#xr-room').getBoundingClientRect().width * .15, 60);
     var sh = K.modal('<div class="em">🌟</div><h3>Make a wish on the star</h3><p class="desc">' + (me === 'her' ? 'Your wish goes straight to Chengxuan\'s wish list 🤫' : 'Wishes from here go onto her wish list (as you, it\'s just for fun)') + '</p><input class="field" id="xr-wish" maxlength="200" placeholder="I wish…"><button type="button" class="btn big" id="xr-wish-go" style="margin-top:10px">Wish ✨</button>');
     var go = sh.querySelector('#xr-wish-go'), inp = sh.querySelector('#xr-wish'); inp.focus();

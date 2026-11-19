@@ -40,7 +40,8 @@ Kiwi.onReady(function () {
       body = '<p class="gift-hint">' + esc(g.hint || '') + '</p><div class="lock">' + lockText(g) + '</div>' +
         (g.canBuy ? '<button type="button" class="btn sm" data-buy="' + esc(g.id) + '">Unlock for ' + g.cost + ' ⭐</button>' :
           g.cost ? '<div class="mini-bar"><i style="width:' + Math.min(100, pts / g.cost * 100) + '%"></i></div>' : '') +
-        (g.at ? '<div class="gift-count" data-at="' + g.at + '"></div>' : '');
+        (g.at ? '<div class="gift-count" data-at="' + g.at + '"></div>' : '') +
+        (hasKey() ? '<button type="button" class="btn sm key-btn" data-key="' + esc(g.id) + '">🔑 Use Santa\'s Golden Key</button>' : '');
     } else if (st === 'ready') {
       body = '<span class="gift-tap">Tap to unwrap, ' + K.petName() + '! 🎁</span><p class="gift-hint">' + esc(g.hint || '') + '</p>';
     } else {
@@ -74,14 +75,16 @@ Kiwi.onReady(function () {
   DB.subscribe(scene);
   function render(force) {
     scene();
+    var kbn = $('#key-banner'); if (kbn) kbn.hidden = !hasKey();
     if (busy) return;
     var gs = K.gifts();
-    var s = JSON.stringify(gs.map(function (g) { return [g.id, g.unlocked, g.opened, g.canBuy, g.name, g.hint, g.cost, g.at, g.color]; })) + K.balance();
+    var s = JSON.stringify(gs.map(function (g) { return [g.id, g.unlocked, g.opened, g.canBuy, g.name, g.hint, g.cost, g.at, g.color]; })) + K.balance() + hasKey();
     if (!force && s === sig) return;
     sig = s;
     $('#gifts').innerHTML = gs.map(giftHTML).join('');
     tick();
   }
+  function hasKey() { var k = DB.her.xmasKey || {}; return DB.user && k.got && !k.used; }
   function tick() {
     document.querySelectorAll('[data-at]').forEach(function (el) { el.textContent = '⏳ ' + T.countdown(+el.dataset.at - T.now()); });
   }
@@ -102,6 +105,18 @@ Kiwi.onReady(function () {
     }, 900);
   }
   $('#gifts').addEventListener('click', function (e) {
+    var kb = e.target.closest('[data-key]');
+    if (kb) {
+      var gk = K.gifts().find(function (x) { return x.id === kb.dataset.key; }); if (!gk || !hasKey()) return;
+      K.confirm({ emoji: '🔑', title: 'Use Santa\'s Golden Key on present #' + gk.n + '?', text: 'It unlocks this present for free, right now. You only have one key!', yes: 'Use my key 🔑' }).then(function (ok) {
+        if (!ok) return;
+        DB.setHer({ xmasKey: Object.assign({}, DB.her.xmasKey, { used: gk.id, usedAt: Date.now() }) });
+        K.logEvent('🔑', 'Used Santa\'s Golden Key on present #' + gk.n);
+        render(true);
+        var el3 = document.querySelector('.gift[data-id="' + gk.id + '"]'); if (el3) unwrap(el3);
+      });
+      return;
+    }
     var buy = e.target.closest('[data-buy]');
     if (buy) {
       var g = K.gifts().find(function (x) { return x.id === buy.dataset.buy; });

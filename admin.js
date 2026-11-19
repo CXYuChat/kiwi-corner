@@ -1022,11 +1022,21 @@ Kiwi.onReady(function () {
     var x = (DB.dmMeta || {}).xmas || {};
     return '<section class="card stack"><h3>🎄 Christmas room</h3><p class="help" style="margin:0">The room inside the Christmas scene on her Gifts page (Christmas theme).</p>' +
       '<div class="stat-grid"><div class="stat"><b>' + (x.orn || []).length + '</b><span>ornaments on the tree</span></div><div class="stat"><b>' + (x.pets || 0) + '</b><span>times the cat was petted</span></div><div class="stat"><b>' + (x.logs || 0) + '</b><span>logs on the fire</span></div><div class="stat"><b>' + (x.snow || 0) + '/5</b><span>snowman built</span></div></div>' +
+      (function () { var f = x.found || {}, n = Object.keys(f).length, key = DB.her.xmasKey || {}, gname = key.used ? ((K.gifts().find(function (g) { return g.id === key.used; }) || {}).name || key.used) : '';
+        return '<p><b>🔎 Secrets she found: ' + n + '/17</b> · ' + (key.got ? (key.used ? '🔑 key used on "' + esc(gname) + '" ' + K.herDateTime(key.usedAt) : '🔑 key earned ' + K.herDateTime(key.got) + ', not used yet') : 'when she finds all 17 she gets Santa\'s Golden Key (unlocks one present of her choice, free)') + '</p>' +
+          '<div class="btns"><button class="btn sm ghost" id="xk-give">🔑 Give her the key now</button><button class="btn sm ghost" id="xk-reset">↺ Reset key + secrets</button></div>'; })() +
       '<div class="btns"><button class="btn sm ghost" id="xr-clear">🧹 Clear the tree</button><button class="btn sm danger" id="xr-reset">♻️ Reset the whole room</button><a class="btn sm ghost" href="gifts.html#xmas" style="text-decoration:none">🎄 Open the room</a></div></section>';
   };
 
   // ---- clicks for the tabs above
   function morePowerClick(b, d, id) {
+    if (id === 'xk-give') { DB.setHer({ xmasKey: { got: Date.now(), used: null } }); toast('She has Santa\'s Golden Key 🔑'); render(); return true; }
+    if (id === 'xk-reset') {
+      K.confirm({ emoji: '↺', title: 'Reset the key and her found secrets?', text: 'If she used the key, that present goes back to locked (unless she already opened it).', yes: 'Reset', danger: true }).then(function (ok) {
+        if (!ok) return; DB.setHer({ xmasKey: null }); DB.dmMetaSet({ xmas: { found: null } }).then(function () { toast('Reset ↺'); render(); });
+      });
+      return true;
+    }
     if (id === 'xr-clear' || id === 'xr-reset') {
       var full = id === 'xr-reset';
       K.confirm({ emoji: full ? '♻️' : '🧹', title: full ? 'Reset the whole Christmas room?' : 'Take all ornaments off the tree?', text: full ? 'Ornaments, snowman, cocoa, cookies, candles, lights and counters go back to the start.' : '', yes: full ? 'Reset' : 'Clear', danger: true }).then(function (ok) {
