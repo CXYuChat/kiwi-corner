@@ -1017,8 +1017,24 @@ Kiwi.onReady(function () {
       '<div class="btns"><button class="btn sm" id="st-save">💾 Save</button><a class="btn sm ghost" href="story.html" style="text-decoration:none">📖 Open Our story</a></div></section>';
   };
 
+  // ---- 🎄 Christmas room (stats + reset)
+  P.xmasroom = function () {
+    var x = (DB.dmMeta || {}).xmas || {};
+    return '<section class="card stack"><h3>🎄 Christmas room</h3><p class="help" style="margin:0">The room inside the Christmas scene on her Gifts page (Christmas theme).</p>' +
+      '<div class="stat-grid"><div class="stat"><b>' + (x.orn || []).length + '</b><span>ornaments on the tree</span></div><div class="stat"><b>' + (x.pets || 0) + '</b><span>times the cat was petted</span></div><div class="stat"><b>' + (x.logs || 0) + '</b><span>logs on the fire</span></div><div class="stat"><b>' + (x.snow || 0) + '/5</b><span>snowman built</span></div></div>' +
+      '<div class="btns"><button class="btn sm ghost" id="xr-clear">🧹 Clear the tree</button><button class="btn sm danger" id="xr-reset">♻️ Reset the whole room</button><a class="btn sm ghost" href="gifts.html#xmas" style="text-decoration:none">🎄 Open the room</a></div></section>';
+  };
+
   // ---- clicks for the tabs above
   function morePowerClick(b, d, id) {
+    if (id === 'xr-clear' || id === 'xr-reset') {
+      var full = id === 'xr-reset';
+      K.confirm({ emoji: full ? '♻️' : '🧹', title: full ? 'Reset the whole Christmas room?' : 'Take all ornaments off the tree?', text: full ? 'Ornaments, snowman, cocoa, cookies, candles, lights and counters go back to the start.' : '', yes: full ? 'Reset' : 'Clear', danger: true }).then(function (ok) {
+        if (!ok) return;
+        DB.dmMetaSet({ xmas: full ? { orn: [], pets: 0, logs: 0, cocoa: 5, cookies: 5, storm: false, lights: 'on', snow: 0, candles: true, fireBoost: 0 } : { orn: [] } }).then(function () { toast(full ? 'Christmas room reset ♻️' : 'Tree cleared 🧹'); render(); });
+      });
+      return true;
+    }
     if (id === 'lt-preview') { letterPreview({ when: val('lt-when'), text: val('lt-text') }); return true; }
     if (id === 'lt-add') {
       if (!val('lt-when') || !val('lt-text')) { toast('Write "open when…" and the letter'); return true; }
@@ -1187,7 +1203,7 @@ Kiwi.onReady(function () {
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
     { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['qotd', '❓ Daily question'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['xmasroom', '🎄 Xmas room'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
     { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['billing', '💳 Spending'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }

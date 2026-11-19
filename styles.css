@@ -1198,14 +1198,14 @@ body.movie-page .topbar, body.movie-page .preview-bar, body.movie-page .footer, 
 
 /* ===== interactive Christmas room ===== */
 html.xr-open, html.xr-open body { overflow: hidden; }
-.xr-full { position: fixed; inset: 0; z-index: 120; background: #24182f; display: flex; flex-direction: column; color: #f3e6d0; animation: xrIn .3s ease-out; }
+.xr-full { position: fixed; inset: 0; z-index: 900; background: #24182f; display: flex; flex-direction: column; color: #f3e6d0; animation: xrIn .3s ease-out; }
 @keyframes xrIn { from { opacity: 0; transform: scale(1.04); } }
 .xr-top { display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top) + 10px) 14px 8px; }
 .xr-top b { font-size: 1.05rem; }
 .xr-top span { flex: 1; font-size: .8rem; color: #ffd27a; }
 .xr-x { border: 0; background: rgba(255, 255, 255, .12); color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: 1rem; cursor: pointer; }
-.xr-stage { position: relative; flex: 1; display: grid; place-items: center; overflow: hidden; padding: 0 6px; }
-#xr-room { width: 100%; max-width: 900px; }
+.xr-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; padding: 0 6px; }
+#xr-room { width: min(100%, 900px, calc((100dvh - 210px) * 1.333)); }
 .xr-svg { width: 100%; height: auto; display: block; border-radius: 18px; touch-action: manipulation; }
 .xr-hit { cursor: pointer; }
 .xr-hit:hover { filter: brightness(1.08); }
@@ -1239,3 +1239,24 @@ html.xr-open, html.xr-open body { overflow: hidden; }
 .xmas-tree-home.deco-christmas { pointer-events: auto; text-decoration: none; }
 .deco-tip { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); font-size: .7rem; font-weight: 600; color: var(--brown); background: var(--card); padding: 2px 8px; border-radius: 999px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); animation: sGlow 1.5s ease-in-out infinite alternate; }
 .xr-full * { animation-play-state: running; }
+/* pop-ups and toasts above the Christmas room */
+html.xr-open .sheet-back { z-index: 950; }
+html.xr-open .tabbar, html.xr-open .chat-fab, html.xr-open .topbar, html.xr-open .mv-bar, html.xr-open #theme-fx-front { display: none !important; }
+html.xr-open .toast { z-index: 960; }
+/* new room things */
+.xr-wreath.ring { animation: xrRing .8s ease-in-out; }
+@keyframes xrRing { 20% { transform: rotate(-8deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-5deg); } 80% { transform: rotate(3deg); } }
+.xr-globe.shake { animation: xrShake .7s ease-in-out; }
+@keyframes xrShake { 20% { transform: rotate(-12deg); } 40% { transform: rotate(10deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(5deg); } }
+.xr-globesnow { animation: xrGlobe 3s linear infinite; }
+.xr-globe.shake .xr-globesnow { animation-duration: .5s; }
+@keyframes xrGlobe { 0% { transform: translateY(-4px); } 100% { transform: translateY(5px); } }
+.xr-train.go { animation: xrTrain 4s ease-in-out; }
+@keyframes xrTrain { 0% { transform: translateX(0); } 45% { transform: translateX(-140px); } 50% { transform: translateX(-140px) scaleX(-1); } 95% { transform: translateX(0) scaleX(-1); } 100% { transform: translateX(0); } }
+.xr-train { transform-box: fill-box; transform-origin: center; }
+.xr-smoke { animation: xrSteam 1.4s ease-in-out infinite; }
+.xr-ginger { transform-box: fill-box; transform-origin: center bottom; }
+.xr-ginger.run { animation: xrRun 2.6s ease-in-out; }
+@keyframes xrRun { 0% { transform: translateX(0); } 10%, 30%, 50%, 70% { transform: translateX(var(--s, 0)) translateY(-4px); } 40% { transform: translateX(120px); } 41% { transform: translateX(120px) scaleX(-1); } 90% { transform: translateX(0) scaleX(-1); } 100% { transform: translateX(0); } }
+.xr-wave .xr-arm { transform-box: fill-box; transform-origin: 0 100%; animation: xrArm .8s ease-in-out infinite alternate; }
+@keyframes xrArm { from { transform: rotate(0); } to { transform: rotate(-30deg); } }
