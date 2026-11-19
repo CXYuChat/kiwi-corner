@@ -46,7 +46,7 @@ exports.onDm = onDocumentCreated('dm/{id}', async (ev) => {
   const m = ev.data && ev.data.data(); if (!m || !m.from) return;
   const to = other(m.from);
   if (await inChat(to)) return;
-  await push(to, { title: NAME[m.from], body: m.img ? '📷 Photo' + (m.text ? ': ' + clip(m.text) : '') : clip(m.text, 300), url: '/chat.html', tag: 'dm' });
+  await push(to, { title: NAME[m.from], body: m.audio ? '🎙️ Voice message' : m.img ? '📷 Photo' + (m.text ? ': ' + clip(m.text) : '') : clip(m.text, 300), url: '/chat.html', tag: 'dm' });
 });
 
 // ------------------------------------------------------------ things he sends her (pings, surprises, points, questions, kiwis)
@@ -96,11 +96,35 @@ exports.onHer = onDocumentWritten('kiwi/her', async (ev) => {
   if ((a.guesses || []).length > (b.guesses || []).length) jobs.push(push('him', { title: '🤔 Livina guessed a present', body: clip(a.guesses[a.guesses.length - 1].text), url: '/admin.html', tag: 'guess' }));
   const bo = b.opened || {}, ao = a.opened || {};
   if (Object.keys(ao).length > Object.keys(bo).length) jobs.push(push('him', { title: '🎁 Livina opened a present!', body: 'She just unwrapped it', url: '/admin.html', tag: 'gift' }));
+  // open-when letters she opened
+  const bl2 = {}; (b.letters || []).forEach((l) => { bl2[l.id] = l; });
+  (a.letters || []).forEach((l) => { const o = bl2[l.id]; if (l.openedAt && (!o || !o.openedAt)) jobs.push(push('him', { title: '💌 Livina opened a letter', body: '"Open when ' + clip(l.when, 60) + '"', url: '/admin.html', tag: 'letter-open' })); });
+  // new open-when letter for her
+  if ((a.letters || []).length > (b.letters || []).length) jobs.push(push('her', { title: '💌 A new letter from Chengxuan', body: 'Open when ' + clip((a.letters[a.letters.length - 1] || {}).when, 60), url: '/fun.html', tag: 'letter-new' }));
+  // question of the day: her answer → him (he can peek), his answer → her
+  const bd = (b.qotd || {}).days || {}, ad = (a.qotd || {}).days || {};
+  Object.keys(ad).forEach((k) => {
+    const x = ad[k] || {}, y = bd[k] || {};
+    if (x.her && (!y.her || y.her.at !== x.her.at)) jobs.push(push('him', { title: '❓ Livina answered today\'s question', body: clip(x.her.text, 160), url: '/admin.html', tag: 'qotd' }));
+    if (x.him && (!y.him || y.him.at !== x.him.at)) jobs.push(push('her', { title: '❓ Chengxuan answered too!', body: 'See both answers on your Home page', url: '/', tag: 'qotd' }));
+  });
   if ((a.missCount || 0) > (b.missCount || 0)) {
     const ref = await log(), l = (await ref.get()).data() || {};
     if (Date.now() - (l.lastMiss || 0) > 10 * 60000) { await ref.set({ lastMiss: Date.now() }, { merge: true }); jobs.push(push('him', { title: '🥺 Livina misses you', body: 'She pressed "I miss you" (' + a.missCount + ' times so far)', url: '/admin.html', tag: 'miss' })); }
   }
   await Promise.all(jobs);
+});
+
+// ------------------------------------------------------------ movie night started → her
+exports.onDmMeta = onDocumentWritten('kiwi/dm', async (ev) => {
+  const b = (ev.data.before && ev.data.before.data()) || {}, a = (ev.data.after && ev.data.after.data()) || {};
+  const am = a.movie || {}, bm = b.movie || {};
+  if (am.active && am.id !== bm.id) await push(am.by === 'her' ? 'him' : 'her', { title: '🍿 Movie night!', body: (am.by === 'her' ? 'Livina' : 'Chengxuan') + ' wants to watch ' + clip(am.title, 60) + ' with you. Tap to join', url: '/movie.html', tag: 'movie' });
+});
+// ------------------------------------------------------------ a new memory in Our story → the other one
+exports.onStory = onDocumentCreated('story/{id}', async (ev) => {
+  const m = ev.data && ev.data.data(); if (!m) return;
+  await push(m.by === 'her' ? 'him' : 'her', { title: '📖 New memory in Our story', body: clip(m.title, 100), url: '/story.html#' + ev.params.id, tag: 'story' });
 });
 
 // ------------------------------------------------------------ she opens the site (for him)

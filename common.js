@@ -289,6 +289,25 @@
   };
   K.qText = function (q) { return String(q.text || '').replace(/\{name\}/g, K.petName ? K.petName() : 'baby'); };
 
+  // ------------------------------------------------------------ question of the day (shared by Home and admin)
+  var QBANK = [
+    'What\'s one small thing that made you smile today?', 'Where should our first trip together be?', 'What\'s your favourite memory of us so far?',
+    'If we could have dinner anywhere tonight, where would it be?', 'What song reminds you of me?', 'What\'s something you\'ve never told me?',
+    'What do you want to do the first day we\'re together again?', 'What\'s the best thing that happened this week?', 'What are you looking forward to most this month?',
+    'What\'s a habit of mine you secretly love?', 'If you could teleport for one hour, what would we do?', 'What made you laugh the hardest recently?',
+    'What\'s your comfort food when you miss me?', 'Describe our dream home in three words.', 'What\'s one thing you\'re proud of today?',
+    'Which movie should we watch next together?', 'What would your perfect lazy Sunday look like?', 'What\'s a goal you want us to do together?',
+    'What\'s the cutest thing I\'ve ever done?', 'If today had a colour, what would it be and why?', 'What do you miss most about me right now?'
+  ];
+  K.QBANK = QBANK;
+  K.qotdFor = function (day) {
+    var q = DB.her.qotd || {}, d = (q.days || {})[day];
+    if (d && d.q) return d.q;
+    if ((q.plan || {})[day]) return q.plan[day];
+    var p = day.split('-').map(Number), n = Math.floor(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5);
+    return QBANK[n % QBANK.length];
+  };
+
   K.gifts = function () {
     var st = DB.state, her = DB.her, now = T.now(), bal = K.balance();
     var src = st.gifts ? Object.keys(st.gifts).map(function (k) { return Object.assign({ id: k }, st.gifts[k]); }) : (window.GIFTS || []).map(function (g, i) { return Object.assign({ order: i }, g); });
@@ -494,7 +513,7 @@
         (opts.text ? '<p class="desc">' + K.esc(opts.text) + '</p>' : '') +
         (opts.typeWord ? '<label class="help">Type <b>' + K.esc(opts.typeWord) + '</b> to confirm<input class="field" id="cf-word" autocomplete="off" autocapitalize="characters"></label>' : '') +
         '<div class="btns" style="margin-top:14px"><button type="button" class="btn ' + (opts.danger ? 'danger' : '') + '" id="cf-yes"' + (opts.typeWord ? ' disabled style="opacity:.5"' : '') + '>' + K.esc(opts.yes || 'Yes') + '</button>' +
-        '<button type="button" class="btn ghost" id="cf-no">Cancel</button></div>', 'confirm');
+        '<button type="button" class="btn ghost" id="cf-no">' + K.esc(opts.no || 'Cancel') + '</button></div>', 'confirm');
       var yes = sh.querySelector('#cf-yes');
       if (opts.typeWord) sh.querySelector('#cf-word').addEventListener('input', function (e) {
         var ok = e.target.value.trim().toUpperCase() === opts.typeWord.toUpperCase(); yes.disabled = !ok; yes.style.opacity = ok ? 1 : .5;
@@ -543,7 +562,7 @@
       pv.innerHTML = '👀 <b>Her view</b> · just looking: nothing you open or tap here counts for her' + (page === 'fun' ? ' (except the movie list)' : '');
       top.after(pv);
     }
-    if (page !== 'admin' && page !== 'chat') {
+    if (page !== 'admin' && page !== 'chat' && page !== 'movie') {
       var nav = document.createElement('nav');
       nav.className = 'tabbar';
       nav.innerHTML = TABS.map(function (t) {
@@ -797,7 +816,11 @@
     }
     var deco = K.homeDeco ? K.homeDeco(th) : (th === 'christmas' ? K.xmasTreeSVG() : '');
     var hero = document.querySelector('.hero');
-    if (deco && hero) { var t = document.createElement('div'); t.className = 'xmas-tree-home deco-' + th; t.setAttribute('aria-hidden', 'true'); t.innerHTML = deco; hero.appendChild(t); }
+    if (deco && hero) {
+      var t = document.createElement(th === 'christmas' ? 'a' : 'div'); t.className = 'xmas-tree-home deco-' + th;
+      if (th === 'christmas') { t.href = 'gifts.html#xmas'; t.setAttribute('aria-label', 'Go into the Christmas room'); t.innerHTML = deco + '<span class="deco-tip">tap me 🎄</span>'; } else { t.setAttribute('aria-hidden', 'true'); t.innerHTML = deco; }
+      hero.appendChild(t);
+    }
     if (cfg.ground) { var g = document.createElement('div'); g.id = 'theme-ground'; g.className = 'tg-' + cfg.ground; g.setAttribute('aria-hidden', 'true'); document.body.appendChild(g); }
   }
   // ------------------------------------------------------------ Christmas: a decorated tree and a cozy fireplace scene (SVG + CSS animation)
@@ -870,7 +893,7 @@
         // cat sleeping by the fire (why not)
         '<g transform="translate(290 172)"><ellipse cx="0" cy="0" rx="18" ry="9" fill="#e8a25a"/><circle cx="14" cy="-6" r="7" fill="#e8a25a"/><path d="M10 -12 l2 -6 l3 5 M16 -12 l3 -5 l1 6" fill="#e8a25a"/><path d="M12 -6 h3 M17 -6 h3" stroke="#5a3a1a" stroke-width="1"/><text x="-6" y="-12" font-size="8" class="xz">z</text></g>' +
       '</svg>' +
-      '<p class="xcap">Tap a present to find it below 🎁</p></div>';
+      '<p class="xcap">✨ Tap the room to go inside 🎄 · tap a present to find it below</p></div>';
   };
 
   // ------------------------------------------------------------ ambient sound for scenes: crackling fire / ocean waves (generated, no files)
@@ -1176,6 +1199,28 @@
     });
   }
 
+  // ------------------------------------------------------------ movie night: pop-up to join + a bar on every page while it's on
+  function watchMovie(page) {
+    if (page === 'movie' || page === 'login' || /[?&]mirror=1/.test(location.search)) return;
+    var me = K.dmMe();
+    function check() {
+      var m = (DB.dmMeta || {}).movie || {}, bar = document.getElementById('mv-bar');
+      var on = m.active && Date.now() - (m.startedAt || 0) < 10 * 3600e3;
+      if (!on) { if (bar) bar.remove(); return; }
+      if (!bar) {
+        bar = document.createElement('a'); bar.id = 'mv-bar'; bar.className = 'mv-bar'; bar.href = 'movie.html';
+        document.body.appendChild(bar);
+      }
+      bar.innerHTML = '🍿 <b>Movie night is on</b> · ' + K.esc(m.title || '') + ' <span>Join →</span>';
+      if (me === 'her' && K.store.get('kiwi-mv-seen') !== m.id) {
+        K.store.set('kiwi-mv-seen', m.id);
+        K.queueModal('<div class="em">🍿🎬</div><h3>Movie night with Chengxuan!</h3><p class="desc">He\'s ready to watch <b>' + K.esc(m.title || 'a movie') + '</b> with you right now.</p>' +
+          '<a class="btn big pink" href="movie.html" style="text-decoration:none;display:block;text-align:center;margin-top:10px">Join 🍿</a><p class="muted" style="text-align:center">or tap ✕ to join later from the bar at the top</p>', 'call', function () { K.confetti({ count: 70 }); });
+      }
+    }
+    DB.subscribe(check); check(); setInterval(check, 30000);
+  }
+
   // ------------------------------------------------------------ feature switches: admin can hide parts of her site
   function applyFeatures() {
     var off = (DB.state && DB.state.hide) || {};
@@ -1206,6 +1251,7 @@
       if (u && !mirror) { checkSignout(); DB.subscribe(checkSignout); }
       if (u && u.role === 'admin' && !mirror) { setTimeout(adminDeviceBeat, 1500); setInterval(adminDeviceBeat, 60000); }
       if (u && !mirror) startDm(page);
+      if (u && !mirror) watchMovie(page);
       if (u && !mirror) { refreshPush(); K.pushCard(K.$('#push-card')); }
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });

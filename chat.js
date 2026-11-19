@@ -115,7 +115,8 @@ Kiwi.onReady(function () {
     if (m.unsent) return h + '<div class="dm-unsent">' + (mine ? 'You' : NAME[m.from]) + ' unsent a message</div>';
     var rq = m.replyTo ? '<div class="dm-quote"><b>' + (m.replyTo.from === me ? 'You' : NAME[m.replyTo.from]) + '</b>' + esc((m.replyTo.text || '📷 Photo').slice(0, 90)) + '</div>' : '';
     var big = !m.img && bigEmoji(m.text);
-    var body = m.img ? '<img src="' + m.img + '" alt="Photo" loading="lazy">' + (m.text ? '<div class="dm-cap">' + linkify(m.text) + '</div>' : '') : linkify(m.text || '');
+    var body = m.audio ? '<div class="dm-audio" data-aud="' + esc(m.id) + '"><button type="button" class="dm-play" data-play="' + esc(m.id) + '" aria-label="Play">▶</button><div class="dm-wave">' + waveBars(m.id) + '<i class="dm-prog"></i></div><span class="dm-dur">' + mmss(m.dur || 0) + '</span></div>' + (m.listenedAt && m.from === me ? '<small class="dm-played">Played</small>' : '')
+      : m.img ? '<img src="' + m.img + '" alt="Photo" loading="lazy">' + (m.text ? '<div class="dm-cap">' + linkify(m.text) + '</div>' : '') : linkify(m.text || '');
     var rx = m.reactions || {}, rk = Object.keys(rx).filter(function (k) { return rx[k]; });
     var react = rk.length ? '<div class="dm-react">' + rk.map(function (k) { return '<span class="' + (k === me ? 'mine' : '') + '">' + esc(rx[k]) + '</span>'; }).join('') + '</div>' : '';
     return h + '<div class="dm-row ' + (mine ? 'me' : 'them') + (first ? ' first' : '') + (last ? ' last' : '') + (selecting ? ' sel' : '') + (selected[m.id] ? ' picked' : '') + '" data-id="' + esc(m.id) + '">' +
@@ -236,6 +237,64 @@ Kiwi.onReady(function () {
     e.target.value = '';
   });
 
+  // ---------------------------------------------------------------- 🎙️ voice messages (up to 60 s, stored with the message)
+  function mmss(sec) { sec = Math.round(sec || 0); return Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2); }
+  function waveBars(id) { var h = '', x = 0; for (var i = 0; i < id.length; i++) x = (x * 31 + id.charCodeAt(i)) % 9973; for (var j = 0; j < 26; j++) { x = (x * 17 + 7) % 9973; h += '<span style="height:' + (25 + x % 70) + '%"></span>'; } return h; }
+  var rec = null, recChunks = [], recStart = 0, recTimer = null, recCancel = false;
+  function pickMime() { var c = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus']; for (var i = 0; i < c.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c[i])) return c[i]; return ''; }
+  function stopRec(cancel) { if (!rec) return; recCancel = !!cancel; try { rec.stop(); } catch (e) { /* */ } clearInterval(recTimer); }
+  $('#dm-mic').addEventListener('click', function () {
+    if (!window.MediaRecorder || !navigator.mediaDevices) { K.toast('Voice messages aren\'t supported in this browser'); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mime = pickMime(); recChunks = []; recCancel = false;
+      try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 }); } catch (e) { rec = new MediaRecorder(stream); }
+      rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) recChunks.push(ev.data); };
+      rec.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        $('#dm-rec').hidden = true; $('#dm-form').hidden = false;
+        var dur = (Date.now() - recStart) / 1000, r2 = rec; rec = null;
+        if (recCancel || dur < 0.6) return;
+        var blob = new Blob(recChunks, { type: r2.mimeType || mime || 'audio/webm' });
+        var fr = new FileReader();
+        fr.onload = function () {
+          if (fr.result.length > 900000) { K.toast('That one\'s too long. Keep it under a minute'); return; }
+          sendAudio(fr.result, dur);
+        };
+        fr.readAsDataURL(blob);
+      };
+      rec.start(250); recStart = Date.now();
+      $('#dm-rec').hidden = false; $('#dm-form').hidden = true; $('#dm-rec-t').textContent = '0:00';
+      recTimer = setInterval(function () { var t = (Date.now() - recStart) / 1000; $('#dm-rec-t').textContent = mmss(t); if (t >= 60) stopRec(false); }, 250);
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) { /* */ }
+    }).catch(function () { K.toast('Allow the microphone to send voice messages 🎙️'); });
+  });
+  $('#dm-rec-send').addEventListener('click', function () { stopRec(false); });
+  $('#dm-rec-x').addEventListener('click', function () { stopRec(true); K.toast('Voice message deleted'); });
+  function sendAudio(data, dur) {
+    var m = { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), from: me, text: '', audio: data, dur: Math.round(dur), at: Date.now() };
+    if (replyTo) { m.replyTo = { id: replyTo.id, from: replyTo.from, text: (replyTo.text || '🎙️ Voice message').slice(0, 140) }; setReply(null); }
+    atBottom = true;
+    DB.dmSend(m).catch(function () { K.toast('Couldn\'t send. Check your connection'); });
+    var last = { last: { at: m.at, from: me, text: '🎙️ Voice message' } }; last[me] = { typing: 0, at: Date.now(), visible: true, page: 'chat' };
+    DB.dmMetaSet(last, other);
+    if (me === 'her') K.notify('message', '💬 Livina', '🎙️ Voice message');
+  }
+  // player: one at a time, with a progress bar
+  var player = null, playingId = null;
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-play]'); if (!b) return;
+    e.stopPropagation();
+    var id = b.dataset.play, m = msgById(id); if (!m || !m.audio) return;
+    if (player && playingId === id) { player.pause(); player = null; playingId = null; b.textContent = '▶'; return; }
+    if (player) { player.pause(); var ob = box.querySelector('[data-play="' + playingId + '"]'); if (ob) ob.textContent = '▶'; }
+    player = new Audio(m.audio); playingId = id; b.textContent = '❚❚';
+    var wrap = box.querySelector('[data-aud="' + id + '"]');
+    player.ontimeupdate = function () { var d = player.duration && isFinite(player.duration) ? player.duration : (m.dur || 1); var pr = wrap && wrap.querySelector('.dm-prog'); if (pr) pr.style.width = Math.min(100, player.currentTime / d * 100) + '%'; var dd = wrap && wrap.querySelector('.dm-dur'); if (dd) dd.textContent = mmss(player.currentTime); };
+    player.onended = function () { b.textContent = '▶'; var pr = wrap && wrap.querySelector('.dm-prog'); if (pr) pr.style.width = '0'; var dd = wrap && wrap.querySelector('.dm-dur'); if (dd) dd.textContent = mmss(m.dur); player = null; playingId = null; };
+    player.play().catch(function () { K.toast('Couldn\'t play this one on this device'); b.textContent = '▶'; });
+    if (m.from === other && !m.listenedAt) DB.dmUpdate(m.id, { listenedAt: Date.now() });
+  });
+
   // ---------------------------------------------------------------- reply
   function setReply(m) {
     replyTo = m; $('#dm-reply').hidden = !m;
@@ -247,7 +306,7 @@ Kiwi.onReady(function () {
   function msgById(id) { return msgs.find(function (m) { return m.id === id; }); }
   var pressT = null, pressId = null, startX = 0, startY = 0, swipeRow = null, lastTap = 0, lastTapId = null, moved = false;
   box.addEventListener('pointerdown', function (e) {
-    var row = e.target.closest('.dm-row'); if (!row || e.target.closest('a')) return;
+    var row = e.target.closest('.dm-row'); if (!row || e.target.closest('a') || e.target.closest('[data-play]')) return;
     pressId = row.dataset.id; startX = e.clientX; startY = e.clientY; moved = false; swipeRow = row;
     if (selecting) return;
     clearTimeout(pressT); pressT = setTimeout(function () { if (!moved) { if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) { /* */ } actions(msgById(pressId)); } }, 430);
@@ -260,6 +319,7 @@ Kiwi.onReady(function () {
   });
   function endPress(e) {
     clearTimeout(pressT);
+    if (e.target.closest && e.target.closest('[data-play]')) { swipeRow = null; return; }
     if (!swipeRow) return;
     var dx = e.clientX - startX, row = swipeRow; swipeRow = null;
     row.style.transform = '';

@@ -32,6 +32,8 @@ service cloud.firestore {
     }
     // Spending this month + his cap choice (the server writes the cost).
     match /kiwi/billing { allow read, write: if isAdmin(); }
+    // Our story: memories (with photos) you both can add, edit and delete.
+    match /story/{id} { allow read, write: if isAdmin() || isLivina(); }
     // Everything else is closed.
     match /{document=**} { allow read, write: if false; }
   }

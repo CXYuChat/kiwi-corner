@@ -115,6 +115,7 @@ Kiwi.onReady(function () {
         return '<li class="mv-item' + (m.watched ? ' done' : '') + '" data-mvid="' + K.esc(m.id) + '">' +
           '<button type="button" class="mv-check" data-mvtoggle="' + K.esc(m.id) + '" aria-label="' + (m.watched ? 'Mark as not watched' : 'Mark as watched') + '">' + (m.watched ? '✓' : '') + '</button>' +
           '<span class="mv-body"><b>' + K.esc(m.title) + '</b><small>' + (m.watched ? 'Watched ' + K.herDay(m.watchedAt || m.at) : 'Added by ' + who(m) + ' · ' + K.herDay(m.at)) + '</small></span>' +
+          (DB.user.role === 'admin' && !m.watched ? '<a class="mv-start" href="movie.html#' + encodeURIComponent(m.title) + '" title="Start movie night">🍿 Start</a>' : '') +
           '<button type="button" class="mv-del" data-mvdel="' + K.esc(m.id) + '" aria-label="Remove">✕</button></li>';
       }).join('') : '<li class="muted mv-empty">' + (view === 'to' ? 'Nothing on the list yet. Add one! 🍿' : 'No movie nights yet 🥺') + '</li>';
     }

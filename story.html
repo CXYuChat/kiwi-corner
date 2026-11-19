@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Our story 📖</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="story">
+  <main class="wrap stack">
+    <div class="card member-only" style="text-align:center">🔑 <a href="login.html?next=story.html">Log in</a> to see our story.</div>
+    <section class="card story-hero" data-auth>
+      <div class="story-days"><b id="st-days">–</b><span id="st-since">days together 💚</span></div>
+      <button type="button" class="btn pink" id="st-add-btn">＋ Add a memory</button>
+    </section>
+    <section class="card stack" id="st-form" data-auth hidden>
+      <h2>📸 New memory</h2>
+      <div class="row2"><label class="help">Date<input class="field" id="st-date" type="date"></label><label class="help">Emoji<input class="field" id="st-emoji" value="💚" maxlength="4"></label></div>
+      <label class="help">Title<input class="field" id="st-title" maxlength="80" placeholder="e.g. Our first date"></label>
+      <label class="help">What happened (optional)<textarea class="field" id="st-text" maxlength="3000" placeholder="Tell the story…"></textarea></label>
+      <label class="btn ghost" style="display:block;text-align:center;cursor:pointer">📷 Add a photo (optional)<input type="file" id="st-file" accept="image/*" hidden></label>
+      <img id="st-preview" class="photo-big" hidden alt="">
+      <div class="btns"><button type="button" class="btn ghost" id="st-cancel">Cancel</button><button type="button" class="btn pink" id="st-save">💾 Save memory</button></div>
+    </section>
+    <section class="story-line" id="st-line" data-auth></section>
+  </main>
+  <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="questions.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="story.js"></script>
+</body>
+</html>

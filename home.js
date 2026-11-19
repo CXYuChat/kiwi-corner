@@ -62,7 +62,7 @@ Kiwi.onReady(function () {
       var now = Date.now();
       return K.questions().filter(function (q) {
         if (q.active === false || (q.atMs && q.atMs > now)) return false;
-        if (q.answer) return now - q.answer.at < DAY;          // her answer stays for a day
+        if (q.answer) return now - q.answer.at < 15000;        // after she answers: a quick "thank you", then it goes away by itself
         return !q.untilMs || now < q.untilMs;
       });
     }
@@ -106,6 +106,8 @@ Kiwi.onReady(function () {
         var a = Object.assign({}, DB.her.answers || {}); a[id] = { choice: picked[id], note: note, at: Date.now() };
         var r2 = s.getBoundingClientRect();
         DB.setHer({ answers: a }).then(function () { K.toast('Sent to Chengxuan 💚'); });
+        setTimeout(function () { var c = box.querySelector('.q-card.answered'); if (c) c.classList.add('q-bye'); }, 13500);
+        setTimeout(function () { last = ''; draw(); }, 15200);
         var qq = K.questions().find(function (x) { return x.id === id; }), oo = qq && (qq.options || [])[a[id].choice];
         K.logEvent('❓', 'Answered your question: ' + (oo ? oo.label : '') + (note ? ' · "' + note + '"' : ''));
         delete picked[id];

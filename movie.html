@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Movie night 🍿</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="movie" class="movie-page">
+  <div class="mv-app" id="mv-app">
+    <header class="mv-head"><a class="dm-back" href="index.html" id="mv-back" aria-label="Back">‹</a><b>🍿 Movie night</b><span id="mv-clock"></span></header>
+    <section class="mv-stage" id="mv-stage"></section>
+    <div class="mv-reacts" id="mv-reacts">
+      <button type="button" data-rx="😂">😂</button><button type="button" data-rx="😭">😭</button><button type="button" data-rx="😍">😍</button><button type="button" data-rx="😱">😱</button><button type="button" data-rx="🍿">🍿</button><button type="button" data-rx="💚">💚</button><button type="button" data-rx="🥝">🥝</button>
+    </div>
+    <div class="mv-fx" id="mv-fx"></div>
+    <section class="mv-chat"><div class="mv-msgs" id="mv-msgs"></div>
+      <form id="mv-form" class="mv-form"><input class="field" id="mv-text" placeholder="Say something…" autocomplete="off" maxlength="500"><button class="btn sm" type="submit">↑</button></form></section>
+  </div>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="questions.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="movie.js"></script>
+</body>
+</html>

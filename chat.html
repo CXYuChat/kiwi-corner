@@ -35,8 +35,10 @@
     </div>
     <button type="button" class="dm-jump" id="dm-jump" hidden>↓ <span id="dm-jump-n"></span></button>
     <div class="dm-reply" id="dm-reply" hidden><div><b id="dm-reply-who"></b><span id="dm-reply-text"></span></div><button type="button" id="dm-reply-x" aria-label="Cancel reply">✕</button></div>
+    <div class="dm-rec" id="dm-rec" hidden><button type="button" id="dm-rec-x" aria-label="Cancel">✕</button><span class="dm-rec-dot"></span><b id="dm-rec-t">0:00</b><span class="help">Recording… tap ➤ to send</span><button type="button" id="dm-rec-send" aria-label="Send voice message">➤</button></div>
     <form class="dm-compose" id="dm-form" autocomplete="off">
       <label class="dm-cam" aria-label="Send a photo">📷<input type="file" id="dm-file" accept="image/*" hidden></label>
+      <button type="button" class="dm-mic" id="dm-mic" aria-label="Record a voice message">🎙️</button>
       <textarea id="dm-text" rows="1" placeholder="iMessage… but kiwi 🥝" maxlength="5000"></textarea>
       <button type="submit" class="dm-send" id="dm-send" aria-label="Send" disabled>↑</button>
     </form>

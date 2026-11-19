@@ -83,7 +83,9 @@ Kiwi.onReady(function () {
 
   function needsYou() {
     var t = todo(), rows = [];
-    var bl = DB.billing || {};
+    var qdd = ((DB.her.qotd || {}).days || {})[K.todayKey()] || {};
+    if (qdd.her && !qdd.him) rows.push(['qotd', '❓', 'She answered today\'s question. Peek, then answer yours']);
+        var bl = DB.billing || {};
     if ((+bl.cost || 0) >= 10 && bl.capAt == null && !bl.disabledAt) rows.push(['billing', '💳', 'S$10 spent this month: stop here or keep going to S$15?']);
     if (t.photos) rows.push(['photos', '📸', t.photos + ' photo' + (t.photos > 1 ? 's' : '') + ' from her to approve']);
     if (t.inbox) {
@@ -101,7 +103,7 @@ Kiwi.onReady(function () {
     '<section class="card stack"><h3>⚡ Quick actions</h3><div class="quick">' +
       '<button type="button" class="btn sm" data-quick="10">+10 ⭐</button><button type="button" class="btn sm" data-quick="25">+25 ⭐</button>' +
       '<button type="button" class="btn sm ghost" data-goto="photos">📸 Post a photo</button><button type="button" class="btn sm ghost" data-goto="messages">💌 Send a surprise</button>' +
-      '<button type="button" class="btn sm ghost" data-goto="ask">❓ Ask her something</button><button type="button" class="btn sm ghost" data-goto="control">📲 Ping her</button><button type="button" class="btn sm ghost" data-goto="clicker">🥝 Send clicker kiwis</button><button type="button" class="btn sm ghost" data-goto="schedule">⏰ Schedule something</button><button type="button" class="btn sm ghost" data-goto="screen">📱 See her screen</button>' +
+      '<button type="button" class="btn sm ghost" data-goto="ask">❓ Ask her something</button><button type="button" class="btn sm ghost" data-goto="control">📲 Ping her</button><button type="button" class="btn sm ghost" data-goto="clicker">🥝 Send clicker kiwis</button><button type="button" class="btn sm ghost" data-goto="schedule">⏰ Schedule something</button><button type="button" class="btn sm ghost" data-goto="screen">📱 See her screen</button><a class="btn sm ghost" href="movie.html" style="text-decoration:none">🍿 Movie night</a>' +
       '<a class="btn sm ghost" href="fun.html#movies-card" style="text-decoration:none">🍿 Movie list</a>' + '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
   }
 
@@ -969,8 +971,84 @@ Kiwi.onReady(function () {
         '<p class="help" style="margin:0">Budget: S$15/month on your billing account, with alerts at S$1, S$3, S$5, S$10 and S$15.</p></section>';
   };
 
+  // ---- 💌 Open-when letters (stored in her record: private)
+  var LETTER_IDEAS = ['you miss me', 'you can\'t sleep', 'you had a bad day', 'you\'re proud of yourself', 'you need a laugh', 'you feel lonely', 'it\'s your birthday', 'you\'re stressed about exams', 'you want to know how much I love you', 'we just had a fight'];
+  var COLORS = ['#ffd6e1', '#d6f1ff', '#fff1c4', '#e3ddff', '#d8f5c8', '#ffe0c7'];
+  P.letters = function () {
+    var ls = (DB.her.letters || []).slice().reverse();
+    return '<section class="card stack"><h3>💌 Write an "Open when…" letter</h3><p class="help" style="margin:0">She sees a sealed envelope on her Fun page and opens it at the right moment. You can see when she opened each one.</p><div class="form">' +
+        '<div class="row2"><label>Seal emoji<input class="field" id="lt-emoji" value="💚" maxlength="4"></label><label>Colour<select class="field" id="lt-color">' + COLORS.map(function (c, i) { return '<option value="' + c + '">' + ['Pink', 'Blue', 'Yellow', 'Purple', 'Green', 'Peach'][i] + '</option>'; }).join('') + '</select></label></div>' +
+        '<label>Open when…<input class="field" id="lt-when" maxlength="60" placeholder="you miss me" list="lt-ideas"><datalist id="lt-ideas">' + LETTER_IDEAS.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist></label>' +
+        '<label>Letter<textarea class="field" id="lt-text" style="min-height:180px" placeholder="Dear Livina…"></textarea></label></div>' +
+        '<div class="btns"><button class="btn sm ghost" id="lt-preview">👀 Preview</button><button class="btn sm pink" id="lt-add">✉️ Seal and send</button></div></section>' +
+      '<section class="card stack"><h3>📬 Your letters</h3>' + (ls.length ? ls.map(function (l) {
+        return '<div class="hist-row"><div><b>' + esc((l.emoji || '💌') + ' Open when ' + l.when) + '</b><p class="help">' + (l.openedAt ? '<b style="color:var(--green-d)">opened ' + K.herDateTime(l.openedAt) + '</b>' : 'still sealed') + ' · written ' + K.herDateTime(l.at) + '</p><p class="help" style="white-space:pre-wrap">' + esc(l.text.slice(0, 140)) + (l.text.length > 140 ? '…' : '') + '</p></div>' +
+          '<div class="btns" style="flex-direction:column"><button class="btn sm ghost" data-ltview="' + esc(l.id) + '">👀</button>' + (l.openedAt ? '<button class="btn sm ghost" data-ltreseal="' + esc(l.id) + '">Re-seal</button>' : '') + '<button class="btn sm danger" data-ltdel="' + esc(l.id) + '">🗑️</button></div></div>';
+      }).join('') : '<p class="muted">No letters yet</p>') + '</section>';
+  };
+  function letterPreview(l) { K.modal('<div class="letter-paper"><div class="letter-when">Open when ' + esc(l.when || '') + '</div><div class="letter-text">' + esc(l.text || '') + '</div><div class="letter-sign">Love, Chengxuan 💚</div></div>', 'letter-sheet'); }
+
+  // ---- ❓ Question of the day: you see her answer straight away (she doesn't know); she sees yours once you answer
+  function qotdData() { return JSON.parse(JSON.stringify(DB.her.qotd || {})); }
+  function dayAdd(key, n) { var p = key.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2] + n)).toISOString().slice(0, 10); }
+  P.qotd = function () {
+    var today = K.todayKey(), q = DB.her.qotd || {}, d = (q.days || {})[today] || {}, plan = q.plan || {};
+    var past = Object.keys(q.days || {}).filter(function (k) { return k < today; }).sort().reverse().slice(0, 14);
+    var next = []; for (var i = 1; i <= 7; i++) next.push(dayAdd(today, i));
+    return '<section class="card stack"><h3>❓ Today\'s question <span class="help">(her day: ' + esc(today) + ')</span></h3>' +
+        '<p class="q-text" style="text-align:left">' + esc(K.qotdFor(today)) + '</p>' +
+        (!d.her ? '<div class="row2"><input class="field" id="qd-today" placeholder="Change today\'s question" value=""><button class="btn sm ghost" id="qd-today-set">Change</button></div>' : '') +
+        '<div class="qa-mine"><b>Her answer 🤫 (she doesn\'t know you can see it yet)</b>' + (d.her ? esc(d.her.text) + '<br><small class="help">' + K.herDateTime(d.her.at) + '</small>' : '<span class="muted">Not answered yet</span>') + '</div>' +
+        (d.him ? '<div class="qa-his"><b>Your answer (she can see it' + (d.her ? '' : ' after she answers') + ')</b>' + esc(d.him.text) + '</div>'
+          : '<label class="help">Your answer. She sees it as soon as you send it<textarea class="field" id="qd-mine" placeholder="Your answer…"></textarea></label><div class="btns"><button class="btn sm pink" id="qd-send">💬 Send my answer</button></div>') + '</section>' +
+      '<section class="card stack"><h3>🗓️ Next days</h3><p class="help" style="margin:0">Set the question for each day (her time). Empty = a question from the built-in list.</p>' +
+        next.map(function (k) { return '<label class="help">' + esc(k) + ' · ' + esc(T.fmtDay(T.parse(k + 'T12:00', HZ), HZ)) + '<input class="field" data-qplan="' + k + '" value="' + esc(plan[k] || '') + '" placeholder="' + esc(K.qotdFor(k)) + '"></label>'; }).join('') +
+        '<div class="btns"><button class="btn sm" id="qd-plan">💾 Save questions</button></div></section>' +
+      (past.length ? '<section class="card stack"><h3>📚 Past days</h3>' + past.map(function (k) {
+        var x = q.days[k];
+        return '<div class="item"><div class="help">' + esc(k) + '</div><b>' + esc(x.q || '') + '</b>' + (x.her ? '<div class="qa-mine"><b>Her</b>' + esc(x.her.text) + '</div>' : '') + (x.him ? '<div class="qa-his"><b>You</b>' + esc(x.him.text) + '</div>' : '<div class="help">You didn\'t answer</div>') + '</div>';
+      }).join('') + '</section>' : '');
+  };
+
+  // ---- 📖 Our story settings
+  P.story = function () {
+    return '<section class="card stack"><h3>📖 Our story</h3><p class="help" style="margin:0">The "days together" counter on her Home counts from this date. Memories (with photos) are added on the Our story page, by either of you.</p>' +
+      '<label>Together since<input class="field" id="st-start" type="date" value="' + esc(DB.state.storyStart || '') + '"></label>' +
+      '<div class="btns"><button class="btn sm" id="st-save">💾 Save</button><a class="btn sm ghost" href="story.html" style="text-decoration:none">📖 Open Our story</a></div></section>';
+  };
+
+  // ---- 🎄 Advent calendar messages (empty = a built-in sweet note)
+  P.advent = function () {
+    var a = DB.state.advent || {}, opened = ((DB.dmMeta || {}).xmas || {}).adv || {}, x = ((DB.dmMeta || {}).xmas || {});
+    var rows = ''; for (var n = 1; n <= 24; n++) rows += '<label class="help">Dec ' + n + (opened[n] ? ' · <b style="color:var(--green-d)">opened ✓</b>' : '') + '<input class="field" data-adv="' + n + '" value="' + esc(a[n] || '') + '" placeholder="(built-in note)"></label>';
+    return '<section class="card stack"><h3>🎄 Advent calendar</h3><p class="help" style="margin:0">In the Christmas room (Gifts page, Christmas theme) a new door opens each day from Dec 1–24, her time. Write what is behind each door, or leave it empty for a built-in note.</p>' + rows +
+      '<div class="btns"><button class="btn sm" id="adv-save">💾 Save advent messages</button></div></section>' +
+      '<section class="card stack"><h3>🏠 Christmas room</h3><p class="help" style="margin:0">Ornaments on the tree: ' + (x.orn || []).length + ' · cat petted ' + (x.pets || 0) + ' times · logs on the fire: ' + (x.logs || 0) + '</p></section>';
+  };
+
   // ---- clicks for the tabs above
   function morePowerClick(b, d, id) {
+    if (id === 'adv-save') { var av = {}; panels.querySelectorAll('[data-adv]').forEach(function (inp) { if (inp.value.trim()) av[inp.dataset.adv] = inp.value.trim(); }); DB.setState({ advent: av }); toast('Advent messages saved 🎄'); render(); return true; }
+    if (id === 'lt-preview') { letterPreview({ when: val('lt-when'), text: val('lt-text') }); return true; }
+    if (id === 'lt-add') {
+      if (!val('lt-when') || !val('lt-text')) { toast('Write "open when…" and the letter'); return true; }
+      var l1 = { id: 'l' + uid(), emoji: val('lt-emoji') || '💌', color: $('#lt-color').value, when: val('lt-when').replace(/^open when\s*/i, ''), text: val('lt-text'), at: Date.now() };
+      DB.setHer({ letters: (DB.her.letters || []).concat([l1]) }); toast('Letter sealed and sent ✉️'); render(); return true;
+    }
+    if (d.ltview) { var lv = (DB.her.letters || []).find(function (x) { return x.id === d.ltview; }); if (lv) letterPreview(lv); return true; }
+    if (d.ltreseal) { DB.setHer({ letters: (DB.her.letters || []).map(function (x) { return x.id === d.ltreseal ? Object.assign({}, x, { openedAt: null }) : x; }) }); toast('Sealed again'); render(); return true; }
+    if (d.ltdel) {
+      K.confirm({ emoji: '🗑️', title: 'Delete this letter?', yes: 'Delete', danger: true }).then(function (ok) { if (ok) { DB.setHer({ letters: (DB.her.letters || []).filter(function (x) { return x.id !== d.ltdel; }) }); toast('Deleted'); render(); } });
+      return true;
+    }
+    if (id === 'qd-send' || id === 'qd-today-set' || id === 'qd-plan') {
+      var qd = qotdData(), td = K.todayKey(); qd.days = qd.days || {}; qd.plan = qd.plan || {};
+      if (id === 'qd-send') { if (!val('qd-mine')) { toast('Write your answer'); return true; } qd.days[td] = Object.assign({ q: K.qotdFor(td) }, qd.days[td] || {}, { him: { text: val('qd-mine'), at: Date.now() } }); }
+      if (id === 'qd-today-set') { if (!val('qd-today')) { toast('Type the new question'); return true; } qd.days[td] = Object.assign({}, qd.days[td] || {}, { q: val('qd-today') }); }
+      if (id === 'qd-plan') panels.querySelectorAll('[data-qplan]').forEach(function (inp) { if (inp.value.trim()) qd.plan[inp.dataset.qplan] = inp.value.trim(); else delete qd.plan[inp.dataset.qplan]; });
+      DB.setHer({ qotd: qd }); toast(id === 'qd-send' ? 'Sent. She can see it now 💬' : 'Saved ❓'); render(); return true;
+    }
+    if (id === 'st-save') { DB.setState({ storyStart: $('#st-start').value || null }); toast('Saved 📖'); render(); return true; }
     if (d.schedtype) { schedType = d.schedtype; render(); return true; }
     if (d.schedquick) {
       var now = Date.now(), at;
@@ -1117,9 +1195,9 @@ Kiwi.onReady(function () {
   // ---- navigation: 5 groups, each with its own tabs
   var GROUPS = [
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
-    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
+    { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['qotd', '❓ Daily question'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
     { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['surprises', '📜 Sent surprises'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['advent', '🎄 Advent'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
     { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['billing', '💳 Spending'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }

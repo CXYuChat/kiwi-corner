@@ -64,6 +64,7 @@
       user = u ? Object.assign({ username: s }, u) : null;
       window.addEventListener('storage', function (e) {
         if (e.key === 'kiwi-db-dm') { local.dmFire(); return; }
+        if (e.key === 'kiwi-db-story') { local.storyFire(); return; }
         if (/^kiwi-db-/.test(e.key || '')) { load(); local.loadPhotos(); local.loadLive(); local.dmLoad(); emit(); }
       });
       return Promise.resolve();
@@ -95,12 +96,19 @@
     setBilling: function (patch) { billing = Object.assign({}, billing || {}, patch); emit(); return Promise.resolve(); },
     dmMetaSet: function (patch, incFor) {
       local.dmLoad();
-      Object.keys(patch).forEach(function (k) { dmMeta[k] = (patch[k] && typeof patch[k] === 'object' && !Array.isArray(patch[k])) ? Object.assign({}, dmMeta[k] || {}, patch[k]) : patch[k]; });
+      var deep = function (a, b) { var o = Object.assign({}, a || {}); Object.keys(b).forEach(function (k) { o[k] = (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a && typeof a[k] === 'object' && a[k] && !Array.isArray(a[k])) ? deep(a[k], b[k]) : b[k]; }); return o; };
+      dmMeta = deep(dmMeta, patch);
       if (incFor) dmMeta.unread[incFor] = (dmMeta.unread[incFor] || 0) + 1;
       localStorage.setItem('kiwi-db-dmmeta', JSON.stringify(dmMeta)); emit(); return Promise.resolve();
     },
     loadLive: function () { try { live = fill(JSON.parse(localStorage.getItem('kiwi-db-live') || 'null'), defaultLive); } catch (e) { live = defaultLive(); } },
     saveLive: function (patch) { local.loadLive(); live = Object.assign({}, live, patch); localStorage.setItem('kiwi-db-live', JSON.stringify(live)); emit(); return Promise.resolve(); },
+    storySubs: [],
+    storyLoad: function () { try { return JSON.parse(localStorage.getItem('kiwi-db-story') || '[]'); } catch (e) { return []; } },
+    storyFire: function () { var l = local.storyLoad(); local.storySubs.forEach(function (f) { f(l); }); },
+    storyListen: function (cb) { local.storySubs.push(cb); setTimeout(function () { cb(local.storyLoad()); }, 0); return function () { local.storySubs = local.storySubs.filter(function (f) { return f !== cb; }); }; },
+    storySet: function (m) { var l = local.storyLoad().filter(function (x) { return x.id !== m.id; }).concat([m]); localStorage.setItem('kiwi-db-story', JSON.stringify(l)); local.storyFire(); return Promise.resolve(); },
+    storyDel: function (id) { localStorage.setItem('kiwi-db-story', JSON.stringify(local.storyLoad().filter(function (x) { return x.id !== id; }))); local.storyFire(); return Promise.resolve(); },
     loadPhotos: function () {
       try { photos = JSON.parse(localStorage.getItem('kiwi-db-photos') || '[]'); } catch (e) { photos = []; }
       try { herPhotos = JSON.parse(localStorage.getItem('kiwi-db-herphotos') || '[]'); } catch (e) { herPhotos = []; }
@@ -196,6 +204,11 @@
       if (incFor) { p.unread = p.unread || {}; p.unread[incFor] = firebase.firestore.FieldValue.increment(1); }
       return fb.dmMetaRef.set(p, { merge: true });
     },
+    storyListen: function (cb) {
+      return fb.db.collection('story').onSnapshot(function (q) { cb(q.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); })); }, function (e) { console.error('story', e); cb([]); });
+    },
+    storySet: function (m) { var d = Object.assign({}, m); delete d.id; return fb.db.collection('story').doc(m.id).set(JSON.parse(JSON.stringify(d))); },
+    storyDel: function (id) { return fb.db.collection('story').doc(id).delete(); },
     addPhoto: function (p) { var id = p.id; var d = Object.assign({}, p); delete d.id; return fb.photosRef.doc(id).set(d); },
     deletePhoto: function (id) { return fb.photosRef.doc(id).delete(); },
     updatePhoto: function (id, patch) { return fb.photosRef.doc(id).set(patch, { merge: true }); },
@@ -214,7 +227,7 @@
     }
   } catch (e) { /* */ }
   var B = (C.firebase && !demo) ? fb : local;
-  function isPreview() { var pg = document.body && document.body.dataset.page; return !!(user && user.role === 'admin' && pg && pg !== 'admin' && pg !== 'chat'); }
+  function isPreview() { var pg = document.body && document.body.dataset.page; return !!(user && user.role === 'admin' && pg && pg !== 'admin' && pg !== 'chat' && pg !== 'movie' && pg !== 'story'); }
   var ready = B.init().catch(function (e) { console.error('KiwiDB init failed', e); });
 
   window.KiwiDB = {
@@ -230,6 +243,9 @@
     get herPhotos() { return herPhotos; },
     // ---- DMs
     get dmMeta() { return dmMeta; },
+    storyListen: function (cb) { return B.storyListen(cb); },
+    storySet: function (m) { return B.storySet(m); },
+    storyDel: function (id) { return B.storyDel(id); },
     get billing() { return billing; },
     setBilling: function (patch) { return B.setBilling(patch); },
     savePush: function (id, data) { return B.savePush(id, data); },
