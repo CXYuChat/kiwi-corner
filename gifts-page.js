@@ -55,13 +55,17 @@ Kiwi.onReady(function () {
   // Christmas theme: presents piled by the fireplace, under the tree
   function scene() {
     var box = $('#xmas-scene'); if (!box) return;
-    var on = K.theme && K.theme() === 'christmas';
-    box.hidden = !on; if (!on) { box.innerHTML = ''; return; }
-    var sig = JSON.stringify(K.gifts().map(function (g) { return [g.id, g.opened, g.unlocked, g.color, g.ribbon]; }));
+    var th = K.theme ? K.theme() : 'kiwi', html0 = K.giftScene ? K.giftScene(th, []) : '';
+    var on = !!html0;
+    box.hidden = !on; if (!on) { box.innerHTML = ''; box.dataset.sig = ''; return; }
+    var sig = th + JSON.stringify(K.gifts().map(function (g) { return [g.id, g.opened, g.unlocked, g.color, g.ribbon]; }));
     if (box.dataset.sig === sig) return; box.dataset.sig = sig;
-    box.innerHTML = K.xmasScene(K.gifts());
+    var sound = { christmas: 'fire', autumn: 'fire', ocean: 'waves' }[th];
+    box.innerHTML = K.giftScene(th, K.gifts()) + (sound ? '<button type="button" class="scene-sound" data-sound="' + sound + '" aria-label="Play sound">🔊 ' + (sound === 'fire' ? 'Crackling fire' : 'Waves') + '</button>' : '');
   }
   $('#xmas-scene') && $('#xmas-scene').addEventListener('click', function (e) {
+    var snd = e.target.closest('[data-sound]');
+    if (snd) { var on2 = K.ambient(snd.dataset.sound); snd.classList.toggle('on', on2); snd.textContent = (on2 ? '🔇 Stop' : '🔊 ' + (snd.dataset.sound === 'fire' ? 'Crackling fire' : 'Waves')); return; }
     var b = e.target.closest('[data-gift]'); if (!b) return;
     var el = document.querySelector('.gift[data-id="' + b.dataset.gift + '"]') || $('#gifts');
     el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1400);

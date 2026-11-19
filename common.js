@@ -765,19 +765,19 @@
   function applyTheme() {
     var th = K.theme(); if (th === themeNow) return; themeNow = th;
     document.documentElement.dataset.theme = th;
-    ['theme-fx', 'theme-strip', 'theme-ground'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
+    ['theme-fx', 'theme-fx-front', 'theme-strip', 'theme-ground'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
     document.querySelectorAll('.xmas-tree-home').forEach(function (t) { t.remove(); });
     try { document.dispatchEvent(new CustomEvent('kiwi:theme', { detail: th })); } catch (e) { /* */ }
     var meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--cream').trim() || '#FFF8E7';
     document.querySelectorAll('.mascot').forEach(function (m) { if (K.HATS[th]) m.setAttribute('data-hat', K.HATS[th]); else m.removeAttribute('data-hat'); });
     var cfg = THEME_FX[th]; if (!cfg || document.body.dataset.page === 'chat') return;
-    var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;   // calm version: scattered, gently twinkling
-    var fx = document.createElement('div'); fx.id = 'theme-fx'; fx.className = 'tfx-' + cfg.kind + (still ? ' still' : ''); fx.setAttribute('aria-hidden', 'true');
-    var n = Math.round(cfg.n * (innerWidth < 500 ? 0.7 : 1));
+    // Two layers: almost everything falls BEHIND the cards and buttons; only a tiny few drift over the top.
+    var back = document.createElement('div'); back.id = 'theme-fx'; back.className = 'tfx-' + cfg.kind; back.setAttribute('aria-hidden', 'true');
+    var front = document.createElement('div'); front.id = 'theme-fx-front'; front.className = 'tfx-' + cfg.kind; front.setAttribute('aria-hidden', 'true');
+    var n = Math.round(cfg.n * (innerWidth < 500 ? 0.7 : 1)), frontN = Math.max(2, Math.round(n * 0.05));
     for (var i = 0; i < n; i++) {
       var p = document.createElement('i'), r = Math.random;
       p.style.left = (r() * 100) + '%';
-      if (still) p.style.top = (r() * 100) + '%';
       p.style.animationDuration = (cfg.kind === 'stars' ? 2 + r() * 3 : cfg.kind === 'snow' ? 7 + r() * 9 : 8 + r() * 10) + 's';
       p.style.animationDelay = (-r() * 18) + 's';
       if (cfg.kind === 'snow') { var sz = 4 + r() * 9; p.style.width = p.style.height = sz + 'px'; p.style.opacity = 0.55 + r() * 0.45; p.style.setProperty('--drift', (r() * 60 - 30) + 'px'); if (r() < 0.28) { p.textContent = '❄️'; p.className = 'flake'; p.style.fontSize = (14 + r() * 16) + 'px'; } }
@@ -785,18 +785,19 @@
       else if (cfg.kind === 'bubble') { var bs = 6 + r() * 18; p.style.width = p.style.height = bs + 'px'; }
       else if (cfg.kind === 'stars') { p.style.top = (r() * 100) + '%'; var ss = 2 + r() * 3; p.style.width = p.style.height = ss + 'px'; if (r() < 0.15) { p.textContent = '✨'; p.className = 'emo'; p.style.fontSize = (10 + r() * 10) + 'px'; } }
       else { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.fontSize = (14 + r() * 14) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); }
-      fx.appendChild(p);
+      (i < frontN ? front : back).appendChild(p);
     }
+    var fx = back;
+    document.body.appendChild(front);
     document.body.appendChild(fx);
     if (cfg.strip && document.body.dataset.page !== 'admin') {
       var st = document.createElement('div'); st.id = 'theme-strip'; st.setAttribute('aria-hidden', 'true');
       st.innerHTML = '<span>' + cfg.strip + ' ' + cfg.strip + '</span>';
       var top = document.querySelector('.topbar'); if (top) top.after(st); else document.body.prepend(st);
     }
-    if (cfg.tree) {   // a big decorated tree next to the kiwi on Home
-      var hero = document.querySelector('.hero');
-      if (hero) { var t = document.createElement('div'); t.className = 'xmas-tree-home'; t.setAttribute('aria-hidden', 'true'); t.innerHTML = K.xmasTreeSVG(); hero.appendChild(t); }
-    }
+    var deco = K.homeDeco ? K.homeDeco(th) : (th === 'christmas' ? K.xmasTreeSVG() : '');
+    var hero = document.querySelector('.hero');
+    if (deco && hero) { var t = document.createElement('div'); t.className = 'xmas-tree-home deco-' + th; t.setAttribute('aria-hidden', 'true'); t.innerHTML = deco; hero.appendChild(t); }
     if (cfg.ground) { var g = document.createElement('div'); g.id = 'theme-ground'; g.className = 'tg-' + cfg.ground; g.setAttribute('aria-hidden', 'true'); document.body.appendChild(g); }
   }
   // ------------------------------------------------------------ Christmas: a decorated tree and a cozy fireplace scene (SVG + CSS animation)
@@ -870,6 +871,36 @@
         '<g transform="translate(290 172)"><ellipse cx="0" cy="0" rx="18" ry="9" fill="#e8a25a"/><circle cx="14" cy="-6" r="7" fill="#e8a25a"/><path d="M10 -12 l2 -6 l3 5 M16 -12 l3 -5 l1 6" fill="#e8a25a"/><path d="M12 -6 h3 M17 -6 h3" stroke="#5a3a1a" stroke-width="1"/><text x="-6" y="-12" font-size="8" class="xz">z</text></g>' +
       '</svg>' +
       '<p class="xcap">Tap a present to find it below 🎁</p></div>';
+  };
+
+  // ------------------------------------------------------------ ambient sound for scenes: crackling fire / ocean waves (generated, no files)
+  var amb = null;
+  K.ambient = function (kind) {
+    if (amb) { try { amb.stop(); } catch (e) { /* */ } var was = amb.kind; amb = null; if (was === kind) return false; }
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+    var ctx = new AC(), master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
+    var sr = ctx.sampleRate, buf = ctx.createBuffer(1, sr * 2, sr), d = buf.getChannelData(0), last = 0;
+    for (var i = 0; i < d.length; i++) { var w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }   // soft brown noise
+    var src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    var filt = ctx.createBiquadFilter(), g = ctx.createGain(), timers = [];
+    if (kind === 'fire') {
+      filt.type = 'lowpass'; filt.frequency.value = 600; g.gain.value = 0.35;
+      src.connect(filt); filt.connect(g); g.connect(master);
+      var pop = function () {   // little crackles and pops
+        var t = ctx.currentTime, b = ctx.createBufferSource(), len = Math.floor(sr * (0.004 + Math.random() * 0.02)), pb = ctx.createBuffer(1, len, sr), pd = pb.getChannelData(0);
+        for (var j = 0; j < len; j++) pd[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 3);
+        b.buffer = pb; var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500 + Math.random() * 3000;
+        var pg = ctx.createGain(); pg.gain.value = 0.25 + Math.random() * 0.6; b.connect(hp); hp.connect(pg); pg.connect(master); b.start(t);
+        timers.push(setTimeout(pop, 40 + Math.random() * (Math.random() < 0.2 ? 900 : 260)));
+      };
+      pop();
+    } else {   // waves: noise swelling in and out
+      filt.type = 'lowpass'; filt.frequency.value = 900; src.connect(filt); filt.connect(g); g.connect(master);
+      var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.12; lg.gain.value = 0.35; g.gain.value = 0.4; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    }
+    src.start();
+    amb = { kind: kind, stop: function () { timers.forEach(clearTimeout); try { src.stop(); } catch (e) { /* */ } ctx.close(); } };
+    return true;
   };
 
   K.applyTheme = function () { themeNow = null; applyTheme(); };

@@ -373,7 +373,9 @@ a { color: var(--brown); }
 .sheet.call { border-color: var(--green); background: linear-gradient(var(--soft), var(--card) 60%); }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+  /* calm everything EXCEPT the theme effects and scenes (snow, fire, etc. always move) */
+  *:not(#theme-fx *, #theme-fx-front *, .xscene *, .xmas-tree-home, .xmas-tree-home *, #theme-strip *),
+  *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
 }
 
 /* ============================== v2: app chrome, tabs, login, admin ============================== */
@@ -896,8 +898,11 @@ body:not(.has-tabs) .chat-fab { bottom: calc(env(safe-area-inset-bottom) + 18px)
 .dm-selbtn { right: auto; left: 46px; font-size: .9rem !important; font-weight: 600; color: var(--green-d); font-family: inherit; }
 
 /* ===== theme effects v2 (much more visible) ===== */
-#theme-fx { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
-#theme-fx i { position: absolute; top: -40px; font-style: normal; line-height: 1; will-change: transform; }
+#theme-fx, #theme-fx-front { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+#theme-fx { z-index: 0; }            /* behind the cards and buttons */
+#theme-fx-front { z-index: 35; }     /* just a few flakes over the top */
+#theme-fx i, #theme-fx-front i { position: absolute; top: -40px; font-style: normal; line-height: 1; will-change: transform; }
+html[data-theme]:not([data-theme="kiwi"]) main, html[data-theme]:not([data-theme="kiwi"]) .footer { position: relative; z-index: 1; }
 .tfx-snow i { border-radius: 50%; background: #fff; border: 1px solid rgba(140, 180, 235, .55); box-shadow: 0 0 6px rgba(120, 165, 230, .9), 0 1px 3px rgba(80, 120, 190, .35); animation: tSnow linear infinite; }
 .tfx-snow i.flake { background: none; box-shadow: none; filter: drop-shadow(0 0 3px #bcd8ff); }
 @keyframes tSnow { 0% { transform: translate(0, 0); } 50% { transform: translate(var(--drift, 20px), 55vh); } 100% { transform: translate(0, 110vh); } }
@@ -916,8 +921,8 @@ body:not(.has-tabs) .chat-fab { bottom: calc(env(safe-area-inset-bottom) + 18px)
 #theme-strip { position: sticky; top: 0; z-index: 25; overflow: hidden; white-space: nowrap; font-size: 1.15rem; padding: 3px 0; background: linear-gradient(90deg, var(--pink), var(--flesh), var(--pink)); box-shadow: 0 2px 8px rgba(0, 0, 0, .08); }
 #theme-strip span { display: inline-block; padding-left: 100%; animation: tStrip 30s linear infinite; }
 @keyframes tStrip { to { transform: translateX(-100%); } }
-@media (prefers-reduced-motion: reduce) { #theme-strip span { animation: none; padding-left: 8px; } }
-#theme-ground { position: fixed; left: 0; right: 0; bottom: 0; height: 46px; pointer-events: none; z-index: 2; }
+
+#theme-ground { position: fixed; left: 0; right: 0; bottom: 0; height: 46px; pointer-events: none; z-index: 0; }
 .tg-snow { background: radial-gradient(ellipse 60px 26px at 10% 100%, #fff 98%, transparent), radial-gradient(ellipse 80px 30px at 35% 100%, #fff 98%, transparent), radial-gradient(ellipse 70px 24px at 62% 100%, #fff 98%, transparent), radial-gradient(ellipse 90px 32px at 90% 100%, #fff 98%, transparent), linear-gradient(transparent 60%, #fff 60%); filter: drop-shadow(0 -2px 4px rgba(150, 190, 255, .5)); }
 .tg-wave { height: 30px; background: radial-gradient(circle at 20px -8px, transparent 22px, rgba(56, 182, 216, .35) 23px) 0 0 / 40px 30px repeat-x; }
 body.has-tabs #theme-ground { bottom: 0; }
@@ -1041,4 +1046,33 @@ html[data-theme]:not([data-theme="kiwi"]) .chat-fab { background: linear-gradien
 .xmas-tree-home svg { width: 100%; height: auto; display: block; }
 .hero { position: relative; }
 @media (min-width: 560px) { .xmas-tree-home { left: 6%; width: 140px; } }
-@media (prefers-reduced-motion: reduce) { .xfire .xf, .xembers circle, .xsock, .xwsnow, .xz, .xbox.ready { animation-duration: 3s; } }
+
+
+
+/* ===== scene animations (all themes) ===== */
+.s-bob { animation: sBob 3.4s ease-in-out infinite; }
+@keyframes sBob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-9px) rotate(2deg); } }
+.s-sway { transform-box: fill-box; transform-origin: 50% 0; animation: sSway 3s ease-in-out infinite; }
+@keyframes sSway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.s-flick { transform-box: fill-box; transform-origin: 50% 100%; animation: xFlame .6s ease-in-out infinite alternate; }
+.s-glow { animation: sGlow 2.2s ease-in-out infinite alternate; }
+@keyframes sGlow { from { opacity: .55; } to { opacity: 1; } }
+.s-twinkle { animation: xTwinkle 2s ease-in-out infinite; }
+.s-rise { animation: sRise 7s linear infinite; }
+@keyframes sRise { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: .9; } 100% { transform: translateY(-200px) translateX(14px); opacity: 0; } }
+.s-fall { animation: sFall 7s linear infinite; }
+@keyframes sFall { 0% { transform: translate(0, 0) rotate(0); } 100% { transform: translate(30px, 250px) rotate(320deg); } }
+.s-drift { animation: sDrift 9s linear infinite; }
+@keyframes sDrift { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-220px, 120px) rotate(400deg); opacity: 0; } }
+.s-drift-slow { animation: sDriftSlow 30s linear infinite; }
+@keyframes sDriftSlow { from { transform: translateX(-60px); } to { transform: translateX(440px); } }
+.s-swim { animation: sSwim 12s linear infinite; }
+@keyframes sSwim { from { transform: translateX(-40px); } to { transform: translateX(440px); } }
+.s-wave { animation: sWave 3s linear infinite; }
+.s-wave2 { animation: sWave 4.5s linear infinite reverse; }
+@keyframes sWave { from { transform: translateX(0); } to { transform: translateX(40px); } }
+.s-shoot { animation: sShoot 6s ease-in infinite; }
+@keyframes sShoot { 0%, 70% { transform: translate(-60px, 10px); opacity: 0; } 72% { opacity: 1; } 85% { transform: translate(300px, 110px); opacity: 0; } 100% { opacity: 0; } }
+.scene-sound { display: block; margin: -6px auto 12px; font: inherit; font-size: .85rem; border: 0; border-radius: 999px; padding: 6px 14px; background: var(--dark); color: #fff; cursor: pointer; }
+.scene-sound.on { background: var(--accent); }
+.xmas-tree-home.deco-birthday, .xmas-tree-home.deco-valentine { bottom: 170px; }
