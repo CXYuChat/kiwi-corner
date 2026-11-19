@@ -227,7 +227,7 @@
     }
   } catch (e) { /* */ }
   var B = (C.firebase && !demo) ? fb : local;
-  function isPreview() { var pg = document.body && document.body.dataset.page; return !!(user && user.role === 'admin' && pg && pg !== 'admin' && pg !== 'chat' && pg !== 'movie' && pg !== 'story'); }
+  function isPreview() { var pg = document.body && document.body.dataset.page; return !!(user && user.role === 'admin' && pg && pg !== 'admin' && pg !== 'chat' && pg !== 'movie' && pg !== 'story' && pg !== 'calendar'); }
   var ready = B.init().catch(function (e) { console.error('KiwiDB init failed', e); });
 
   window.KiwiDB = {

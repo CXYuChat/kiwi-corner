@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" class="locked">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Our calendar 🗓️</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#FFF8E7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kiwi Corner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="calendar">
+  <main class="wrap stack">
+    <div class="card member-only" style="text-align:center">🔑 <a href="login.html?next=calendar.html">Log in</a> to see our calendar.</div>
+    <section class="card" data-auth>
+      <div class="cal-head"><button type="button" class="btn sm ghost" id="cal-prev">‹</button><h2 id="cal-title">Month</h2><button type="button" class="btn sm ghost" id="cal-next">›</button></div>
+      <div class="cal-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend"><span><i class="her"></i> Livina</span><span><i class="him"></i> Chengxuan</span><span><i class="both"></i> Both of us</span></div>
+    </section>
+    <section class="card stack" data-auth>
+      <div class="mini-row"><h2 id="cal-day-title">Today</h2><button type="button" class="btn sm pink" id="cal-add-btn">＋ Add</button></div>
+      <div id="cal-day"></div>
+    </section>
+    <section class="card stack" id="cal-form" data-auth hidden>
+      <h2>🗓️ New plan</h2>
+      <div class="row2"><label class="help">Date<input class="field" id="cf-date" type="date"></label><label class="help">Time (optional, <span id="cf-zone"></span>)<input class="field" id="cf-time" type="time"></label></div>
+      <div class="row2"><label class="help">Emoji<input class="field" id="cf-emoji" value="📌" maxlength="4"></label><label class="help">Whose plan<select class="field" id="cf-who"><option value="both">💚 Both of us</option><option value="her">🌸 Livina</option><option value="him">🥝 Chengxuan</option></select></label></div>
+      <label class="help">What<input class="field" id="cf-title" maxlength="80" placeholder="e.g. Exam, video call, flight…"></label>
+      <div class="btns"><button type="button" class="btn ghost" id="cf-cancel">Cancel</button><button type="button" class="btn pink" id="cf-save">💾 Save</button></div>
+    </section>
+    <section class="card stack" data-auth><h2>⏭️ Coming up</h2><div id="cal-next-list"></div></section>
+  </main>
+  <footer class="footer">Made with 💚 from Singapore to Barcelona</footer>
+
+  <script src="schedule.js"></script>
+  <script src="gifts.js"></script>
+  <script src="notes.js"></script>
+  <script src="questions.js"></script>
+  <script src="config.js"></script>
+  <script src="time.js"></script>
+  <script src="store.js"></script>
+  <script src="common.js"></script>
+  <script src="calendar.js"></script>
+</body>
+</html>

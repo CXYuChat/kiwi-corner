@@ -1023,13 +1023,51 @@ Kiwi.onReady(function () {
     return '<section class="card stack"><h3>🎄 Christmas room</h3><p class="help" style="margin:0">The room inside the Christmas scene on her Gifts page (Christmas theme).</p>' +
       '<div class="stat-grid"><div class="stat"><b>' + (x.orn || []).length + '</b><span>ornaments on the tree</span></div><div class="stat"><b>' + (x.pets || 0) + '</b><span>times the cat was petted</span></div><div class="stat"><b>' + (x.logs || 0) + '</b><span>logs on the fire</span></div><div class="stat"><b>' + (x.snow || 0) + '/5</b><span>snowman built</span></div></div>' +
       (function () { var f = x.found || {}, n = Object.keys(f).length, key = DB.her.xmasKey || {}, gname = key.used ? ((K.gifts().find(function (g) { return g.id === key.used; }) || {}).name || key.used) : '';
-        return '<p><b>🔎 Secrets she found: ' + n + '/17</b> · ' + (key.got ? (key.used ? '🔑 key used on "' + esc(gname) + '" ' + K.herDateTime(key.usedAt) : '🔑 key earned ' + K.herDateTime(key.got) + ', not used yet') : 'when she finds all 17 she gets Santa\'s Golden Key (unlocks one present of her choice, free)') + '</p>' +
+        return '<p><b>🔎 Secrets she found: ' + n + '/19</b> · ' + (key.got ? (key.used ? '🔑 key used on "' + esc(gname) + '" ' + K.herDateTime(key.usedAt) : '🔑 key earned ' + K.herDateTime(key.got) + ', not used yet') : 'when she finds all 19 she gets Santa\'s Golden Key (unlocks one present of her choice, free) + 30 ⭐') + '</p>' +
           '<div class="btns"><button class="btn sm ghost" id="xk-give">🔑 Give her the key now</button><button class="btn sm ghost" id="xk-reset">↺ Reset key + secrets</button></div>'; })() +
-      '<div class="btns"><button class="btn sm ghost" id="xr-clear">🧹 Clear the tree</button><button class="btn sm danger" id="xr-reset">♻️ Reset the whole room</button><a class="btn sm ghost" href="gifts.html#xmas" style="text-decoration:none">🎄 Open the room</a></div></section>';
+      '<div class="btns"><button class="btn sm ghost" id="xr-clear">🧹 Clear the tree</button><button class="btn sm danger" id="xr-reset">♻️ Reset the whole room</button><a class="btn sm ghost" href="gifts.html#xmas" style="text-decoration:none">🎄 Open the room</a></div></section>' +
+      '<section class="card stack"><h3>📜 12 days of Christmas</h3><p class="help" style="margin:0">Off until you write at least one day. Then a scroll appears on the room wall, and each day (Dec 25 → Jan 5, her time) opens your message.</p>' +
+        (function () { var t = DB.state.twelve || {}, seen = ((DB.dmMeta || {}).xmas || {}).twelveSeen || {}, r = ''; for (var i = 1; i <= 12; i++) { var d = new Date(Date.UTC(2026, 11, 24 + i)).toISOString().slice(5, 10).replace('-', '/'); r += '<label class="help">Day ' + i + ' · ' + d + (seen[i] ? ' · <b style="color:var(--green-d)">opened ✓</b>' : '') + '<input class="field" data-tw="' + i + '" value="' + esc(t[i] || '') + '" placeholder="(empty = locked)"></label>'; } return r; })() +
+        '<div class="btns"><button class="btn sm" id="tw-save">💾 Save the 12 days</button></div></section>';
+  };
+
+  // ---- 🎯 Catchables
+  P.catch = function () {
+    var c = K.catchCfg(), today = K.todayKey(), list = (DB.her.catches || []).slice().reverse().slice(0, 15);
+    return '<section class="card stack"><h3>🎯 Catchables</h3><p class="help" style="margin:0">Things fly across her screen now and then (every theme except plain Kiwi). Big = 10 ⭐ (rare), medium = 5 ⭐, small = 1 ⭐.</p>' +
+      '<p><b>Today she caught ' + K.caughtToday() + ' / ' + c.daily + ' ⭐</b></p>' +
+      '<label class="switch"><span><b>Catchables on</b></span><input type="checkbox" id="ct-on"' + (c.on ? ' checked' : '') + '></label>' +
+      '<div class="row2"><label class="help">Max points a day<input class="field" id="ct-daily" type="number" min="0" value="' + c.daily + '"></label><label class="help">Something appears every (minutes)<select class="field" id="ct-gap">' +
+        [[1, 2], [2, 4], [4, 8], [8, 15]].map(function (g) { return '<option value="' + g[0] + '-' + g[1] + '"' + (c.minGap === g[0] * 60 ? ' selected' : '') + '>' + g[0] + '–' + g[1] + ' min</option>'; }).join('') + '</select></label></div>' +
+      '<div class="btns"><button class="btn sm" id="ct-save">💾 Save</button></div>' +
+      (list.length ? '<ul class="log">' + list.map(function (x) { return '<li><span>' + esc(x.name) + '<br><small>' + K.herDateTime(x.at) + '</small></span><span class="amt">+' + x.amt + '</span></li>'; }).join('') + '</ul>' : '<p class="muted">Nothing caught yet</p>') + '</section>';
+  };
+
+  // ---- 🟩 Wordle (she guesses a word you set)
+  function wScore(guess, word) { var res = [], left = {}, i; for (i = 0; i < word.length; i++) { if (guess[i] === word[i]) res[i] = 'g'; else left[word[i]] = (left[word[i]] || 0) + 1; } for (i = 0; i < word.length; i++) { if (res[i]) continue; if (left[guess[i]]) { res[i] = 'y'; left[guess[i]]--; } else res[i] = '-'; } return res; }
+  P.wordle = function () {
+    var g = DB.her.wordle, hist = (DB.her.wordleHist || []).slice().reverse().slice(0, 10);
+    var live = g ? '<div class="wd-grid admin">' + (g.guesses || []).map(function (gs) { var sc = wScore(gs, String(g.word).toLowerCase()); return '<div class="wd-row" style="grid-template-columns:repeat(' + g.word.length + ',1fr)">' + gs.split('').map(function (L, i) { return '<span class="wd-t s' + sc[i] + '">' + esc(L.toUpperCase()) + '</span>'; }).join('') + '</div>'; }).join('') + '</div>' : '';
+    return '<section class="card stack"><h3>🟩 Set a Wordle for her</h3><p class="help" style="margin:0">She gets 6 tries to guess your word on her Fun page. Any letters count as a guess (no dictionary), so pick something she can work out. Setting a new word replaces the current one.</p><div class="form">' +
+        '<div class="row2"><label>Secret word (3–8 letters)<input class="field" id="wd-word" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="e.g. KIWIS"></label><label>Points if she wins<input class="field" id="wd-reward" type="number" min="0" value="10"></label></div>' +
+        '<label>Hint (optional)<input class="field" id="wd-hint" maxlength="80" placeholder="e.g. what I call you 🥺"></label></div>' +
+        '<div class="btns"><button class="btn sm pink" id="wd-set">🟩 Send the Wordle</button></div></section>' +
+      (g ? '<section class="card stack"><h3>👀 Her current game: ' + esc(String(g.word).toUpperCase()) + '</h3><p class="help" style="margin:0">' + ({ playing: 'Playing · ' + (g.guesses || []).length + '/6 guesses', won: '🎉 She won in ' + (g.guesses || []).length + (+g.reward ? ' (+' + g.reward + ' ⭐)' : ''), lost: '🥺 She didn\'t get it' }[g.status] || '') + '</p>' + (live || '<p class="muted">No guesses yet</p>') +
+        '<div class="btns"><button class="btn sm danger" id="wd-del">Remove this Wordle</button></div></section>' : '') +
+      (hist.length ? '<section class="card stack"><h3>📚 Past Wordles</h3><ul class="log">' + hist.map(function (h) { return '<li><span>' + esc(String(h.word).toUpperCase()) + '<br><small>' + K.herDateTime(h.at) + '</small></span><span class="amt">' + (h.won ? '✅ ' + h.tries + '/6' : '❌') + '</span></li>'; }).join('') + '</ul></section>' : '');
   };
 
   // ---- clicks for the tabs above
   function morePowerClick(b, d, id) {
+    if (id === 'wd-set') {
+      var ww = val('wd-word').toLowerCase().replace(/[^a-z]/g, '');
+      if (ww.length < 3 || ww.length > 8) { toast('Use 3 to 8 letters (A–Z)'); return true; }
+      DB.setHer({ wordle: { id: 'w' + uid(), word: ww, hint: val('wd-hint'), reward: Math.max(0, Math.round(+val('wd-reward') || 0)), at: Date.now(), guesses: [], status: 'playing' } });
+      toast('Wordle sent 🟩'); render(); return true;
+    }
+    if (id === 'wd-del') { K.confirm({ emoji: '🟩', title: 'Remove this Wordle?', yes: 'Remove', danger: true }).then(function (ok) { if (ok) { DB.setHer({ wordle: null }); toast('Removed'); render(); } }); return true; }
+    if (id === 'ct-save') { var g2 = $('#ct-gap').value.split('-'); DB.setState({ catchCfg: { on: $('#ct-on').checked, daily: Math.max(0, Math.round(+$('#ct-daily').value || 0)), minGap: +g2[0] * 60, maxGap: +g2[1] * 60 } }); toast('Catchables saved 🎯'); render(); return true; }
+    if (id === 'tw-save') { var tw = {}; panels.querySelectorAll('[data-tw]').forEach(function (inp) { if (inp.value.trim()) tw[inp.dataset.tw] = inp.value.trim(); }); DB.setState({ twelve: tw }); toast(Object.keys(tw).length ? '12 days saved 📜' : '12 days turned off'); render(); return true; }
     if (id === 'xk-give') { DB.setHer({ xmasKey: { got: Date.now(), used: null } }); toast('She has Santa\'s Golden Key 🔑'); render(); return true; }
     if (id === 'xk-reset') {
       K.confirm({ emoji: '↺', title: 'Reset the key and her found secrets?', text: 'If she used the key, that present goes back to locked (unless she already opened it).', yes: 'Reset', danger: true }).then(function (ok) {
@@ -1041,7 +1079,7 @@ Kiwi.onReady(function () {
       var full = id === 'xr-reset';
       K.confirm({ emoji: full ? '♻️' : '🧹', title: full ? 'Reset the whole Christmas room?' : 'Take all ornaments off the tree?', text: full ? 'Ornaments, snowman, cocoa, cookies, candles, lights and counters go back to the start.' : '', yes: full ? 'Reset' : 'Clear', danger: true }).then(function (ok) {
         if (!ok) return;
-        DB.dmMetaSet({ xmas: full ? { orn: [], pets: 0, logs: 0, cocoa: 5, cookies: 5, storm: false, lights: 'on', snow: 0, candles: true, fireBoost: 0 } : { orn: [] } }).then(function () { toast(full ? 'Christmas room reset ♻️' : 'Tree cleared 🧹'); render(); });
+        DB.dmMetaSet({ xmas: full ? { orn: [], pets: 0, logs: 0, cocoa: 5, cookies: 5, storm: false, lights: 'on', snow: 0, candles: true, fireBoost: 0, outfit: {}, house: [] } : { orn: [] } }).then(function () { toast(full ? 'Christmas room reset ♻️' : 'Tree cleared 🧹'); render(); });
       });
       return true;
     }
@@ -1212,8 +1250,8 @@ Kiwi.onReady(function () {
   var GROUPS = [
     { id: 'home', label: '🏠 Home', tabs: [['overview', '📊 Overview']] },
     { id: 'her', label: '💬 Her', tabs: [['inbox', '📥 From her'], ['qotd', '❓ Daily question'], ['live', '🛰️ Live'], ['screen', '📱 Screen'], ['search', '🔎 Search'], ['photos', '📸 Photos']] },
-    { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['clicker', '🥝 Clicker']] },
-    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['xmasroom', '🎄 Xmas room'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
+    { id: 'rewards', label: '⭐ Rewards', tabs: [['points', '⭐ Points'], ['gifts', '🎁 Gifts'], ['catch', '🎯 Catchables'], ['clicker', '🥝 Clicker']] },
+    { id: 'write', label: '✍️ Write', tabs: [['messages', '💌 Messages to her'], ['letters', '✉️ Open-when letters'], ['wordle', '🟩 Wordle'], ['surprises', '📜 Sent surprises'], ['story', '📖 Our story'], ['schedule', '⏰ Schedule'], ['ask', '❓ Ask her'], ['auto', '🤖 Auto-replies'], ['theme', '🎨 Theme'], ['xmasroom', '🎄 Xmas room'], ['countdowns', '⏳ Countdowns'], ['notes', '📝 Love notes']] },
     { id: 'more', label: '🎛️ Control', tabs: [['control', '🎛️ Control'], ['notify', '🔔 Notifications'], ['billing', '💳 Spending'], ['history', '🕘 History'], ['devices', '🔐 Devices'], ['data', '💾 Data'], ['reset', '🧹 Reset']] }
   ];
   function groupOf(tab) { return GROUPS.find(function (g) { return g.tabs.some(function (t) { return t[0] === tab; }); }) || GROUPS[0]; }

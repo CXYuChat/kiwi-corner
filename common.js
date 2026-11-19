@@ -269,10 +269,25 @@
     });
     return out;
   };
-  K.pointsLog = function () {
-    return (DB.state.pointsLog || []).concat(K.autoAwards(), K.checkinAwards(), K.scheduledPoints()).sort(function (x, y) { return x.at - y.at; });
+  // Points she earns from things she does: finding every Christmas secret (30), catching things (max per day), Wordle wins
+  K.catchCfg = function () { return Object.assign({ on: true, daily: 50, minGap: 120, maxGap: 240 }, DB.state.catchCfg || {}); };
+  K.herAwards = function () {
+    var her = DB.her, out = [];
+    if ((her.xmasKey || {}).got) out.push({ amt: 30, reason: 'Found every Christmas secret 🔎🎄', at: her.xmasKey.got, self: true });
+    var cap = +K.catchCfg().daily || 50, perDay = {};
+    (her.catches || []).slice().sort(function (a, b) { return a.at - b.at; }).forEach(function (c) {
+      var d = T.dayKey(c.at, HZ), left = cap - (perDay[d] || 0), amt = Math.max(0, Math.min(+c.amt || 0, left));
+      if (!amt) return; perDay[d] = (perDay[d] || 0) + amt;
+      out.push({ amt: amt, reason: 'Caught ' + (c.name || 'something'), at: c.at, self: true, catch: true });
+    });
+    (her.wordleHist || []).forEach(function (w) { if (w.won && +w.reward) out.push({ amt: +w.reward, reason: 'Solved the Wordle "' + String(w.word || '').toUpperCase() + '" 🟩', at: w.at, self: true }); });
+    return out;
   };
-  K.earned = function () { return (DB.state.points || 0) + K.autoAwards().concat(K.checkinAwards(), K.scheduledPoints()).reduce(function (a, x) { return a + x.amt; }, 0); };
+  K.caughtToday = function () { var d = K.todayKey(); return K.herAwards().filter(function (a) { return a.catch && T.dayKey(a.at, HZ) === d; }).reduce(function (s, a) { return s + a.amt; }, 0); };
+  K.pointsLog = function () {
+    return (DB.state.pointsLog || []).concat(K.autoAwards(), K.checkinAwards(), K.scheduledPoints(), K.herAwards()).sort(function (x, y) { return x.at - y.at; });
+  };
+  K.earned = function () { return (DB.state.points || 0) + K.autoAwards().concat(K.checkinAwards(), K.scheduledPoints(), K.herAwards()).reduce(function (a, x) { return a + x.amt; }, 0); };
   // Points she can spend = points given (by hand + nightly) − points spent on presents
   K.spent = function () { var b = DB.her.bought || {}; return Object.keys(b).reduce(function (a, k) { return a + (+b[k] || 0); }, 0); };
   K.balance = function () { return Math.max(0, K.earned() - K.spent()); };
@@ -814,6 +829,18 @@
       st.innerHTML = '<span>' + cfg.strip + ' ' + cfg.strip + '</span>';
       var top = document.querySelector('.topbar'); if (top) top.after(st); else document.body.prepend(st);
     }
+    // 🎅 Christmas Eve takeover (Dec 24, her time): night sky, banner, Santa flying over every page
+    var eve = th === 'christmas' && (K.todayKey().slice(5) === '12-24' || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]eve=1/.test(location.search)));
+    document.documentElement.classList.toggle('xmas-eve', !!eve);
+    ['eve-banner', 'eve-santa'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
+    clearInterval(applyTheme.santaT);
+    if (eve && document.body.dataset.page !== 'admin') {
+      var eb = document.createElement('div'); eb.id = 'eve-banner'; eb.className = 'eve-banner'; eb.innerHTML = '🎅 <b>It\'s Christmas Eve!</b> Santa is on his way to you… 🌙';
+      var tb = document.querySelector('.topbar'); if (tb) tb.after(eb); else document.body.prepend(eb);
+      var sn = document.createElement('div'); sn.id = 'eve-santa'; sn.className = 'eve-santa'; sn.setAttribute('aria-hidden', 'true'); sn.textContent = '🦌🦌🦌🛷🎅'; document.body.appendChild(sn);
+      var fly = function () { sn.classList.remove('go'); void sn.offsetWidth; sn.style.top = (8 + Math.random() * 22) + 'vh'; sn.classList.add('go'); };
+      setTimeout(fly, 2500); applyTheme.santaT = setInterval(fly, 30000);
+    }
     var deco = K.homeDeco ? K.homeDeco(th) : (th === 'christmas' ? K.xmasTreeSVG() : '');
     var hero = document.querySelector('.hero');
     if (deco && hero) {
@@ -1221,6 +1248,52 @@
     DB.subscribe(check); check(); setInterval(check, 30000);
   }
 
+  // ------------------------------------------------------------ 🎯 catchables: something flies across now and then; tap it for points (not on the plain Kiwi theme)
+  K.CATCH = {
+    night: [['☄️', 'a shooting star'], ['🌟', 'a star'], ['✨', 'a sparkle']],
+    christmas: [['🦌🛷', 'Santa\'s sleigh'], ['🎁', 'a present'], ['❄️', 'a snowflake']],
+    valentine: [['💛', 'a golden heart'], ['💌', 'a love letter'], ['💗', 'a little heart']],
+    birthday: [['🎂', 'the birthday cake'], ['🎈', 'a balloon'], ['🎉', 'confetti']],
+    sakura: [['🏵️', 'a lucky golden blossom'], ['🌸', 'a cherry blossom'], ['💮', 'a petal']],
+    ocean: [['💎', 'a treasure gem'], ['🐚', 'a pearl shell'], ['🫧', 'a bubble']],
+    autumn: [['🌰', 'a golden acorn'], ['🎃', 'a pumpkin'], ['🍂', 'a leaf']]
+  };
+  function startCatchables(page) {
+    if (!DB.user || DB.user.role !== 'livina' || /^(chat|movie|login|admin)$/.test(page)) return;
+    var timer = null;
+    function next() {
+      var cfg = K.catchCfg(), lo = Math.max(20, +cfg.minGap || 120), hi = Math.max(lo + 10, +cfg.maxGap || 240);
+      clearTimeout(timer); timer = setTimeout(spawn, (lo + Math.random() * (hi - lo)) * 1000);
+    }
+    function spawn() {
+      var cfg = K.catchCfg(), set = K.CATCH[K.theme()];
+      if (!cfg.on || !set || document.hidden || K.isModalOpen() || document.documentElement.classList.contains('xr-open') || K.caughtToday() >= (+cfg.daily || 50)) return next();
+      var r = Math.random(), tier = r < 1 / 12 ? 0 : r < 1 / 12 + 0.25 ? 1 : 2, pts = [10, 5, 1][tier], item = set[tier];
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'catch tier' + tier; b.textContent = item[0]; b.setAttribute('aria-label', 'Catch ' + item[1]);
+      var fromLeft = Math.random() < 0.5, y = 12 + Math.random() * 60, dur = [6.5, 5.2, 4.4][tier];
+      b.style.top = y + 'vh'; b.style.setProperty('--dx', (fromLeft ? 1 : -1) * (innerWidth + 140) + 'px'); b.style.setProperty('--dy', ((Math.random() * 30) - 15) + 'vh');
+      b.style[fromLeft ? 'left' : 'right'] = '-70px'; b.style.animationDuration = dur + 's';
+      if (!fromLeft) b.classList.add('flip');
+      var done = false;
+      b.addEventListener('pointerdown', function (e) {
+        e.preventDefault(); if (done) return; done = true;
+        var left = (+K.catchCfg().daily || 50) - K.caughtToday(), got = Math.max(0, Math.min(pts, left));
+        b.style.translate = getComputedStyle(b).translate; b.classList.add('caught'); setTimeout(function () { b.remove(); }, 500);
+        if (!got) { K.toast('You\'ve caught the most for today ✨ More tomorrow!'); return next(); }
+        DB.setHer({ catches: (DB.her.catches || []).concat([{ at: Date.now(), amt: got, name: item[1], theme: K.theme() }]).slice(-400) });
+        var rr = b.getBoundingClientRect(); K.confetti({ x: rr.left + rr.width / 2, y: rr.top + rr.height / 2, count: tier === 0 ? 90 : 30 });
+        K.toast('+' + got + ' ⭐ You caught ' + item[1] + '!' + (tier === 0 ? ' 🤩' : ''));
+        if (tier === 0) K.logEvent('⭐', 'Caught ' + item[1] + ' (+' + got + ')');
+        next();
+      });
+      document.body.appendChild(b);
+      setTimeout(function () { if (!done) b.remove(); }, dur * 1000 + 300);
+      next();
+    }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) next(); });
+    setTimeout(next, 15000);
+  }
+
   // ------------------------------------------------------------ feature switches: admin can hide parts of her site
   function applyFeatures() {
     var off = (DB.state && DB.state.hide) || {};
@@ -1252,6 +1325,7 @@
       if (u && u.role === 'admin' && !mirror) { setTimeout(adminDeviceBeat, 1500); setInterval(adminDeviceBeat, 60000); }
       if (u && !mirror) startDm(page);
       if (u && !mirror) watchMovie(page);
+      if (u && !mirror) startCatchables(page);
       if (u && !mirror) { refreshPush(); K.pushCard(K.$('#push-card')); }
       if (u && u.role === 'livina') {
         if (Date.now() - (DB.her.lastSeen || 0) > 5 * 60000) DB.setHer({ lastSeen: Date.now() });

@@ -46,7 +46,7 @@ exports.onDm = onDocumentCreated('dm/{id}', async (ev) => {
   const m = ev.data && ev.data.data(); if (!m || !m.from) return;
   const to = other(m.from);
   if (await inChat(to)) return;
-  await push(to, { title: NAME[m.from], body: m.audio ? '🎙️ Voice message' : m.img ? '📷 Photo' + (m.text ? ': ' + clip(m.text) : '') : clip(m.text, 300), url: '/chat.html', tag: 'dm' });
+  await push(to, { title: NAME[m.from], body: m.card ? '💌 Postcard' + (m.card.text ? ': ' + clip(m.card.text) : '') : m.audio ? '🎙️ Voice message' : m.img ? '📷 Photo' + (m.text ? ': ' + clip(m.text) : '') : clip(m.text, 300), url: '/chat.html', tag: 'dm' });
 });
 
 // ------------------------------------------------------------ things he sends her (pings, surprises, points, questions, kiwis)
@@ -100,6 +100,9 @@ exports.onHer = onDocumentWritten('kiwi/her', async (ev) => {
   const bk = b.xmasKey || {}, ak = a.xmasKey || {};
   if (ak.got && !bk.got) jobs.push(push('him', { title: '🔑 Livina found every Christmas secret!', body: 'She earned Santa\'s Golden Key (one free present of her choice)', url: '/admin.html', tag: 'xmaskey' }));
   if (ak.used && !bk.used) jobs.push(push('him', { title: '🔑 Livina used Santa\'s Golden Key', body: 'She unlocked a present with it 🎁', url: '/admin.html', tag: 'xmaskey' }));
+  // Wordle: new one for her; she finished one → him
+  if (a.wordle && a.wordle.id && (!b.wordle || b.wordle.id !== a.wordle.id)) jobs.push(push('her', { title: '🟩 A new Wordle from Chengxuan!', body: 'Guess his ' + String(a.wordle.word || '').length + '-letter word' + (a.wordle.reward ? ' for ' + a.wordle.reward + ' ⭐' : ''), url: '/fun.html', tag: 'wordle' }));
+  if ((a.wordleHist || []).length > (b.wordleHist || []).length) { const w = a.wordleHist[a.wordleHist.length - 1]; jobs.push(push('him', { title: w.won ? '🟩 Livina solved your Wordle!' : '🟥 Livina didn\'t get your Wordle', body: String(w.word || '').toUpperCase() + (w.won ? ' in ' + w.tries + '/6' : ''), url: '/admin.html', tag: 'wordle' })); }
   // open-when letters she opened
   const bl2 = {}; (b.letters || []).forEach((l) => { bl2[l.id] = l; });
   (a.letters || []).forEach((l) => { const o = bl2[l.id]; if (l.openedAt && (!o || !o.openedAt)) jobs.push(push('him', { title: '💌 Livina opened a letter', body: '"Open when ' + clip(l.when, 60) + '"', url: '/admin.html', tag: 'letter-open' })); });

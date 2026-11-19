@@ -115,13 +115,13 @@ Kiwi.onReady(function () {
     if (m.unsent) return h + '<div class="dm-unsent">' + (mine ? 'You' : NAME[m.from]) + ' unsent a message</div>';
     var rq = m.replyTo ? '<div class="dm-quote"><b>' + (m.replyTo.from === me ? 'You' : NAME[m.replyTo.from]) + '</b>' + esc((m.replyTo.text || '📷 Photo').slice(0, 90)) + '</div>' : '';
     var big = !m.img && bigEmoji(m.text);
-    var body = m.audio ? '<div class="dm-audio" data-aud="' + esc(m.id) + '"><button type="button" class="dm-play" data-play="' + esc(m.id) + '" aria-label="Play">▶</button><div class="dm-wave">' + waveBars(m.id) + '<i class="dm-prog"></i></div><span class="dm-dur">' + mmss(m.dur || 0) + '</span></div>' + (m.listenedAt && m.from === me ? '<small class="dm-played">Played</small>' : '')
+    var body = m.card ? postcardHTML(m.card, m.from) : m.audio ? '<div class="dm-audio" data-aud="' + esc(m.id) + '"><button type="button" class="dm-play" data-play="' + esc(m.id) + '" aria-label="Play">▶</button><div class="dm-wave">' + waveBars(m.id) + '<i class="dm-prog"></i></div><span class="dm-dur">' + mmss(m.dur || 0) + '</span></div>' + (m.listenedAt && m.from === me ? '<small class="dm-played">Played</small>' : '')
       : m.img ? '<img src="' + m.img + '" alt="Photo" loading="lazy">' + (m.text ? '<div class="dm-cap">' + linkify(m.text) + '</div>' : '') : linkify(m.text || '');
     var rx = m.reactions || {}, rk = Object.keys(rx).filter(function (k) { return rx[k]; });
     var react = rk.length ? '<div class="dm-react">' + rk.map(function (k) { return '<span class="' + (k === me ? 'mine' : '') + '">' + esc(rx[k]) + '</span>'; }).join('') + '</div>' : '';
     return h + '<div class="dm-row ' + (mine ? 'me' : 'them') + (first ? ' first' : '') + (last ? ' last' : '') + (selecting ? ' sel' : '') + (selected[m.id] ? ' picked' : '') + '" data-id="' + esc(m.id) + '">' +
       (selecting ? '<span class="dm-check">' + (selected[m.id] ? '✓' : '') + '</span>' : '') +
-      '<div class="dm-col">' + rq + '<div class="dm-bubble' + (big ? ' big' : '') + (m.img ? ' pic' : '') + (m.pending ? ' pending' : '') + '">' + body + react + '</div>' +
+      '<div class="dm-col">' + rq + '<div class="dm-bubble' + (big ? ' big' : '') + (m.img || m.card ? ' pic' : '') + (m.pending ? ' pending' : '') + '">' + body + react + '</div>' +
       (m.edited ? '<div class="dm-edited">Edited</div>' : '') + '</div></div>';
   }
   function statusFor(m) {
@@ -236,6 +236,55 @@ Kiwi.onReady(function () {
       .catch(function () { K.toast('Couldn\'t read that photo'); });
     e.target.value = '';
   });
+
+  // ---------------------------------------------------------------- 🖼️ postcards
+  var PC = {
+    sunset: ['linear-gradient(160deg,#ff9a8b,#ff6a88 45%,#ffd194)', 'Greetings from Barcelona', '#fff'],
+    night: ['linear-gradient(160deg,#141e30,#243b55)', 'Greetings from Singapore', '#ffd27a'],
+    kiwi: ['linear-gradient(160deg,#d4fc79,#96e6a1)', 'Kiwi Corner Post', '#2c5d1e'],
+    hearts: ['radial-gradient(circle at 20% 30%,rgba(255,255,255,.35) 0 6px,transparent 7px),radial-gradient(circle at 70% 70%,rgba(255,255,255,.35) 0 8px,transparent 9px),linear-gradient(160deg,#ff9ecf,#ff6f91)', 'With love', '#fff'],
+    snow: ['radial-gradient(circle at 15% 20%,#fff 0 2px,transparent 3px),radial-gradient(circle at 60% 40%,#fff 0 2px,transparent 3px),radial-gradient(circle at 85% 15%,#fff 0 2px,transparent 3px),linear-gradient(160deg,#a8c0ff,#3f2b96)', 'Season\'s greetings', '#fff'],
+    ocean: ['linear-gradient(160deg,#2193b0,#6dd5ed)', 'Wish you were here', '#fff']
+  };
+  var STICKERS = ['🥝', '💚', '😘', '🌸', '⭐', '🌙', '☀️', '🎄', '🏖️', '✈️', '🍜', '🥺', '🐦', '🎁', '💌', '🫶'];
+  function postcardHTML(c, from) {
+    var d = PC[c.bg] || PC.kiwi;
+    return '<div class="pc" style="background:' + d[0] + ';color:' + d[2] + '"><div class="pc-stamp">' + esc(c.stamp || (from === 'her' ? '🌸' : '🥝')) + '</div>' +
+      (c.img ? '<img class="pc-img" src="' + c.img + '" alt="">' : '') + '<div class="pc-title">' + esc(d[1]) + '</div>' +
+      (c.text ? '<div class="pc-text">' + esc(c.text) + '</div>' : '') + '<div class="pc-from">— ' + (from === 'her' ? 'Livina' : 'Chengxuan') + '</div>' +
+      (c.stickers || []).map(function (st) { return '<span class="pc-st" style="left:' + st.x + '%;top:' + st.y + '%">' + esc(st.e) + '</span>'; }).join('') + '</div>';
+  }
+  function postcardEditor() {
+    var c = { bg: me === 'her' ? 'sunset' : 'night', text: '', img: null, stickers: [] };
+    var sh = K.modal('<h3>🖼️ Make a postcard</h3><div class="pc-prev" id="pc-prev"></div>' +
+      '<div class="dress-row" style="margin-top:8px">' + Object.keys(PC).map(function (k) { return '<button type="button" data-pcbg="' + k + '" aria-pressed="' + (k === c.bg) + '"><span class="sw" style="background:' + PC[k][0] + '"></span><small>' + k + '</small></button>'; }).join('') + '</div>' +
+      '<textarea class="field" id="pc-text" maxlength="240" placeholder="Write on your postcard…" style="margin-top:8px"></textarea>' +
+      '<p class="help" style="margin:8px 0 4px">Stickers (tap to add · tap one on the card to remove it)</p><div class="pc-stickers">' + STICKERS.map(function (e) { return '<button type="button" data-pcst="' + e + '">' + e + '</button>'; }).join('') + '</div>' +
+      '<div class="btns" style="margin-top:10px"><label class="btn sm ghost" style="cursor:pointer">📷 Photo<input type="file" id="pc-file" accept="image/*" hidden></label><button type="button" class="btn sm pink" id="pc-send">💌 Send postcard</button></div>', 'pc-sheet');
+    function redraw() { sh.querySelector('#pc-prev').innerHTML = postcardHTML(c, me); }
+    redraw();
+    sh.addEventListener('input', function (e) { if (e.target.id === 'pc-text') { c.text = e.target.value; redraw(); } });
+    sh.addEventListener('change', function (e) {
+      if (e.target.id !== 'pc-file' || !e.target.files[0]) return;
+      K.compressPhoto(e.target.files[0]).then(function (d) { c.img = d; redraw(); }).catch(function () { K.toast('Couldn\'t read that photo'); });
+    });
+    sh.addEventListener('click', function (e) {
+      var bg = e.target.closest('[data-pcbg]'), st = e.target.closest('[data-pcst]'), on = e.target.closest('.pc-prev .pc-st');
+      if (bg) { c.bg = bg.dataset.pcbg; sh.querySelectorAll('[data-pcbg]').forEach(function (x) { x.setAttribute('aria-pressed', x === bg); }); redraw(); }
+      if (st && c.stickers.length < 10) { c.stickers.push({ e: st.dataset.pcst, x: Math.round(8 + Math.random() * 78), y: Math.round(10 + Math.random() * 70) }); redraw(); }
+      if (on) { var i = [].indexOf.call(sh.querySelectorAll('.pc-prev .pc-st'), on); c.stickers.splice(i, 1); redraw(); }
+      if (e.target.closest('#pc-send')) {
+        if (!c.text && !c.img && !c.stickers.length) { K.toast('Write something or add a photo first'); return; }
+        var m = { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), from: me, text: '', card: c, at: Date.now() };
+        DB.dmSend(m).catch(function () { K.toast('Couldn\'t send. Try a smaller photo'); });
+        var last = { last: { at: m.at, from: me, text: '💌 Postcard' } }; DB.dmMetaSet(last, other);
+        if (me === 'her') K.notify('message', '💬 Livina', '💌 Postcard');
+        K.closeModal(); K.confetti({ count: 60 }); atBottom = true;
+      }
+    });
+  }
+  $('#dm-pc').addEventListener('click', postcardEditor);
+  if (location.hash === '#postcard') { history.replaceState(null, '', 'chat.html'); setTimeout(postcardEditor, 600); }
 
   // ---------------------------------------------------------------- 🎙️ voice messages (up to 60 s, stored with the message)
   function mmss(sec) { sec = Math.round(sec || 0); return Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2); }

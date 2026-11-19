@@ -11,7 +11,7 @@ Kiwi.onReady(function () {
   function X() { return (DB.dmMeta || {}).xmas || {}; }
   // 🔎 Find everything in the room → 🔑 Santa's Golden Key (unlock any one present, any time)
   var SECRETS = { ornament: '🎄 Hang an ornament', star: '🌟 Wish on the star', cat: '🐱 Pet the cat', fire: '🔥 Feed the fire', stockL: '🧦 Your stocking', stockC: '🧦 His stocking',
-    cocoa: '☕ Sip the cocoa', cookies: '🍪 Eat a cookie', mistletoe: '🌿 The mistletoe', window: '❄️ The snowstorm', snowman: '⛄ Build the snowman', music: '🎵 The music box',
+    cocoa: '☕ Sip the cocoa', cookies: '🍪 Eat a cookie', mistletoe: '🌿 The mistletoe', window: '🎶 The carolers', kiwi: '👗 Dress up the kiwi', house: '🏠 The gingerbread house', snowman: '⛄ Build the snowman', music: '🎵 The music box',
     wreath: '🔔 The wreath', globe: '🔮 The snow globe', train: '🚂 The toy train', ginger: '🍪 The gingerbread man', candles: '🕯️ The candles' };
   var SECRET_IDS = Object.keys(SECRETS);
   function foundMap() { return X().found || {}; }
@@ -34,7 +34,7 @@ Kiwi.onReady(function () {
     K.confetti({ count: 200 }); [523, 659, 784, 1046, 1318].forEach(function (f, i) { tone(f, i * 0.12, 0.5, 'triangle', 0.14); });
     setTimeout(function () {
       K.modal('<div class="em" style="font-size:3.4rem">🔑✨</div><h3>Santa\'s Golden Key!</h3><p class="desc">You found every secret in the Christmas room 🎄</p>' +
-        '<p class="desc">This key unlocks <b>any one present you choose</b>, whenever you want. No points needed.</p><p class="muted">Use it on the Gifts page: tap 🔑 on the present you want.</p>', 'call');
+        '<p class="desc">This key unlocks <b>any one present you choose</b>, whenever you want. No points needed.</p><p class="desc">And <b>+30 ⭐</b> for finding everything! 🌟</p><p class="muted">Use it on the Gifts page: tap 🔑 on the present you want.</p>', 'call');
     }, 700);
   }
   function updateHint() {
@@ -43,7 +43,7 @@ Kiwi.onReady(function () {
     var key = DB.her.xmasKey || {};
     h.innerHTML = key.got ? '🔑 You have Santa\'s Golden Key' + (key.used ? ' (used ✓)' : ': use it on any present 🎁') : '🔎 Secrets found: <b>' + foundCount() + '/' + SECRET_IDS.length + '</b> · find them all for a special reward';
   }
-  K.resetXmasRoom = function () { return DB.dmMetaSet({ xmas: { orn: [], pets: 0, logs: 0, cocoa: 5, cookies: 5, storm: false, lights: 'on', snow: 0, candles: true, fireBoost: 0 } }); };
+  K.resetXmasRoom = function () { return DB.dmMetaSet({ xmas: { orn: [], pets: 0, logs: 0, cocoa: 5, cookies: 5, storm: false, lights: 'on', snow: 0, candles: true, fireBoost: 0, outfit: {}, house: [] } }); };
   function setX(p) { return DB.dmMetaSet({ xmas: p }); }
 
   // ---------------------------------------------------------------- little synth (no files)
@@ -67,6 +67,7 @@ Kiwi.onReady(function () {
   var ORN = { red: ['#e53935', 'circle'], gold: ['#ffd23f', 'circle'], blue: ['#1e88e5', 'circle'], purple: ['#8e24aa', 'circle'], star: ['#ffd23f', 'star'], candy: ['#fff', 'candy'], bow: ['#e53935', 'bow'], heart: ['#ff4d7a', 'heart'] };
   function ornSVG(o) {
     var d = ORN[o.k] || ORN.red, x = o.x, y = o.y;
+    if (o.note) return ornSVG({ x: x, y: y, k: o.k }) + '<circle cx="' + x + '" cy="' + y + '" r="7" fill="none" stroke="#fff" stroke-width=".8" stroke-dasharray="1.5 2" class="xr-notering"/>';
     if (d[1] === 'star') return '<path d="M' + x + ' ' + (y - 6) + ' l1.8 4 4.4 .4 -3.3 2.9 1 4.3 -3.9 -2.3 -3.9 2.3 1 -4.3 -3.3 -2.9 4.4 -.4 Z" fill="' + d[0] + '" stroke="#e0a800" stroke-width=".6"/>';
     if (d[1] === 'candy') return '<path d="M' + (x - 1) + ' ' + (y + 6) + ' v-8 a3 3 0 0 1 6 0" stroke="#e53935" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-dasharray="2 2"/><path d="M' + (x - 1) + ' ' + (y + 6) + ' v-8 a3 3 0 0 1 6 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-dasharray="2 2" stroke-dashoffset="2"/>';
     if (d[1] === 'bow') return '<path d="M' + x + ' ' + y + ' l-6 -4 v8 Z M' + x + ' ' + y + ' l6 -4 v8 Z" fill="' + d[0] + '"/><circle cx="' + x + '" cy="' + y + '" r="1.8" fill="#b71c1c"/>';
@@ -85,6 +86,7 @@ Kiwi.onReady(function () {
       '<g data-x="window" class="xr-hit"><rect x="302" y="42" width="82" height="74" rx="6" fill="#16223e" stroke="#f3e6d0" stroke-width="6"/>' +
         '<g clip-path="url(#xrwin)"><circle cx="360" cy="58" r="8" fill="#fff6c9"/><g class="xwsnow' + (x.storm ? ' storm' : '') + '">' + snowDots(x.storm ? 30 : 10) + '</g>' +
         '<path d="M306 104 q20 -10 40 0 t40 0 V112 H306 Z" fill="#fff"/>' + snowmanSVG(x.snow || 0) + '' +
+        '<g id="xr-carol" class="xr-carol">' + [318, 338, 358].map(function (cx, i) { return '<g transform="translate(' + cx + ' 104)"><ellipse rx="6" ry="5" fill="#7a4a2a"/><circle cx="4" cy="-5" r="3.5" fill="#7a4a2a"/><path d="M7 -5 l6 1.5 l-6 1" fill="#e8c27a"/><path d="M1 -8 l3 -6 l4 5 Z" fill="#e53935"/><circle cx="4" cy="-14" r="1.4" fill="#fff"/><text x="' + (i - 1) * 3 + '" y="-18" font-size="6" class="xr-note' + i + '">♪</text></g>'; }).join('') + '</g>' +
         '<g id="xr-sleigh" class="xr-sleigh"><text x="0" y="0" font-size="14">🦌🦌🛷</text></g></g>' +
         '<path d="M343 42 V116 M302 79 H384" stroke="#f3e6d0" stroke-width="4"/></g>' +
       // candles on the window sill
@@ -127,10 +129,96 @@ Kiwi.onReady(function () {
       '<g data-x="train" class="xr-hit"><rect x="144" y="250" width="70" height="46" fill="transparent"/><g class="xr-train"><rect x="150" y="276" width="22" height="12" rx="2" fill="#c62828"/><rect x="164" y="268" width="8" height="10" fill="#c62828"/><rect x="154" y="270" width="5" height="6" fill="#ffd23f"/><rect x="174" y="280" width="16" height="8" rx="2" fill="#1e88e5"/><rect x="192" y="280" width="16" height="8" rx="2" fill="#2e9e4f"/><circle cx="155" cy="290" r="3" fill="#333"/><circle cx="167" cy="290" r="3" fill="#333"/><circle cx="182" cy="290" r="2.4" fill="#333"/><circle cx="200" cy="290" r="2.4" fill="#333"/><g class="xr-smoke"><circle cx="168" cy="262" r="3" fill="#fff" opacity=".6"/><circle cx="172" cy="256" r="4" fill="#fff" opacity=".4"/></g></g></g>' +
       // gingerbread man
       '<g data-x="ginger" class="xr-hit"><rect x="244" y="256" width="28" height="40" fill="transparent"/><g class="xr-ginger"><circle cx="258" cy="268" r="6" fill="#c68642"/><path d="M252 274 h12 l4 8 l-3 2 l-4 -5 l-1 10 h-3 l-1 -6 l-1 6 h-3 l-1 -10 l-4 5 l-3 -2 Z" fill="#c68642"/><circle cx="256" cy="267" r=".9" fill="#3e2723"/><circle cx="260" cy="267" r=".9" fill="#3e2723"/><path d="M256 270.5 q2 1.5 4 0" stroke="#fff" stroke-width=".8" fill="none"/><circle cx="258" cy="279" r="1" fill="#e53935"/><circle cx="258" cy="283" r="1" fill="#2e9e4f"/></g></g>' +
+      // walking kiwi in its outfit (tap to dress up)
+      '<g data-x="kiwi" class="xr-hit"><g class="xr-kiwiwalk"><rect x="-22" y="-34" width="44" height="44" fill="transparent"/>' + kiwiSVG(x.outfit || {}) + '</g></g>' +
+      // gingerbread house on the floor (tap to decorate)
+      '<g data-x="house" class="xr-hit" transform="translate(352 262)">' + houseSVG(x.house || [], 0.42) + '</g>' +
+      // 12 days of Christmas scroll (only once he has written something)
+      (twelveOn() ? '<g data-x="twelve" class="xr-hit"><rect x="248" y="26" width="38" height="48" rx="3" fill="#f3e6d0" stroke="#c9a96e"/><rect x="244" y="22" width="46" height="6" rx="3" fill="#c9a96e"/><rect x="244" y="72" width="46" height="6" rx="3" fill="#c9a96e"/><text x="267" y="46" font-size="10" text-anchor="middle" fill="#8e1b1b" font-weight="700">12</text><text x="267" y="58" font-size="5.4" text-anchor="middle" fill="#8e1b1b">DAYS OF</text><text x="267" y="65" font-size="5.4" text-anchor="middle" fill="#8e1b1b">XMAS</text></g>' : '') +
       '<g data-x="cat" class="xr-hit" transform="translate(304 252)"><ellipse cx="0" cy="0" rx="20" ry="10" fill="#e8a25a"/><path d="M-18 2 q-14 -2 -10 -14" stroke="#e8a25a" stroke-width="5" fill="none" stroke-linecap="round" class="xr-tail"/><circle cx="15" cy="-7" r="8" fill="#e8a25a"/><path d="M10 -13 l2 -7 l4 6 M17 -13 l4 -6 l1 7" fill="#e8a25a"/>' +
         '<g class="xr-eyes"><path d="M12 -7 h3 M18 -7 h3" stroke="#5a3a1a" stroke-width="1.2"/></g><text x="-8" y="-14" font-size="8" class="xz">z</text></g>' +
       '</svg>';
   }
+  // ---- dress-up kiwi
+  var OUTFIT = { hat: [['none', 'No hat'], ['🎅', 'Santa hat'], ['🦌', 'Antlers'], ['🎩', 'Top hat'], ['👑', 'Crown'], ['🧝', 'Elf hat']],
+    scarf: [['none', 'No scarf'], ['#e53935', 'Red'], ['#2e9e4f', 'Green'], ['#1e88e5', 'Blue'], ['stripe', 'Candy stripe']],
+    sweater: [['none', 'No sweater'], ['tree', 'Tree sweater'], ['flake', 'Snowflake sweater'], ['heart', 'Heart sweater']] };
+  function kiwiSVG(o, big) {
+    var sw = o.sweater && o.sweater !== 'none', col = { tree: '#c62828', flake: '#1e5aa8', heart: '#ad1457' }[o.sweater] || '#c62828', em = { tree: '🎄', flake: '❄️', heart: '💗' }[o.sweater];
+    var scarf = o.scarf && o.scarf !== 'none' ? (o.scarf === 'stripe' ? '<path d="M3 -16 q7 4 14 0 v4 q-7 4 -14 0 Z" fill="#fff"/><path d="M3 -16 q7 4 14 0 v4 q-7 4 -14 0 Z" fill="none" stroke="#e53935" stroke-width="2.4" stroke-dasharray="2.5 2.5"/><path d="M12 -12 l2 8 l3 -1 l-2 -8 Z" fill="#e53935"/>' : '<path d="M3 -16 q7 4 14 0 v4 q-7 4 -14 0 Z M12 -12 l2 8 l3 -1 l-2 -8 Z" fill="' + o.scarf + '"/>') : '';
+    return '<g class="xr-kiwi"><path d="M-4 6 l-2 8 M-6 14 h-4 M4 6 l1 8 M5 14 h4" stroke="#d99a3a" stroke-width="1.6" stroke-linecap="round" class="xr-legs"/>' +
+      '<ellipse cx="0" cy="-4" rx="15" ry="12" fill="' + (sw ? col : '#7a4a2a') + '"/>' + (sw ? '<text x="0" y="0" font-size="9" text-anchor="middle">' + em + '</text><path d="M-14 -2 q14 6 28 0" stroke="#fff" stroke-width="1" fill="none" stroke-dasharray="2 2"/>' : '<path d="M-8 -6 q4 -3 8 0 M0 -2 q4 -3 8 0" stroke="#5a3418" stroke-width=".8" fill="none"/>') +
+      '<circle cx="10" cy="-16" r="7" fill="#7a4a2a"/><circle cx="12" cy="-18" r="1.4" fill="#111"/><path d="M16 -16 q10 2 16 10" stroke="#e8c27a" stroke-width="2" fill="none" stroke-linecap="round"/>' + scarf +
+      (o.hat && o.hat !== 'none' ? '<text x="9" y="-22" font-size="12" text-anchor="middle">' + o.hat + '</text>' : '') + '</g>';
+  }
+  function dressUp() {
+    var o = Object.assign({}, X().outfit || {});
+    function row(kind, label) { return '<p class="help" style="margin:10px 0 4px">' + label + '</p><div class="dress-row">' + OUTFIT[kind].map(function (opt) { return '<button type="button" data-dress="' + kind + '|' + opt[0] + '" aria-pressed="' + ((o[kind] || 'none') === opt[0]) + '">' + (opt[0].charAt(0) === '#' ? '<span class="sw" style="background:' + opt[0] + '"></span>' : opt[0] === 'stripe' ? '<span class="sw stripe"></span>' : opt[0] === 'none' ? '✕' : { tree: '🎄', flake: '❄️', heart: '💗' }[opt[0]] || opt[0]) + '<small>' + opt[1] + '</small></button>'; }).join('') + '</div>'; }
+    var sh = K.modal('<h3>👗 Dress up the kiwi</h3><div class="dress-prev"><svg viewBox="-30 -42 70 60" width="180" height="150">' + kiwiSVG(o) + '</svg></div>' + row('hat', '🎩 Hat') + row('scarf', '🧣 Scarf') + row('sweater', '🧶 Sweater') +
+      '<button type="button" class="btn big" id="dress-done" style="margin-top:12px">Done ✨</button>', 'dress-sheet');
+    sh.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-dress]');
+      if (b) { var pr = b.dataset.dress.split('|'); o[pr[0]] = pr[1]; sh.querySelectorAll('[data-dress^="' + pr[0] + '|"]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); sh.querySelector('.dress-prev svg').innerHTML = kiwiSVG(o); ding(900 + Math.random() * 400); }
+      if (e.target.closest('#dress-done')) { setX({ outfit: o }); K.closeModal(); say('✨ Looking festive!'); find('kiwi'); }
+    });
+  }
+  // ---- gingerbread house builder
+  var CANDY = { gum: ['#e53935', 'circle'], gum2: ['#2e9e4f', 'circle'], gum3: ['#ffd23f', 'circle'], cane: ['#fff', 'cane'], heart: ['#ff4d7a', 'heart'], star: ['#ffd23f', 'star'], icing: ['#fff', 'dot'] };
+  function houseSVG(cand, sc) {
+    var c = (cand || []).map(function (d) { var k = CANDY[d.k] || CANDY.gum;
+      if (k[1] === 'cane') return '<path d="M' + d.x + ' ' + (d.y + 5) + ' v-7 a2.5 2.5 0 0 1 5 0" stroke="#e53935" stroke-width="2" fill="none" stroke-dasharray="1.6 1.6" stroke-linecap="round"/>';
+      if (k[1] === 'heart') return '<path d="M' + d.x + ' ' + (d.y + 3) + ' C' + (d.x - 5) + ' ' + (d.y - 1) + ' ' + (d.x - 2) + ' ' + (d.y - 5) + ' ' + d.x + ' ' + (d.y - 2) + ' C' + (d.x + 2) + ' ' + (d.y - 5) + ' ' + (d.x + 5) + ' ' + (d.y - 1) + ' ' + d.x + ' ' + (d.y + 3) + ' Z" fill="' + k[0] + '"/>';
+      if (k[1] === 'star') return '<text x="' + d.x + '" y="' + (d.y + 3) + '" font-size="8" text-anchor="middle">⭐</text>';
+      if (k[1] === 'dot') return '<circle cx="' + d.x + '" cy="' + d.y + '" r="1.6" fill="#fff"/>';
+      return '<circle cx="' + d.x + '" cy="' + d.y + '" r="3" fill="' + k[0] + '"/>'; }).join('');
+    return '<g transform="scale(' + (sc || 1) + ')"><path d="M-40 -2 L0 -40 L40 -2 Z" fill="#fff"/><path d="M-36 -4 L0 -36 L36 -4 Z" fill="#a0522d"/><rect x="-30" y="-6" width="60" height="44" fill="#c68642"/><path d="M-30 -6 q5 6 10 0 t10 0 t10 0 t10 0 t10 0 t10 0" fill="#fff"/>' +
+      '<rect x="-8" y="16" width="16" height="22" rx="7" fill="#7a3e1d"/><rect x="-24" y="6" width="12" height="11" fill="#ffe08a"/><rect x="12" y="6" width="12" height="11" fill="#ffe08a"/><path d="M-18 6 v11 M-24 11.5 h12 M18 6 v11 M12 11.5 h12" stroke="#fff" stroke-width="1"/>' + c + '</g>';
+  }
+  function houseBuilder() {
+    var pick = 'gum';
+    var sh = K.modal('<h3>🏠 Decorate the gingerbread house</h3>' +
+      '<svg viewBox="-50 -50 100 100" class="house-big" id="house-big">' + houseSVG(X().house || []) + '</svg>' +
+      '<div class="dress-row" style="justify-content:center">' + Object.keys(CANDY).map(function (k, i) { return '<button type="button" data-candy="' + k + '" aria-pressed="' + (i === 0) + '"><svg viewBox="-6 -6 12 12" width="22" height="22">' + houseCandy(k) + '</svg></button>'; }).join('') + '</div>' +
+      '<p class="help" style="text-align:center;margin:6px 0">Pick a sweet, then tap the house. You both see it.</p>' +
+      '<div class="btns" style="justify-content:center"><button type="button" class="btn sm ghost" id="house-undo">↶ Undo</button><button type="button" class="btn sm" id="house-done">Done 🏠</button></div>', 'house-sheet');
+    function houseCandy(k) { return { gum: '<circle r="3.5" fill="#e53935"/>', gum2: '<circle r="3.5" fill="#2e9e4f"/>', gum3: '<circle r="3.5" fill="#ffd23f"/>', cane: '<path d="M-1 4 v-6 a2.5 2.5 0 0 1 5 0" stroke="#e53935" stroke-width="2" fill="none" stroke-dasharray="1.6 1.6"/>', heart: '<path d="M0 3 C-5 -1 -2 -5 0 -2 C2 -5 5 -1 0 3 Z" fill="#ff4d7a"/>', star: '<text y="3" font-size="8" text-anchor="middle">⭐</text>', icing: '<circle r="2" fill="#fff" stroke="#ccc" stroke-width=".4"/>' }[k]; }
+    var big = sh.querySelector('#house-big');
+    sh.addEventListener('click', function (e) {
+      var cb = e.target.closest('[data-candy]'); if (cb) { pick = cb.dataset.candy; sh.querySelectorAll('[data-candy]').forEach(function (x) { x.setAttribute('aria-pressed', x === cb); }); return; }
+      if (e.target.closest('#house-done')) { K.closeModal(); find('house'); return; }
+      if (e.target.closest('#house-undo')) { var h0 = (X().house || []).slice(); for (var i = h0.length - 1; i >= 0; i--) if (h0[i].by === me) { h0.splice(i, 1); break; } setX({ house: h0 }); big.innerHTML = houseSVG(h0); return; }
+      if (e.target.closest('#house-big')) {
+        var pt = big.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; var p = pt.matrixTransform(big.getScreenCTM().inverse());
+        var onRoof = p.y < -4 && p.y > -38 && Math.abs(p.x) < (p.y + 40) * 0.95, onWall = p.y >= -6 && p.y <= 38 && Math.abs(p.x) <= 30;
+        if (!onRoof && !onWall) return;
+        var h1 = (X().house || []).concat([{ x: Math.round(p.x), y: Math.round(p.y), k: pick, by: me }]).slice(-120);
+        setX({ house: h1 }); big.innerHTML = houseSVG(h1); tone(1100 + Math.random() * 500, 0, 0.15, 'sine', 0.08);
+      }
+    });
+  }
+  // ---- 12 days of Christmas (Dec 25 – Jan 5, her time). Off until he writes at least one day.
+  function twelveOn() { var t = DB.state.twelve || {}; return Object.keys(t).some(function (k) { return t[k]; }); }
+  function twelve() {
+    var t = DB.state.twelve || {}, today = K.todayKey(), y = +today.slice(0, 4), base = today.slice(5) === '01-01' || today < y + '-12-25' && today.slice(5, 7) === '01' ? y - 1 : y;
+    var days = []; for (var i = 0; i < 12; i++) { var d = new Date(Date.UTC(base, 11, 25 + i)); days.push(d.toISOString().slice(0, 10)); }
+    var opened = X().twelveSeen || {};
+    var html = '<h3>📜 The 12 days of Christmas</h3><p class="help">A little surprise every day from Christmas to Jan 5.</p><div class="twelve-grid">' + days.map(function (d, i) {
+      var can = today >= d && t[i + 1]; return '<button type="button" class="tw-d' + (opened[i + 1] ? ' op' : can ? ' can' : '') + '" data-tw="' + (i + 1) + '"' + (can ? '' : ' disabled') + '><b>' + (i + 1) + '</b><small>' + d.slice(5).replace('-', '/') + '</small></button>';
+    }).join('') + '</div>';
+    var sh = K.modal(html, 'adv-sheet');
+    sh.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-tw]'); if (!b) return; var n = +b.dataset.tw;
+      if (me === 'her' && !opened[n]) { var o = {}; o[n] = Date.now(); setX({ twelveSeen: o }); K.logEvent('📜', 'Opened day ' + n + ' of the 12 days of Christmas'); }
+      ding(880); K.confetti({ count: 40 }); K.closeModal();
+      setTimeout(function () { K.modal('<div class="em">🎄</div><h3>Day ' + n + ' of Christmas</h3><p class="desc" style="white-space:pre-wrap">' + esc(t[n]) + '</p><p class="muted">From Chengxuan 💚</p>', 'call'); }, 250);
+    });
+  }
+  function carol() {   // "We Wish You a Merry Christmas" (public domain)
+    var N = { D: 587, E: 659, F: 740, G: 784, A: 880, B: 988, C: 1047, d: 1175 }, tune = 'D G G A G F E E- E A A B A G F D- D B B C B A G E D- D E A F G-'.split(' '), t = 0;
+    tune.forEach(function (n) { var len = 0.26 * (1 + (n.match(/-/g) || []).length); tone(N[n[0]], t, len + 0.2, 'triangle', 0.14); t += len; });
+    var c = $('#xr-carol'); if (c) { c.classList.add('on'); clearTimeout(carol.t); carol.t = setTimeout(function () { var c2 = $('#xr-carol'); if (c2) c2.classList.remove('on'); }, t * 1000 + 600); }
+  }
+
   // the snowman outside: tap to build it, one piece at a time
   function snowmanSVG(n) {
     var o = '<g data-x="snowman" class="xr-hit' + (n >= 5 ? ' xr-wave' : '') + '"><rect x="306" y="80" width="26" height="30" fill="transparent"/>';
@@ -164,6 +252,7 @@ Kiwi.onReady(function () {
       '<div class="xr-stage"><div id="xr-room"></div><div class="xr-pop" id="xr-pop"></div><div class="xr-fx" id="xr-fx"></div></div>' +
       '<div class="xr-tools"><div class="xr-orn" id="xr-orn">' + Object.keys(ORN).map(function (k) { return '<button type="button" data-orn="' + k + '"><svg viewBox="-8 -8 16 16" width="22" height="22">' + ornSVG({ x: 0, y: 0, k: k }) + '</svg></button>'; }).join('') + '</div>' +
       '<div class="xr-btns"><button type="button" data-t="undo">↶ Undo ornament</button><button type="button" data-t="lights">💡 Lights</button>' + (me === 'him' ? '<button type="button" data-t="clear">🧹 Clear tree</button><button type="button" data-t="reset">♻️ Reset room</button>' : '') + '</div>' +
+      '<input class="xr-noteinput" id="xr-note" maxlength="120" placeholder="📝 Note for your next ornament (optional)">' +
       '<p class="xr-hint" id="xr-hint">Pick an ornament, then tap the tree to hang it. Tap anything in the room 👀</p></div>';
     document.body.appendChild(overlay); document.documentElement.classList.add('xr-open');
     drawRoom(); updateHint();
@@ -212,10 +301,18 @@ Kiwi.onReady(function () {
     if (what === 'tree') {
       var p = svgPoint(e), tx = (p.x - 2) * (120 / 128), ty = (p.y - 76) * (170 / 181);
       if (ty < 38 && Math.abs(tx - 60) < 18) { wishOnStar(); return; }
+      var near = null, bd = 64; (X0.orn || []).forEach(function (o) { var dd = (o.x - tx) * (o.x - tx) + (o.y - ty) * (o.y - ty); if (dd < bd) { bd = dd; near = o; } });
+      if (near && (!tool || near.note) && bd < 40) {
+        say(near.note ? '📝 "' + near.note + '" from ' + (near.by === me ? 'you' : near.by === 'him' ? 'Chengxuan' : 'Livina') : 'An ornament hung by ' + (near.by === me ? 'you' : near.by === 'him' ? 'Chengxuan' : 'Livina') + ' ✨');
+        return;
+      }
       if (!tool) { say('Pick an ornament below first 👇 (or tap the star to make a wish)'); return; }
       var half = ty < 22 ? 0 : ty < 70 ? (ty - 22) * 0.8 : ty < 108 ? 30 + (ty - 70) * 0.6 : ty < 146 ? 40 + (ty - 108) * 0.5 : 0;
       if (ty < 26 || ty > 144 || Math.abs(tx - 60) > half) { say('Put it on the branches 🎄'); return; }
-      var orn = (X0.orn || []).concat([{ x: Math.round(tx), y: Math.round(ty), k: tool, by: me, at: Date.now() }]).slice(-80);
+      var noteEl = $('#xr-note'), note = noteEl ? noteEl.value.trim().slice(0, 120) : '';
+      var newO = { x: Math.round(tx), y: Math.round(ty), k: tool, by: me, at: Date.now() }; if (note) { newO.note = note; noteEl.value = ''; }
+      var orn = (X0.orn || []).concat([newO]).slice(-80);
+      if (note) say('📝 Ornament hung with your note. ' + (me === 'her' ? 'Chengxuan' : 'Livina') + ' can tap it to read it');
       setX({ orn: orn }); ding(784 + Math.random() * 600); find('ornament');
       if (orn.length % 10 === 0) { K.confetti({ count: 40 }); say(orn.length + ' ornaments! Beautiful 🎄'); }
       if (me === 'her' && orn.filter(function (o) { return o.by === 'her'; }).length === 1) K.logEvent('🎄', 'Started decorating the Christmas tree');
@@ -258,10 +355,13 @@ Kiwi.onReady(function () {
     }
     if (what === 'candles') { var lit = X0.candles !== false; setX({ candles: !lit }); say(lit ? '🕯️ Puff! Candles out. Make a wish?' : '🕯️ Candles lit again ✨'); if (lit) burst('💨', 2, cx, cy); return; }
     if (what === 'wreath') { hit.classList.remove('ring'); void hit.getBoundingClientRect(); hit.classList.add('ring'); [1568, 1760, 2093, 1760].forEach(function (f, i) { tone(f, i * 0.12, 0.3, 'sine', 0.06); }); say('🔔 Jingle jingle!'); return; }
-    if (what === 'globe') { hit.classList.remove('shake'); void hit.getBoundingClientRect(); hit.classList.add('shake'); tone(1200, 0, 0.2, 'sine', 0.05); tone(1500, 0.1, 0.25, 'sine', 0.04); say('🔮 Shake shake… a tiny snowstorm inside!'); return; }
+    if (what === 'globe') { hit.classList.remove('shake'); void hit.getBoundingClientRect(); hit.classList.add('shake'); tone(1200, 0, 0.2, 'sine', 0.05); tone(1500, 0.1, 0.25, 'sine', 0.04); setX({ storm: !X0.storm }); say(X0.storm ? '🔮 The snow outside calms down' : '🔮 Shake shake… now it\'s snowing hard outside too! ❄️'); return; }
     if (what === 'train') { var tr = hit.querySelector('.xr-train'); tr.classList.remove('go'); void tr.getBoundingClientRect(); tr.classList.add('go'); tone(440, 0, 0.25, 'square', 0.04); tone(392, 0.28, 0.35, 'square', 0.04); say('🚂 Choo choo! All aboard the kiwi express'); return; }
     if (what === 'ginger') { var gm = hit.querySelector('.xr-ginger'); gm.classList.remove('run'); void gm.getBoundingClientRect(); gm.classList.add('run'); say('🍪 "Run, run, as fast as you can! You can\'t catch me, I\'m the gingerbread man!"'); return; }
-    if (what === 'window') { setX({ storm: !X0.storm }); say(X0.storm ? '🌤️ The snow calms down' : '❄️ Snowstorm outside! Stay cozy'); sleigh(); return; }
+    if (what === 'window') { carol(); say('🎶 Kiwi carolers at the window: "We wish you a merry Christmas…"'); sleigh(); return; }
+    if (what === 'kiwi') { dressUp(); return; }
+    if (what === 'house') { houseBuilder(); return; }
+    if (what === 'twelve') { twelve(); return; }
     if (what === 'music') { jingle(); burst('🎵', 6, cx, cy); say('🎵 Jingle bells, jingle bells…'); return; }
     if (what === 'gift') { var g = hit.dataset.gift; close(); var el = document.querySelector('.gift[data-id="' + g + '"]'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1400); } }
   }

@@ -108,7 +108,7 @@ Kiwi.onReady(function () {
   DB.dmListen(12, function (l) {
     msgs = l;
     $('#mv-msgs').innerHTML = msgs.slice(-8).map(function (m) {
-      return '<div class="mv-m ' + (m.from === me ? 'me' : 'them') + '">' + (m.unsent ? '<i>unsent</i>' : m.audio ? '🎙️ Voice message' : m.img ? '📷 Photo' : esc(m.text)) + '</div>';
+      return '<div class="mv-m ' + (m.from === me ? 'me' : 'them') + '">' + (m.unsent ? '<i>unsent</i>' : m.card ? '💌 Postcard' : m.audio ? '🎙️ Voice message' : m.img ? '📷 Photo' : esc(m.text)) + '</div>';
     }).join('');
     $('#mv-msgs').scrollTop = 1e6;
   });
