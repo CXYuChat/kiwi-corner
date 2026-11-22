@@ -1665,3 +1665,69 @@ html[data-theme="christmas"] .admin-groups, html[data-theme="christmas"] .admin-
 html[data-theme="christmas"] main > h1, html[data-theme="christmas"] .wrap > h1 { color: #fff7e8; }
 html[data-theme="christmas"] .dm-app { background: #fff7e8; color: var(--ink); }
 html[data-theme="christmas"] #demo-warn, html[data-theme="christmas"] .warn, html[data-theme="christmas"] .note { color: var(--ink); }
+
+/* ===================== 📄 DOC MODE (his chat disguised as a plain work document) ===================== */
+.dm-docbtn { position: absolute; right: 46px; top: calc(env(safe-area-inset-top) + 14px); background: none; border: 0; font-size: 1.25rem; cursor: pointer; }
+body.is-admin .dm-bell { right: 82px; }
+#doc-chrome { display: none; }
+html.docmode body, html.docmode .dm-app { background: #f9fbfd !important; color: #202124 !important; font-family: Arial, Helvetica, sans-serif !important; }
+html.docmode .dm-head, html.docmode .dm-typing, html.docmode .dm-jump, html.docmode .dm-tapbacks, html.docmode .dm-react, html.docmode .dm-cam, html.docmode .dm-mic, html.docmode .dm-qbar, html.docmode .dm-ours, html.docmode .dm-selbtn, html.docmode .dm-bell, html.docmode .dm-gear, html.docmode #theme-fx, html.docmode #theme-fx-front, html.docmode .catch, html.docmode .chat-fab { display: none !important; }
+html.docmode #doc-chrome { display: block; background: #f9fbfd; border-bottom: 1px solid #dadce0; padding-top: env(safe-area-inset-top); }
+.dc-row1 { display: flex; align-items: center; gap: 8px; padding: 8px 12px 2px; }
+.dc-icon { border: 0; background: none; padding: 0; cursor: pointer; display: grid; }
+.dc-titlebox { flex: 1; min-width: 0; }
+.dc-title { font-size: 18px; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dc-menu { display: flex; gap: 12px; font-size: 13px; color: #444746; overflow: hidden; white-space: nowrap; }
+.dc-saved { font-size: 12px; color: #5f6368; white-space: nowrap; }
+.dc-share { flex: none; background: #c2e7ff; color: #001d35; border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 500; }
+@media (max-width: 480px) { .dc-saved { display: none; } .dc-share { padding: 6px 12px; } }
+.dc-tools { display: flex; align-items: center; gap: 10px; margin: 6px 10px 8px; padding: 5px 12px; background: #edf2fa; border-radius: 999px; font-size: 13px; color: #444746; overflow: hidden; white-space: nowrap; }
+.dc-tools i { width: 1px; height: 18px; background: #c7c7c7; flex: none; }
+.dc-tools b, .dc-tools em, .dc-tools u { font-family: Arial, sans-serif; }
+.dc-drop::after { content: ' ▾'; font-size: 10px; }
+.dc-num { border: 1px solid #c7c7c7; border-radius: 4px; padding: 0 5px; }
+/* the page */
+html.docmode .dm-list { padding: 18px 10px 10px !important; background: #f9fbfd !important; }
+html.docmode #dm-msgs { max-width: 816px; margin: 0 auto; background: #fff; border: 1px solid #e3e3e3; box-shadow: 0 1px 3px rgba(60, 64, 67, .15); padding: 40px 36px 60px; min-height: 70vh; }
+@media (max-width: 480px) { html.docmode #dm-msgs { padding: 26px 20px 40px; } }
+html.docmode .dm-row { justify-content: flex-start !important; margin: 0 !important; }
+html.docmode .dm-col { align-items: flex-start !important; max-width: 100% !important; }
+html.docmode .dm-bubble, html.docmode .dm-bubble.big { background: none !important; color: #202124 !important; padding: 0 0 10px !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; transform: none !important; font-family: Arial, Helvetica, sans-serif !important; font-size: 15px !important; line-height: 1.55 !important; animation: none !important; }
+html.docmode .dm-bubble.big { font-size: 15px !important; }
+html.docmode .dm-row.me .dm-bubble { color: #3c4043 !important; }
+html.docmode .dm-bubble::after, html.docmode .dm-bubble::before { display: none !important; }
+html.docmode .dm-bubble a { color: #1a5fd0 !important; }
+html.docmode .dm-bubble.pic img { max-width: 240px; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+html.docmode .dm-time, html.docmode .dm-empty { color: #80868b !important; font-family: Arial, sans-serif !important; font-size: 11px !important; text-align: left !important; }
+html.docmode .dm-quote { border-left: 2px solid #dadce0 !important; background: none !important; color: #5f6368 !important; }
+html.docmode .dm-empty { display: none !important; }
+/* typing line at the bottom */
+html.docmode .dm-compose { background: #f9fbfd !important; border-top: 1px solid #dadce0 !important; }
+html.docmode .dm-compose textarea { font-family: Arial, Helvetica, sans-serif !important; font-size: 15px !important; border: 1px solid #dadce0 !important; border-radius: 4px !important; background: #fff !important; color: #202124 !important; }
+html.docmode .dm-send { background: #1a73e8 !important; border-radius: 4px !important; color: #fff !important; }
+html.docmode .dm-reply { background: #fff !important; }
+/* doc mode on a computer: full-width editor, ruler, a centred page, and typing straight onto the page */
+html.docmode .dm-app { max-width: none !important; }
+html.docmode #doc-chrome { position: relative; z-index: 2; }
+.dc-ruler { height: 22px; border-top: 1px solid #e3e3e3; background: #f9fbfd; overflow: hidden; }
+.dc-ruler-in { max-width: 816px; margin: 0 auto; height: 100%; display: flex; justify-content: space-between; padding: 0 72px; font-size: 9px; color: #80868b; background: repeating-linear-gradient(90deg, #c7c7c7 0 1px, transparent 1px 12px) 72px 15px / calc(100% - 144px) 6px no-repeat; }
+.dc-ruler-in span { line-height: 14px; }
+@media (max-width: 900px) { .dc-ruler { display: none; } }
+html.docmode .dm-list { padding: 22px 16px 0 !important; }
+html.docmode #dm-msgs { width: 816px; max-width: 100%; border-bottom: 0; box-shadow: 0 1px 3px rgba(60, 64, 67, .15); padding: 72px 72px 0; min-height: 0; }
+html.docmode .dm-compose { width: 816px; max-width: calc(100% - 32px); margin: 0 auto 24px; padding: 0 72px 72px !important; background: #fff !important; border: 1px solid #e3e3e3 !important; border-top: 0 !important; box-shadow: 0 2px 3px rgba(60, 64, 67, .12); }
+html.docmode .dm-compose textarea { border: 0 !important; outline: 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; caret-color: #202124; min-height: 24px; resize: none; line-height: 1.55 !important; }
+html.docmode .dm-send { display: none !important; }
+@media (max-width: 900px) { html.docmode #dm-msgs { padding: 40px 32px 0; } html.docmode .dm-compose { padding: 0 32px 40px !important; } }
+/* one continuous page: the white column is painted behind the message list and the typing line */
+html.docmode .dm-list, html.docmode .dm-compose {
+  background-color: #f9fbfd !important;
+  background-image: linear-gradient(90deg, transparent calc(50% - 409px), #dadce0 calc(50% - 409px), #dadce0 calc(50% - 408px), #fff calc(50% - 408px), #fff calc(50% + 408px), #dadce0 calc(50% + 408px), #dadce0 calc(50% + 409px), transparent calc(50% + 409px)) !important;
+}
+html.docmode .dm-list { padding: 0 16px !important; }
+html.docmode #dm-msgs { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 72px 72px 0 !important; }
+html.docmode .dm-compose { width: auto !important; max-width: none !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; padding: 0 calc(50% - 408px + 72px) 48px !important; }
+@media (max-width: 900px) {
+  html.docmode .dm-list, html.docmode .dm-compose { background-image: none !important; background-color: #fff !important; }
+  html.docmode #dm-msgs { padding: 32px 32px 0 !important; } html.docmode .dm-compose { padding: 0 48px 32px !important; }
+}
