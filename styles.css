@@ -1758,3 +1758,4 @@ html.docmode .dm-bubble.pic::before, html.docmode .dm-audio::before { content: '
 html.docmode .dm-bubble.pic .dm-cap { display: inline !important; background: none !important; padding: 0 0 0 .3em !important; margin: 0 !important; color: inherit !important; }
 html.docmode:not(.docpara) .dm-bubble.pic, html.docmode:not(.docpara) .dm-audio { display: block !important; }
 html.docmode:not(.docpara) .dm-bubble.pic, html.docmode:not(.docpara) .dm-audio { padding-bottom: 10px !important; }
+html.docmode .dm-wrap.dc-gone { display: none !important; }

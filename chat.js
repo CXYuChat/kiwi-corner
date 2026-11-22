@@ -143,7 +143,7 @@ Kiwi.onReady(function () {
     v.forEach(function (m, i) {
       var html = rowHtml(m, v[i - 1], v[i + 1]), n = nodes[m.id];
       if (!n || n.dataset.sig !== html) {
-        var w = document.createElement('div'); w.className = 'dm-wrap'; w.dataset.mid = m.id; w.dataset.sig = html; w.innerHTML = html;
+        var w = document.createElement('div'); w.className = 'dm-wrap'; w.dataset.mid = m.id; w.dataset.at = m.at; w.dataset.sig = html; w.innerHTML = html;
         if (n) n.replaceWith(w); n = w; nodes[m.id] = w;
       }
       keep[m.id] = 1;
