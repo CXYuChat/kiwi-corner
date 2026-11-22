@@ -111,7 +111,8 @@ Kiwi.onReady(function () {
     var mine = m.from === me, gapPrev = !prev || m.at - prev.at > 15 * 60000;
     var first = gapPrev || prev.from !== m.from || m.at - prev.at > 3 * 60000;
     var last = !next || next.from !== m.from || next.at - m.at > 3 * 60000 || next.at - m.at > 15 * 60000;
-    var h = gapPrev ? '<div class="dm-time">' + timeLabel(m.at) + '</div>' : '';
+    var dayCh = !prev || T.fmtDay(m.at, K.VZ) !== T.fmtDay(prev.at, K.VZ);   // new day → new paragraph in doc mode
+    var h = gapPrev || dayCh ? '<div class="dm-time' + (dayCh ? ' day' : '') + '">' + timeLabel(m.at) + '</div>' : '';
     if (m.unsent) return h + '<div class="dm-unsent">' + (mine ? 'You' : NAME[m.from]) + ' unsent a message</div>';
     var rq = m.replyTo ? '<div class="dm-quote"><b>' + (m.replyTo.from === me ? 'You' : NAME[m.replyTo.from]) + '</b>' + esc((m.replyTo.text || '📷 Photo').slice(0, 90)) + '</div>' : '';
     var big = !m.img && bigEmoji(m.text);
