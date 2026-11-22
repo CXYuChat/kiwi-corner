@@ -107,13 +107,24 @@ Kiwi.onReady(function () {
       '<a class="btn sm ghost" href="fun.html#movies-card" style="text-decoration:none">🍿 Movie list</a>' + '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
   }
 
+  // 📞 Next call: she sees a live countdown on Home and Week
+  function callCard() {
+    var c = DB.state.nextCall, live = K.nextCall();
+    var val = c && c.at ? wallOf(c.at, VZ) : '';
+    return '<section class="card stack"><h3>📞 Next call</h3>' +
+      (live ? '<p class="help" style="margin:0">She sees: <b>' + esc(T.fmtDay(c.at, HZ) + ', ' + T.fmtTime(c.at, HZ)) + '</b> her time' + (c.note ? ' · "' + esc(c.note) + '"' : '') + '</p>' : '<p class="help" style="margin:0">Not set. She sees a countdown card on Home and Week once you add one.</p>') +
+      '<label>When (' + ZL + ' time)<input class="field" id="call-at" type="datetime-local" value="' + esc(val) + '"><span class="help sg"></span></label>' +
+      '<label>How long<select class="field" id="call-mins">' + [[30, '30 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours'], [180, '3 hours']].map(function (o) { return '<option value="' + o[0] + '"' + (((c && c.mins) || 60) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label>Note (optional)<input class="field" id="call-note" maxlength="80" placeholder="e.g. bring snacks, movie after 🍿" value="' + esc((c && c.note) || '') + '"></label>' +
+      '<div class="btns"><button class="btn sm" id="call-save">📞 Save call</button>' + (c && c.at ? '<button class="btn sm ghost" id="call-clear">Clear</button>' : '') + '</div></section>';
+  }
   P.overview = function () {
     var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
     var opened = gs.filter(function (g) { return g.opened; }).length, unlocked = gs.filter(function (g) { return g.unlocked; }).length;
     var sp = st.surprise, ov = st.statusOverride;
     return '<section class="card a2hs" id="push-card-admin" hidden></section>' +
       '<section class="card stack"><div data-presence="small">' + presenceHtml(false) + '</div><div class="btns"><button class="btn sm ghost" data-goto="live">🛰️ Live details</button><button class="btn sm ghost" data-goto="control">📲 Ping her</button></div></section>' +
-      needsYou() + '<section class="card stack"><h3>💚 Her</h3>' +
+      callCard() + needsYou() + '<section class="card stack"><h3>💚 Her</h3>' +
       '<div class="stat-grid">' +
         '<div class="stat"><b>⭐ ' + K.balance() + '</b><span>points (' + K.spent() + ' spent)</span></div>' +
         '<div class="stat"><b>🥺 ' + (her.missCount || 0) + '</b><span>times she missed you</span></div>' +
@@ -208,8 +219,8 @@ Kiwi.onReady(function () {
   };
 
 
-  var VERDICT = { yes: '✅ Correct', close: '🔥 Close', warm: '🙂 Warmer', no: '❌ Nope' };
-  var WISH = { noted: '💚 Noted', maybe: '🤔 Maybe', coming: '🎁 On its way', no: '🙈 Not this time' };
+  var VERDICT = { yes: '✅ Correct', close: '🔥 Close', warm: '🙂 Warmer', no: '❌ Nope', note: '💌 Replied' };
+  var WISH = { noted: '💚 Noted', maybe: '🤔 Maybe', coming: '🎁 On its way', no: '🙈 Not this time', note: '💌 Replied' };
 
   // ---- Everything from her in one place: messages, guesses, wishes, answers to your questions.
   // "Needs you" = waiting for your reply; "Done" = replied / archived.
@@ -251,11 +262,13 @@ Kiwi.onReady(function () {
       return '<div class="item">' + head + '<span class="tag' + (cur ? ' on' : '') + '">' + (cur ? map[cur] : 'new') + '</span></div>' +
         '<b style="color:var(--brown)">' + (it.kind === 'guess' ? 'Present #' + (it.n || '?') + ': ' : '') + '"' + esc(x.text) + '"</b>' +
         (it.kind === 'guess' ? '<div class="help">Really: ' + esc(it.real || 'deleted gift') + '</div>' : '') +
-        '<div class="row2"><label class="help">Note (optional)<input class="field" data-xnote="' + esc(x.id) + '" value="' + esc(x.note || '') + '" placeholder="e.g. haha nice try 😏" maxlength="100"></label>' +
+        '<div class="row2"><label class="help">Your reply<input class="field" data-xnote="' + esc(x.id) + '" value="' + esc(x.note || '') + '" placeholder="e.g. haha nice try 😏" maxlength="200"></label>' +
         '<label class="help">Points (optional)<input class="field" data-xpts="' + esc(x.id) + '" type="number" inputmode="numeric" placeholder="0"></label></div>' +
-        '<div class="btns">' + Object.keys(map).map(function (k) {
+        '<div class="btns"><button class="btn sm pink" data-reply="' + it.kind + '" data-xid="' + esc(x.id) + '" data-v="' + (cur || 'note') + '" data-sendnote="1">💌 ' + (x.note ? 'Update reply' : 'Send reply') + '</button>' + del + '</div>' +
+        '<div class="help" style="margin:0">…or answer in one tap (sends your note too):</div>' +
+        '<div class="btns">' + Object.keys(map).filter(function (k) { return k !== 'note'; }).map(function (k) {
           return '<button class="btn sm ' + (cur === k ? '' : 'ghost') + '" data-reply="' + it.kind + '" data-xid="' + esc(x.id) + '" data-v="' + k + '">' + map[k] + '</button>';
-        }).join('') + del + '</div></div>';
+        }).join('') + '</div></div>';
     }
     // answer to a question
     var opt = (x.options || [])[x.answer.choice] || {};
@@ -1307,6 +1320,13 @@ Kiwi.onReady(function () {
     }
     var b = e.target.closest('button'); if (!b) return;
     var d = b.dataset, id = b.id;
+    if (id === 'call-save') {
+      var cv = $('#call-at').value; if (!cv) { toast('Pick a day and time first'); return; }
+      var cat; try { cat = T.parse(cv, VZ); } catch (e) { toast('That time doesn\'t look right'); return; }
+      DB.setState({ nextCall: { at: cat, mins: +$('#call-mins').value || 60, note: $('#call-note').value.trim() } });
+      toast('Call saved 📞 She can see it now'); return render();
+    }
+    if (id === 'call-clear') { DB.setState({ nextCall: null }); toast('Call cleared'); return render(); }
     if (powerClick(b, d, id) || morePowerClick(b, d, id)) return;
     if (d.qr !== undefined) {
       var qtext = quickList()[+d.qr]; if (!qtext) return;
@@ -1369,6 +1389,7 @@ Kiwi.onReady(function () {
       else {
         var nEl = panels.querySelector('[data-xnote="' + d.xid + '"]'), pEl = panels.querySelector('[data-xpts="' + d.xid + '"]');
         var note = nEl ? nEl.value.trim() : '', pts = Math.round(+(pEl ? pEl.value : 0) || 0);
+        if (d.sendnote && !note) { toast('Write your reply in the box first ✍️'); if (nEl) nEl.focus(); return; }
         arr = arr.map(function (x) {
           if (x.id !== d.xid) return x;
           var y = Object.assign({}, x); y[key === 'guesses' ? 'verdict' : 'status'] = d.v; if (note) y.note = note; else delete y.note; return y;

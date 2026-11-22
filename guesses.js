@@ -3,8 +3,8 @@ Kiwi.onReady(function () {
   'use strict';
   var K = window.Kiwi, DB = window.KiwiDB, $ = K.$, esc = K.esc;
   if (!$('#guess-form') || !DB.user) return;
-  var VERDICT = { yes: '✅ Correct! (shh 🤫)', close: '🔥 So close!', warm: '🙂 Getting warmer', no: '❌ Nope, keep guessing' };
-  var WISH = { noted: '💚 Noted!', maybe: '🤔 Maybe… 👀', coming: '🎁 It\'s on its way!', no: '🙈 Not this time' };
+  var VERDICT = { yes: '✅ Correct! (shh 🤫)', close: '🔥 So close!', warm: '🙂 Getting warmer', no: '❌ Nope, keep guessing', note: '💌 He replied' };
+  var WISH = { noted: '💚 Noted!', maybe: '🤔 Maybe… 👀', coming: '🎁 It\'s on its way!', no: '🙈 Not this time', note: '💌 He replied' };
   function uid() { return Math.random().toString(36).slice(2, 9); }
 
   function render() {

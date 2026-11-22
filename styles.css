@@ -1317,6 +1317,20 @@ i.her { background: #ff6f91; } i.him { background: #5f9a00; } i.both { backgroun
 .cal-ev small { color: var(--muted); font-size: .74rem; }
 .cal-up-d { display: block; font-size: .72rem; font-weight: 600; color: var(--accent-d); margin-top: 8px; }
 
+
+/* ===== 📞 next call ===== */
+.call-card { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, var(--soft), var(--card) 75%); }
+.call-card .call-ic { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; background: var(--card); box-shadow: 0 3px 10px rgba(var(--brown-rgb), .18); animation: callWig 3s ease-in-out infinite; }
+.call-card .call-body { min-width: 0; }
+.call-card .call-k { font-size: .8rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.call-card .call-big { font-size: 1.7rem; font-weight: 600; color: var(--brown); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.call-card .call-when { font-size: .9rem; color: var(--ink); }
+.call-card .call-note { margin-top: 4px; font-size: .92rem; color: var(--accent-ink); }
+.call-card.live { background: linear-gradient(135deg, var(--soft2), var(--soft)); }
+.call-card.live .call-ic { animation: callRing .6s ease-in-out infinite; background: var(--green); }
+@keyframes callWig { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(-14deg); } 95% { transform: rotate(12deg); } }
+@keyframes callRing { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+
 /* ===================== ✂️ SCRAPBOOK THEME (kraft paper, washi tape, notebook pages, handwriting) ===================== */
 html[data-theme="scrapbook"] {
   --green: #9ccf3a; --green-d: #5e8f1f; --flesh: #d8f3c4; --brown: #6b4a2e; --brown-d: #4a3423; --cream: #e9d5b5; --card: #fffdf6; --ink: #4a3423; --muted: #8a6a4a;
@@ -1436,3 +1450,6 @@ html[data-theme="scrapbook"] .gift:nth-child(2n) { transform: rotate(.9deg); }
 @media (hover: hover) { html[data-theme="scrapbook"] .gift:hover { transform: rotate(0) translateY(-3px); } }
 html[data-theme="scrapbook"] .gift.ready, html[data-theme="scrapbook"] .gift.unlocked { outline: 3px dashed #e2668c; outline-offset: -7px; }
 html[data-theme="scrapbook"] .admin-pill { background: #4a3423; color: #fff7e8; border-color: #4a3423; }
+html[data-theme="scrapbook"] .call-card { background: #fff3a8; }
+html[data-theme="scrapbook"] .call-card .call-big { font-family: var(--hand); font-weight: 700; font-size: 2.1rem; color: var(--ink); }
+html[data-theme="scrapbook"] .call-card .call-ic { border-radius: 10px; transform: rotate(-4deg); }

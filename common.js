@@ -716,6 +716,33 @@
     });
   })();
 
+  // ------------------------------------------------------------ 📞 next call: he sets it in admin; a live countdown card on her Home + Week
+  K.nextCall = function () {
+    var c = DB.state.nextCall; if (!c || !c.at) return null;
+    var end = c.at + (c.mins || 60) * 60000;
+    return Date.now() > end + 30 * 60000 ? null : Object.assign({ end: end }, c);
+  };
+  (function () {
+    var el = document.getElementById('call-card'); if (!el) return;
+    function draw() {
+      var c = K.nextCall();
+      if (!c || !DB.user) { el.hidden = true; return; }
+      var now = Date.now(), ms = c.at - now, live = now >= c.at && now < c.end, over = now >= c.end;
+      var d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4), sec = Math.floor(ms % 6e4 / 1e3);
+      var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+      var when = d > 0 ? d + 'd ' + h + 'h ' + p2(m) + 'm' : h > 0 ? h + 'h ' + p2(m) + 'm' : m + 'm ' + p2(sec) + 's';
+      var her = KiwiTime.fmtDay(c.at, K.HZ) + ', ' + KiwiTime.fmtTime(c.at, K.HZ), his = KiwiTime.fmtTime(c.at, 'Asia/Singapore');
+      el.classList.toggle('live', live);
+      el.innerHTML = '<div class="call-ic" aria-hidden="true">📞</div><div class="call-body">' +
+        '<div class="call-k">' + (live ? 'It\'s call time!' : over ? 'Call just ended' : 'Next call') + '</div>' +
+        '<div class="call-big">' + (live ? 'Now 💚' : over ? 'Hope it was cute 🥰' : 'in ' + when) + '</div>' +
+        '<div class="call-when">' + her + ' your time · ' + his + ' for him</div>' +
+        (c.note ? '<div class="call-note">' + K.esc(c.note) + '</div>' : '') + '</div>';
+      el.hidden = false;
+    }
+    draw(); setInterval(draw, 1000); DB.subscribe(draw);
+  })();
+
   // ------------------------------------------------------------ "you got points!" notification (Livina only)
   var noticeOpen = false;
   function pointsNotice() {

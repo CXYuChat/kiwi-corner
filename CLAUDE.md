@@ -19,4 +19,4 @@ A gift site for Livina (Barcelona) from Chengxuan (Singapore). Plain HTML/CSS/JS
 - Local test mode (never touches the real Firebase data): open `http://localhost:8765/login.html?demo=1`, set `localStorage['kiwi-session']` to `wifey` or `admin`; `?demo=0` turns it off. Only works on localhost.
 - Preview locally with `?now=2026-11-13T11:00@Asia/Kolkata` (only works on localhost/file://, so gifts can't be peeked at online).
 - Privacy: public site. No hotel names, flight numbers, school names, full names or emails.
-- Publish: bump `version.json` (e.g. "2026-11-12.1") so open copies auto-refresh, then commit and `git push` to `main`; GitHub Pages redeploys in ~1 minute.
+- Publish: run `node bump.js` (new version in `version.json` + stamps `?v=` on every script/stylesheet so browsers load fresh files), then commit and `git push` to `main`; GitHub Pages redeploys in ~1 minute.
