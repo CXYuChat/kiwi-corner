@@ -841,6 +841,7 @@
   function applyTheme() {
     var th = K.theme(); if (th === themeNow) return; themeNow = th;
     document.documentElement.dataset.theme = th;
+    try { localStorage.setItem('kiwi-theme', th); } catch (e) { /* */ }   // so the next page load paints this theme instantly
     ['theme-fx', 'theme-fx-front', 'theme-strip', 'theme-ground'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
     document.querySelectorAll('.xmas-tree-home').forEach(function (t) { t.remove(); });
     try { document.dispatchEvent(new CustomEvent('kiwi:theme', { detail: th })); } catch (e) { /* */ }

@@ -1453,3 +1453,8 @@ html[data-theme="scrapbook"] .admin-pill { background: #4a3423; color: #fff7e8; 
 html[data-theme="scrapbook"] .call-card { background: #fff3a8; }
 html[data-theme="scrapbook"] .call-card .call-big { font-family: var(--hand); font-weight: 700; font-size: 2.1rem; color: var(--ink); }
 html[data-theme="scrapbook"] .call-card .call-ic { border-radius: 10px; transform: rotate(-4deg); }
+/* while a page loads: no dotted pattern, just the theme's plain colour; then the page fades in */
+html.locked body { background-image: none !important; }
+html.locked body::before { display: none; }
+html:not(.locked) main { animation: pageIn .35s ease-out both; }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
