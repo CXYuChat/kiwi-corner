@@ -1744,8 +1744,6 @@ html.docmode.docpara .dm-wrap, html.docmode.docpara .dm-row, html.docmode.docpar
 html.docmode.docpara .dm-bubble { display: inline !important; padding: 0 !important; white-space: normal !important; }
 html.docmode.docpara .dm-wrap::after { content: ' '; }
 html.docmode.docpara .dm-time { display: none !important; }
-html.docmode.docpara .dm-time.day { display: block !important; height: 0; margin: 0 0 14px; overflow: hidden; }
-html.docmode.docpara .dm-wrap:first-child .dm-time.day { margin: 0; }
 html.docmode.docpara .dm-quote, html.docmode.docpara .dm-edited, html.docmode.docpara .dm-check, html.docmode.docpara .dm-st, html.docmode.docpara .dm-unsent { display: none !important; }
 html.docmode.docpara .dm-bubble.pic, html.docmode.docpara .dm-audio { display: inline-block !important; vertical-align: middle; }
 html.docmode.docpara .dm-bubble.pic img { max-height: 90px; }
@@ -1753,3 +1751,10 @@ html.docmode .dm-st { color: #80868b !important; font-family: Arial, sans-serif 
 html.docmode .sheet { background: #fff !important; border: 0 !important; border-radius: 8px !important; box-shadow: 0 4px 16px rgba(60, 64, 67, .3) !important; font-family: Arial, Helvetica, sans-serif !important; color: #202124 !important; }
 html.docmode .sheet::before { display: none !important; }
 html.docmode .sheet-back { background: rgba(32, 33, 36, .25) !important; }
+/* doc mode: attachments are just words — no photos, players or postcards */
+html.docmode .dm-bubble.pic > :not(.dm-cap), html.docmode .dm-audio > * { display: none !important; }
+html.docmode .dm-bubble.pic, html.docmode .dm-audio { display: inline !important; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; }
+html.docmode .dm-bubble.pic::before, html.docmode .dm-audio::before { content: '[sent attachment]'; display: inline !important; color: inherit; }
+html.docmode .dm-bubble.pic .dm-cap { display: inline !important; background: none !important; padding: 0 0 0 .3em !important; margin: 0 !important; color: inherit !important; }
+html.docmode:not(.docpara) .dm-bubble.pic, html.docmode:not(.docpara) .dm-audio { display: block !important; }
+html.docmode:not(.docpara) .dm-bubble.pic, html.docmode:not(.docpara) .dm-audio { padding-bottom: 10px !important; }

@@ -44,11 +44,11 @@ Kiwi.onReady(function () {
   var PKEY = 'kiwi-docpara', pb = $('#dc-para');
   function setPara(p) {
     root.classList.toggle('docpara', p);
-    try { if (p) localStorage.setItem(PKEY, '1'); else localStorage.removeItem(PKEY); } catch (e) { /* */ }
+    try { localStorage.setItem(PKEY, p ? '1' : '0'); } catch (e) { /* */ }
     pb.textContent = p ? '¶ One paragraph' : '¶ Lines'; pb.setAttribute('aria-pressed', p);
   }
   pb.addEventListener('click', function () { setPara(!root.classList.contains('docpara')); var l = $('#dm-list'); if (l) l.scrollTop = l.scrollHeight; });
-  var para = false; try { para = localStorage.getItem(PKEY) === '1'; } catch (e) { /* */ }
+  var para = true; try { para = localStorage.getItem(PKEY) !== '0'; } catch (e) { /* */ }   // One paragraph unless he picked Lines
   setPara(para);
   var on = false; try { on = localStorage.getItem(KEY) === '1'; } catch (e) { /* */ }
   set(on);
