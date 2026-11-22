@@ -1759,3 +1759,13 @@ html.docmode .dm-bubble.pic .dm-cap { display: inline !important; background: no
 html.docmode:not(.docpara) .dm-bubble.pic, html.docmode:not(.docpara) .dm-audio { display: block !important; }
 html.docmode:not(.docpara) .dm-bubble.pic, html.docmode:not(.docpara) .dm-audio { padding-bottom: 10px !important; }
 html.docmode .dm-wrap.dc-gone { display: none !important; }
+.dm-pingbtn { position: absolute; right: 82px; top: calc(env(safe-area-inset-top) + 14px); background: none; border: 0; font-size: 1.25rem; cursor: pointer; }
+body.is-admin .dm-bell { right: 118px; }
+@media (max-width: 759px), (hover: none) { .dm-pingbtn { right: 46px; } body.is-admin .dm-bell { right: 82px; } }
+/* doc mode: her avatar (online), hide mine, emojis as words */
+.dc-ava { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; background: #7b61a8; color: #fff; font: 500 15px Arial, sans-serif; cursor: pointer; box-shadow: 0 0 0 2px #f9fbfd; }
+.dc-ava.on { border-color: #1e8e3e; box-shadow: 0 0 0 2px #f9fbfd, 0 0 0 4px rgba(30, 142, 62, .25); }
+html.docmode.dochideme .dm-wrap:has(.dm-row.me) { display: none !important; }
+html.docmode .dc-emo { font-size: 0 !important; }
+html.docmode .dc-emo::after { content: attr(data-n); font-size: 15px; }
+html.docmode .dm-bubble.big .dc-emo::after { font-size: 15px; }
