@@ -72,8 +72,13 @@ Kiwi.onReady(function () {
   function loadMore() {
     loadingMore = true; $('#dm-more').hidden = false;
     var h = list.scrollHeight; LIMIT += 60;
-    var stop = DB.dmListen(LIMIT, function (l) {
-      if (unsub) unsub(); unsub = stop; msgs = l; draw();
+    // Swap the old live listener for a bigger one ONCE. (Before, every new message made the new listener
+    // switch itself off, so the chat stopped updating until a refresh.)
+    var old = unsub, first = true;
+    unsub = DB.dmListen(LIMIT, function (l) {
+      msgs = l; draw(); ack();
+      if (!first) return;
+      first = false; if (old) { old(); old = null; }
       list.scrollTop = list.scrollHeight - h; $('#dm-more').hidden = true; setTimeout(function () { loadingMore = false; }, 400);
     });
   }

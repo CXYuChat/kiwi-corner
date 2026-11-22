@@ -1769,3 +1769,17 @@ html.docmode.dochideme .dm-wrap:has(.dm-row.me) { display: none !important; }
 html.docmode .dc-emo { font-size: 0 !important; }
 html.docmode .dc-emo::after { content: attr(data-n); font-size: 15px; }
 html.docmode .dm-bubble.big .dc-emo::after { font-size: 15px; }
+/* doc mode: newest message in its own colour (toggle) */
+html.docmode.docnewest .dm-wrap.dc-newest .dm-bubble { color: #1a73e8 !important; }
+#dc-newest[aria-pressed="true"], #dc-hideme[aria-pressed="true"] { background: #d3e3fd; color: #0b57d0; }
+/* doc mode: show an attachment on request */
+html.docmode .dm-bubble.pic, html.docmode .dm-audio { cursor: pointer; }
+html.docmode .dm-bubble.pic.dc-show > :not(.dm-cap) { display: block !important; margin: 4px 0; }
+html.docmode .dm-bubble.pic.dc-show > img { max-width: 260px !important; max-height: 260px; }
+html.docmode .dm-audio.dc-show > * { display: inline-flex !important; }
+html.docmode .dm-bubble.pic.dc-show::before, html.docmode .dm-audio.dc-show::before { content: '[attachment]'; }
+html.docmode.docpara .dm-bubble.pic.dc-show { display: inline-block !important; vertical-align: top; }
+.dc-attmenu { position: fixed; z-index: 1000; background: #fff; border-radius: 6px; box-shadow: 0 2px 10px rgba(60, 64, 67, .3); padding: 4px 0; font: 14px Arial, sans-serif; }
+.dc-attmenu button { display: block; border: 0; background: none; padding: 8px 16px; font: inherit; color: #202124; cursor: pointer; white-space: nowrap; }
+.dc-attmenu button:hover { background: #f1f3f4; }
+html.docmode .dm-list { cursor: text; }
