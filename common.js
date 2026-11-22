@@ -818,9 +818,9 @@
 
   // ------------------------------------------------------------ themes
   K.THEMES = [
-    ['kiwi', '🥝 Kiwi (normal)', ''], ['scrapbook', '✂️ Scrapbook', '🌼'], ['christmas', '🎄 Christmas', '❄️']
+    ['kiwi', '🥝 Kiwi (normal)', ''], ['scrapbook', '✂️ Scrapbook', '🌼'], ['mochi', '🍡 Mochi', '✨'], ['zen', '🍃 Zen', '🍃'], ['christmas', '🎄 Christmas', '❄️']
   ];
-  K.HATS = { christmas: '🎅', scrapbook: '🎀' };
+  K.HATS = { christmas: '🎅', scrapbook: '🎀', mochi: '🍡', zen: '🍃' };
   // old saved themes (valentine, ocean…) were removed: anything unknown falls back to Kiwi
   function knownTheme(t) { return K.THEMES.some(function (x) { return x[0] === t; }) ? t : 'kiwi'; }
   K.adminTheme = function () {
@@ -836,6 +836,8 @@
   // What each theme sprinkles on the screen: kind of particle, how many, and the strip at the top
   var THEME_FX = {
     christmas: { kind: 'snow', n: 110, ground: 'snow', tree: true },
+    mochi: { kind: 'paper', n: 26, items: ['✦', '♡', '✿', '●', '✧'], cols: ['#ffb3cf', '#a8ecc6', '#c9b8ff', '#ffd59e', '#9fd8ff'] },
+    zen: { kind: 'fall', n: 9, items: ['🍃', '🌿', '🍃'], slow: true },
     scrapbook: { kind: 'paper', n: 30, items: ['♡', '★', '✿', '♥', '✦'], cols: ['#ff9cb8', '#ffc21a', '#7cc576', '#8ec5ff', '#c9a7ff', '#ff8a5c'], tape: true }
   };
   function applyTheme() {
@@ -862,7 +864,7 @@
       else if (cfg.kind === 'bubble') { var bs = 6 + r() * 18; p.style.width = p.style.height = bs + 'px'; }
       else if (cfg.kind === 'paper') { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.color = cfg.cols[Math.floor(r() * cfg.cols.length)]; p.style.fontSize = (13 + r() * 15) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); p.style.animationDuration = (10 + r() * 10) + 's'; }
       else if (cfg.kind === 'stars') { p.style.top = (r() * 100) + '%'; var ss = 2 + r() * 3; p.style.width = p.style.height = ss + 'px'; if (r() < 0.15) { p.textContent = '✨'; p.className = 'emo'; p.style.fontSize = (10 + r() * 10) + 'px'; } }
-      else { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.fontSize = (14 + r() * 14) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); }
+      else { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.fontSize = (14 + r() * 14) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); if (cfg.slow) { p.style.animationDuration = (18 + r() * 14) + 's'; p.style.opacity = .55; } }
       (i < frontN ? front : back).appendChild(p);
     }
     var fx = back;
@@ -1295,7 +1297,9 @@
   // ------------------------------------------------------------ 🎯 catchables: something flies across now and then; tap it for points (not on the plain Kiwi theme)
   K.CATCH = {
     christmas: [['🦌🛷', 'Santa\'s sleigh'], ['🎁', 'a present'], ['❄️', 'a snowflake']],
-    scrapbook: [['🌟', 'a gold star sticker'], ['💌', 'a love note'], ['🌼', 'a flower sticker']]
+    scrapbook: [['🌟', 'a gold star sticker'], ['💌', 'a love note'], ['🌼', 'a flower sticker']],
+    mochi: [['🍡', 'a golden mochi'], ['🍓', 'a strawberry daifuku'], ['✨', 'a sparkle']],
+    zen: [['🪷', 'a lotus flower'], ['🍵', 'a cup of matcha'], ['🍃', 'a falling leaf']]
   };
   function startCatchables(page) {
     if (!DB.user || DB.user.role !== 'livina' || /^(chat|movie|login|admin)$/.test(page)) return;

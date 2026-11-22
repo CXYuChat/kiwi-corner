@@ -69,8 +69,68 @@
       '#d9bf96', 'Tap a present to find it below ✂️');
   };
 
+  // 🍡 Mochi: a pastel sweet shop with bouncing mochi friends, a steaming cup of tea and sparkles
+  function mochiBun(x, y, w, col, cheek, delay) {
+    var h = w * .78;
+    return '<g class="s-squish" style="animation-delay:' + delay + 's"><path d="M' + (x - w / 2) + ' ' + y + ' C' + (x - w / 2) + ' ' + (y - h) + ' ' + (x + w / 2) + ' ' + (y - h) + ' ' + (x + w / 2) + ' ' + y + ' Z" fill="' + col + '"/>' +
+      '<ellipse cx="' + (x - w * .16) + '" cy="' + (y - h * .42) + '" rx="' + (w * .05) + '" ry="' + (w * .07) + '" fill="#3d3a5c"/><ellipse cx="' + (x + w * .16) + '" cy="' + (y - h * .42) + '" rx="' + (w * .05) + '" ry="' + (w * .07) + '" fill="#3d3a5c"/>' +
+      '<path d="M' + (x - w * .07) + ' ' + (y - h * .28) + ' q' + (w * .07) + ' ' + (w * .07) + ' ' + (w * .14) + ' 0" stroke="#3d3a5c" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="' + (x - w * .3) + '" cy="' + (y - h * .3) + '" rx="' + (w * .08) + '" ry="' + (w * .05) + '" fill="' + cheek + '" opacity=".8"/><ellipse cx="' + (x + w * .3) + '" cy="' + (y - h * .3) + '" rx="' + (w * .08) + '" ry="' + (w * .05) + '" fill="' + cheek + '" opacity=".8"/></g>';
+  }
+  function sparkle(x, y, s, col, delay) { return '<path class="s-spark" style="animation-delay:' + delay + 's" d="M' + x + ' ' + (y - s) + ' Q' + x + ' ' + y + ' ' + (x + s) + ' ' + y + ' Q' + x + ' ' + y + ' ' + x + ' ' + (y + s) + ' Q' + x + ' ' + y + ' ' + (x - s) + ' ' + y + ' Q' + x + ' ' + y + ' ' + x + ' ' + (y - s) + 'Z" fill="' + col + '"/>'; }
+  SCENES.mochi = function (gifts) {
+    return wrapScene(
+      '<defs><linearGradient id="mobg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dff8ec"/><stop offset=".7" stop-color="#fde8f1"/><stop offset="1" stop-color="#fff4e6"/></linearGradient></defs>' +
+      '<rect width="400" height="230" fill="url(#mobg)"/>' +
+      // striped awning
+      '<path d="M0 0 H400 V26 H0 Z" fill="#fff"/>' + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (i) { return '<path d="M' + (i * 40) + ' 0 h20 v26 q-10 10 -20 0 Z" fill="' + (i % 2 ? '#a8ecc6' : '#ffb3cf') + '"/>'; }).join('') +
+      '<path d="M0 26 ' + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (i) { return 'q10 10 20 0 q10 10 20 0'; }).join(' ') + '" fill="none" stroke="#fff" stroke-width="3"/>' +
+      // shelf with jars
+      '<rect x="230" y="70" width="150" height="6" rx="3" fill="#e9c9a8"/>' +
+      '<g class="s-bob"><rect x="244" y="44" width="26" height="26" rx="8" fill="#fff" opacity=".85"/><circle cx="257" cy="58" r="6" fill="#ffb3cf"/></g>' +
+      '<g class="s-bob" style="animation-delay:-1s"><rect x="282" y="40" width="28" height="30" rx="8" fill="#fff" opacity=".85"/><circle cx="292" cy="58" r="4" fill="#a8ecc6"/><circle cx="300" cy="52" r="4" fill="#c9b8ff"/></g>' +
+      '<g class="s-bob" style="animation-delay:-2s"><rect x="322" y="46" width="24" height="24" rx="8" fill="#fff" opacity=".85"/><circle cx="334" cy="58" r="6" fill="#ffd59e"/></g>' +
+      // dango stick
+      '<g class="s-sway" style="animation-duration:4s"><path d="M70 40 V120" stroke="#c9a77a" stroke-width="4" stroke-linecap="round"/><circle cx="70" cy="56" r="13" fill="#ffb3cf"/><circle cx="70" cy="80" r="13" fill="#fff"/><circle cx="70" cy="104" r="13" fill="#a8ecc6"/></g>' +
+      // counter
+      '<rect x="0" y="172" width="400" height="58" fill="#ffe2c6"/><rect x="0" y="168" width="400" height="8" rx="4" fill="#fff"/>' +
+      // tea cup
+      '<g transform="translate(330 168)"><path d="M-16 -22 h32 v10 a16 16 0 0 1 -32 0 Z" fill="#a8ecc6"/><path d="M16 -18 a6 6 0 0 1 0 10" stroke="#a8ecc6" stroke-width="3" fill="none"/><path class="s-rise" d="M-6 -26 q-3 -6 0 -12" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/><path class="s-rise" style="animation-delay:-2s" d="M5 -26 q-3 -6 0 -12" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></g>' +
+      mochiBun(130, 170, 54, '#fff', '#ffb3cf', 0) + mochiBun(188, 170, 40, '#ffd1e3', '#ff8fb5', -.6) + mochiBun(236, 170, 46, '#d5f5e3', '#ffb3cf', -1.2) +
+      sparkle(40, 150, 7, '#ffd59e', 0) + sparkle(200, 50, 6, '#c9b8ff', -.8) + sparkle(380, 110, 7, '#ffb3cf', -1.6) + sparkle(150, 100, 5, '#a8ecc6', -2.2) +
+      pile(gifts, 2, 48, .95),
+      '#fde8f1', 'Tap a present to find it below 🍡');
+  };
+
+  // 🍃 Zen: a raked sand garden with stones, swaying bamboo, a little bonsai and a koi pond rippling
+  SCENES.zen = function (gifts) {
+    var rake = '';
+    for (var i = 0; i < 9; i++) rake += '<path d="M0 ' + (150 + i * 9) + ' Q100 ' + (144 + i * 9) + ' 200 ' + (150 + i * 9) + ' T400 ' + (150 + i * 9) + '" stroke="#e2dccb" stroke-width="1.4" fill="none"/>';
+    var bamboo = [20, 40, 58].map(function (x, k) { return '<g class="s-sway" style="animation-duration:' + (6 + k) + 's"><path d="M' + x + ' 230 V' + (20 + k * 14) + '" stroke="#8fa979" stroke-width="6"/>' + [60, 100, 140, 180].map(function (y) { return '<path d="M' + (x - 3) + ' ' + y + ' h6" stroke="#6f8f5a" stroke-width="2"/>'; }).join('') + '<path d="M' + x + ' ' + (50 + k * 10) + ' q16 -6 26 4 q-14 2 -26 -4 M' + x + ' ' + (90 + k * 8) + ' q-16 -6 -24 6 q12 0 24 -6" fill="#9cbb83"/></g>'; }).join('');
+    return wrapScene(
+      '<rect width="400" height="230" fill="#f7f6f1"/>' +
+      '<circle cx="300" cy="60" r="34" fill="#efe9da"/><circle cx="300" cy="60" r="34" fill="none" stroke="#c9b48a" stroke-width="1" class="s-glow"/>' +
+      '<path d="M0 132 H400 V230 H0 Z" fill="#efeadc"/>' + rake +
+      // stones with ring ripples raked around them
+      '<ellipse cx="250" cy="180" rx="30" ry="14" fill="#8a8578"/><ellipse cx="246" cy="176" rx="22" ry="8" fill="#a29d90"/><ellipse cx="250" cy="182" rx="44" ry="22" fill="none" stroke="#e2dccb" stroke-width="1.4"/>' +
+      '<ellipse cx="330" cy="200" rx="16" ry="8" fill="#9a958a"/>' +
+      // koi pond
+      '<ellipse cx="120" cy="196" rx="70" ry="22" fill="#cfe3e0"/><ellipse class="s-ripple" cx="120" cy="196" rx="20" ry="6" fill="none" stroke="#fff" stroke-width="1.5"/><ellipse class="s-ripple" style="animation-delay:-2s" cx="120" cy="196" rx="20" ry="6" fill="none" stroke="#fff" stroke-width="1.5"/>' +
+      '<g class="s-koi"><path d="M0 0 q10 -6 20 0 q-10 6 -20 0 Z M20 0 l6 -4 v8 Z" fill="#ff9a5c"/></g>' +
+      bamboo +
+      // bonsai
+      '<g transform="translate(340 132)"><rect x="-16" y="-8" width="32" height="10" rx="3" fill="#a9845e"/><path d="M0 -8 q-4 -14 6 -24 q8 -8 0 -16" stroke="#6b4a2e" stroke-width="4" fill="none"/><g class="s-sway" style="animation-duration:7s"><circle cx="-6" cy="-36" r="12" fill="#8fa979"/><circle cx="10" cy="-44" r="10" fill="#9cbb83"/><circle cx="4" cy="-52" r="9" fill="#7f9c69"/></g></g>' +
+      pile(gifts, 130, 46, .95),
+      '#efeadc', 'Tap a present to find it below 🍃');
+  };
+
   // ---------------------------------------------------------------- Home decorations (next to the kiwi)
   var DECO = {
+    mochi: '<svg viewBox="0 0 120 170">' + mochiBun(60, 150, 76, '#fff', '#ffb3cf', 0) + mochiBun(96, 156, 36, '#d5f5e3', '#ffb3cf', -.8) +
+      sparkle(20, 60, 8, '#ffd59e', 0) + sparkle(100, 40, 6, '#c9b8ff', -1) + sparkle(30, 110, 5, '#a8ecc6', -1.8) + '</svg>',
+    zen: '<svg viewBox="0 0 120 170"><circle class="s-breathe" cx="60" cy="80" r="40" fill="none" stroke="#6f8f5a" stroke-width="5" stroke-linecap="round" stroke-dasharray="230 30"/>' +
+      '<g class="s-sway" style="animation-duration:6s"><path d="M100 170 V40" stroke="#8fa979" stroke-width="5"/><path d="M100 70 q14 -6 20 4 q-12 2 -20 -4 M100 100 q-14 -6 -20 6 q10 0 20 -6" fill="#9cbb83"/></g>' +
+      '<ellipse cx="44" cy="156" rx="16" ry="7" fill="#a29d90"/></svg>',
     scrapbook: '<svg viewBox="0 0 120 170">' +
       '<g class="s-sway" style="animation-duration:4s"><g transform="rotate(-8 60 70)"><rect x="27" y="28" width="72" height="86" fill="rgba(90,60,20,.2)"/><rect x="24" y="24" width="72" height="86" fill="#fff"/>' +
         '<rect x="30" y="30" width="60" height="60" fill="#ffd6e2"/><g class="s-bob">' + heart(60, 60, 18, '#ff6f91') + '</g>' + gtext(60, 104, 12, '#4a3423', 'us ♡', true) + '</g>' +
