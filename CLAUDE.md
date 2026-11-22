@@ -8,7 +8,7 @@ A gift site for Livina (Barcelona) from Chengxuan (Singapore). Plain HTML/CSS/JS
 - `notes.js`: love notes the mascot says.
 - `time.js`: time-zone math (Intl + IANA zones, never hard-coded offsets) and the schedule model (status, both-free windows).
 - `common.js`: secret-word gate ("kiwi"), mascot/slice SVG, confetti. `home.js`, `schedule-page.js`: page logic. `styles.css`: everything visual.
-- `questions.js`: questions he asks her (card on Home). `clicker.html`/`clicker.js`: Kiwi Clicker game. `scenes.js`: animated theme scenes (Gifts page) + Home decorations; Christmas scene is in common.js.
+- `questions.js`: questions he asks her (card on Home). `clicker.html`/`clicker.js`: Kiwi Clicker game. `scenes.js`: animated theme scenes (Gifts page) + Home decorations. Themes are Kiwi, Scrapbook and Christmas only (K.THEMES in common.js; unknown saved themes fall back to Kiwi). Christmas scene is in common.js; Scrapbook scene in scenes.js, its look at the end of styles.css.
 - Data: `kiwi/state` (admin settings), `kiwi/her` (her data, incl. messages), `kiwi/live` (presence, visits, activity log, clicker save; falls back into `her.live` if the rule isn't published). `firestore.rules` must be published with `npx firebase-tools deploy --only firestore:rules` (needs `firebase login`).
 - `tests/run.js` (Node) and `tests/test.html` (browser) run `tests/check.js`.
 

@@ -944,53 +944,12 @@ html[data-theme="christmas"] {
   --soft: #e8f5ea; --soft2: #c8ebd0; --on-green: #ffffff; --bubble: #efe8e2; --gold: #e0b23a; --gold-bg: #fff4d6; --gold-ink: #6b4a00; --dark: #2b1f1d;
   --brown-rgb: 158, 42, 43; --green-rgb: 46, 158, 79; --greend-rgb: 27, 110, 55; --me1: #d64045; --me2: #a82c31;
 }
-html[data-theme="valentine"] {
-  --green: #ff7a9c; --green-d: #d9456c; --flesh: #ffc2d1; --brown: #a8325a; --brown-d: #7a2142; --cream: #fff3f6; --card: #fffafb; --ink: #4a1f2e; --muted: #9a6b7a;
-  --pink: #ffd6e1; --pink-d: #c2185b; --yellow: #ffe1ea; --accent: #e2557f; --accent-d: #b23a60; --accent-bg: #ffeef3; --accent-ink: #8a1f44;
-  --soft: #ffeef3; --soft2: #ffd1de; --on-green: #ffffff; --bubble: #f3e6ea; --gold: #f0a3b8; --gold-bg: #fff0f4; --gold-ink: #8a2a4a; --dark: #3a1424;
-  --brown-rgb: 168, 50, 90; --green-rgb: 255, 122, 156; --greend-rgb: 217, 69, 108; --me1: #ff6f91; --me2: #d9456c;
-}
-html[data-theme="birthday"] {
-  --green: #ffc23d; --green-d: #d69400; --flesh: #ffe08a; --brown: #7b4fbf; --brown-d: #573591; --cream: #fffaf0; --card: #fffefa; --ink: #3b2a55; --muted: #8a7aa3;
-  --pink: #ffd6f0; --pink-d: #c2459a; --yellow: #ffe58a; --accent: #ff6fb5; --accent-d: #d14f92; --accent-bg: #fff0f8; --accent-ink: #8a2a66;
-  --soft: #fff4d1; --soft2: #ffe7a0; --on-green: #4a3000; --bubble: #efe9f5; --gold: #ffb703; --gold-bg: #fff3cf; --gold-ink: #6b4800; --dark: #2f2045;
-  --brown-rgb: 123, 79, 191; --green-rgb: 255, 194, 61; --greend-rgb: 214, 148, 0; --me1: #a77be6; --me2: #7b4fbf;
-}
-html[data-theme="sakura"] {
-  --green: #f2a0bd; --green-d: #c86d8f; --flesh: #fbd3e0; --brown: #8b5a6b; --brown-d: #613c48; --cream: #fff7fa; --card: #fffcfd; --ink: #4a2f38; --muted: #9a7a85;
-  --pink: #ffe1ea; --pink-d: #c2456a; --yellow: #ffeef3; --accent: #e889a8; --accent-d: #c4688a; --accent-bg: #fff1f5; --accent-ink: #8a3a56;
-  --soft: #fdeef3; --soft2: #f9d6e2; --on-green: #4a1f30; --bubble: #f2e9ec; --gold: #e8b4c6; --gold-bg: #fff2f6; --gold-ink: #7a3f55; --dark: #3a2129;
-  --brown-rgb: 139, 90, 107; --green-rgb: 242, 160, 189; --greend-rgb: 200, 109, 143; --me1: #e889a8; --me2: #c4688a;
-}
-html[data-theme="ocean"] {
-  --green: #38b6d8; --green-d: #1c80a0; --flesh: #a8e0f0; --brown: #1f5a7a; --brown-d: #143d54; --cream: #f0f9fd; --card: #fbfeff; --ink: #12354a; --muted: #5f8296;
-  --pink: #d6f1ff; --pink-d: #1e6f9b; --yellow: #d9f3ff; --accent: #2fa4c7; --accent-d: #1b7896; --accent-bg: #e8f7fd; --accent-ink: #134f68;
-  --soft: #e3f6fc; --soft2: #bfe9f6; --on-green: #ffffff; --bubble: #e4eef3; --gold: #f2c94c; --gold-bg: #fdf6dc; --gold-ink: #6b5200; --dark: #0e2533;
-  --brown-rgb: 31, 90, 122; --green-rgb: 56, 182, 216; --greend-rgb: 28, 128, 160; --me1: #38b6d8; --me2: #1c80a0;
-}
-html[data-theme="autumn"] {
-  --green: #e07a2e; --green-d: #a8551b; --flesh: #f4c38f; --brown: #7a3e1d; --brown-d: #552a12; --cream: #fff6ec; --card: #fffcf7; --ink: #3e2414; --muted: #94705a;
-  --pink: #ffe0c7; --pink-d: #b5541c; --yellow: #ffe3b0; --accent: #d9653b; --accent-d: #a8481f; --accent-bg: #fff0e6; --accent-ink: #7a2f10;
-  --soft: #fdf0e3; --soft2: #f7d9b8; --on-green: #ffffff; --bubble: #f0e7df; --gold: #e0a03a; --gold-bg: #fff2d9; --gold-ink: #6b4300; --dark: #2e1a0e;
-  --brown-rgb: 122, 62, 29; --green-rgb: 224, 122, 46; --greend-rgb: 168, 85, 27; --me1: #e07a2e; --me2: #a8551b;
-}
-html[data-theme="night"] {
-  --green: #9b8cff; --green-d: #6a5acd; --flesh: #cfc6ff; --brown: #3d3477; --brown-d: #28224f; --cream: #eeebff; --card: #faf9ff; --ink: #241f4a; --muted: #726c9a;
-  --pink: #e3ddff; --pink-d: #6a5acd; --yellow: #fff3b0; --accent: #8a7bf0; --accent-d: #5f50c8; --accent-bg: #efecff; --accent-ink: #3d3290;
-  --soft: #eeebff; --soft2: #d9d3ff; --on-green: #ffffff; --bubble: #e9e7f5; --gold: #f5d76e; --gold-bg: #fff8d9; --gold-ink: #6b5600; --dark: #1b1640;
-  --brown-rgb: 61, 52, 119; --green-rgb: 155, 140, 255; --greend-rgb: 106, 90, 205; --me1: #8a7bf0; --me2: #5f50c8;
-}
 html[data-theme] body { background-color: var(--cream); }
 /* theme touches: soft tinted background + an accent stripe on cards */
 html[data-theme]:not([data-theme="kiwi"]) body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 12% 8%, rgba(var(--green-rgb), .16), transparent 45%), radial-gradient(circle at 88% 40%, rgba(var(--brown-rgb), .09), transparent 48%), radial-gradient(circle at 40% 100%, rgba(var(--green-rgb), .12), transparent 50%); }
 html[data-theme]:not([data-theme="kiwi"]) body { position: relative; isolation: isolate; }
 html[data-theme]:not([data-theme="kiwi"]) .card { border-top: 4px solid var(--accent); }
 html[data-theme="christmas"] .card:nth-of-type(even) { border-top-color: var(--green); }
-html[data-theme="birthday"] .card:nth-of-type(3n+2) { border-top-color: var(--gold); }
-html[data-theme="birthday"] .card:nth-of-type(3n) { border-top-color: var(--brown); }
-html[data-theme="ocean"]:not([data-theme="kiwi"]) body::before { background: linear-gradient(180deg, #f0f9fd, #cdeaf6); }
-html[data-theme="night"] .topbar { background: rgba(43, 37, 96, .88); }
-html[data-theme="night"] .topbar .brand { color: #fff; }
 html[data-theme]:not([data-theme="kiwi"]) .tabbar { border-top: 3px solid var(--accent); }
 html[data-theme]:not([data-theme="kiwi"]) .chat-fab { background: linear-gradient(135deg, var(--me1), var(--me2)); box-shadow: 0 6px 18px rgba(var(--greend-rgb), .45); }
 .draft-pill { position: fixed; right: 14px; bottom: 18px; z-index: 80; background: var(--dark); color: #fff; font-size: .78rem; padding: 6px 12px; border-radius: 999px; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
@@ -1075,7 +1034,6 @@ html[data-theme]:not([data-theme="kiwi"]) .chat-fab { background: linear-gradien
 @keyframes sShoot { 0%, 70% { transform: translate(-60px, 10px); opacity: 0; } 72% { opacity: 1; } 85% { transform: translate(300px, 110px); opacity: 0; } 100% { opacity: 0; } }
 .scene-sound { display: block; margin: -6px auto 12px; font: inherit; font-size: .85rem; border: 0; border-radius: 999px; padding: 6px 14px; background: var(--dark); color: #fff; cursor: pointer; }
 .scene-sound.on { background: var(--accent); }
-.xmas-tree-home.deco-birthday, .xmas-tree-home.deco-valentine { bottom: 170px; }
 
 /* ===== open-when letters ===== */
 .env-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 10px; }
@@ -1358,3 +1316,123 @@ i.her { background: #ff6f91; } i.him { background: #5f9a00; } i.both { backgroun
 .cal-ev b { color: var(--brown); }
 .cal-ev small { color: var(--muted); font-size: .74rem; }
 .cal-up-d { display: block; font-size: .72rem; font-weight: 600; color: var(--accent-d); margin-top: 8px; }
+
+/* ===================== ✂️ SCRAPBOOK THEME (kraft paper, washi tape, notebook pages, handwriting) ===================== */
+html[data-theme="scrapbook"] {
+  --green: #9ccf3a; --green-d: #5e8f1f; --flesh: #d8f3c4; --brown: #6b4a2e; --brown-d: #4a3423; --cream: #e9d5b5; --card: #fffdf6; --ink: #4a3423; --muted: #8a6a4a;
+  --pink: #ffd6e2; --pink-d: #c2456a; --yellow: #ffe066; --accent: #e2668c; --accent-d: #b2405f; --accent-bg: #ffe8ef; --accent-ink: #8a1f44;
+  --soft: #fff3d6; --soft2: #ffe7a8; --on-green: #2a3a10; --bubble: #ffffff; --gold: #d8a24a; --gold-bg: #fff3d6; --gold-ink: #6b4300; --dark: #3a2614;
+  --brown-rgb: 107, 74, 46; --green-rgb: 156, 207, 58; --greend-rgb: 94, 143, 31; --me1: #ffc2d3; --me2: #ffb0c6;
+  --radius: 6px; --shadow: 0 5px 14px rgba(90, 60, 20, .2);
+  --hand: 'Gaegu', 'Fredoka', cursive;
+}
+html[data-theme="scrapbook"] body {
+  font-family: 'Nunito', 'Fredoka', system-ui, sans-serif;
+  background-color: #e9d5b5; background-image: radial-gradient(rgba(120, 80, 40, .09) 1px, transparent 1px); background-size: 6px 6px;
+}
+html[data-theme="scrapbook"] body::before { background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, .25), transparent 40%), radial-gradient(circle at 85% 90%, rgba(120, 80, 40, .08), transparent 45%); }
+html[data-theme="scrapbook"] h1, html[data-theme="scrapbook"] h2, html[data-theme="scrapbook"] h3, html[data-theme="scrapbook"] .brand,
+html[data-theme="scrapbook"] .sheet h3, html[data-theme="scrapbook"] .big-cd .digits, html[data-theme="scrapbook"] .sheet .cd-big { font-family: var(--hand); font-weight: 700; letter-spacing: 0; }
+html[data-theme="scrapbook"] h2 { font-size: 1.85rem; color: var(--ink); }
+html[data-theme="scrapbook"] h3 { font-size: 1.4rem; }
+html[data-theme="scrapbook"] .hero h1 { color: var(--ink); font-size: clamp(3rem, 13vw, 4.6rem); }
+html[data-theme="scrapbook"] .hero .tagline { font-family: var(--hand); font-size: 1.35rem; color: var(--accent-d); }
+html[data-theme="scrapbook"] .brand { font-size: 1.5rem; color: var(--ink); }
+
+/* cards = paper scraps: tilted a touch, a strip of washi tape, they drop in and lift on hover */
+html[data-theme="scrapbook"] .card {
+  --tilt: -.6deg; position: relative; border: 0; border-top: 0 !important; border-radius: 4px; background: #fffdf6; box-shadow: 0 6px 16px rgba(90, 60, 20, .2);
+  transform: rotate(var(--tilt)); animation: sbIn .55s cubic-bezier(.3, 1.4, .5, 1) both; transition: transform .3s cubic-bezier(.3, 1.6, .5, 1), box-shadow .3s;
+}
+html[data-theme="scrapbook"] .card:nth-of-type(2n) { --tilt: .55deg; }
+html[data-theme="scrapbook"] .card:nth-of-type(3n) { --tilt: -.3deg; background: #fffef9; }
+html[data-theme="scrapbook"] .card:nth-of-type(2) { animation-delay: .06s; } html[data-theme="scrapbook"] .card:nth-of-type(3) { animation-delay: .12s; }
+html[data-theme="scrapbook"] .card:nth-of-type(4) { animation-delay: .18s; } html[data-theme="scrapbook"] .card:nth-of-type(n+5) { animation-delay: .24s; }
+html[data-theme="scrapbook"] .card::before {
+  content: ''; position: absolute; top: -9px; left: calc(50% - 38px); width: 76px; height: 18px; z-index: 2; pointer-events: none;
+  background: rgba(150, 220, 120, .78); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+  -webkit-mask: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent 0) ; mask: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent 0);
+}
+html[data-theme="scrapbook"] .card:nth-of-type(2n)::before { background: rgba(255, 180, 205, .82); left: 22px; transform: rotate(4deg); }
+html[data-theme="scrapbook"] .card:nth-of-type(3n)::before { background: rgba(255, 224, 102, .8); left: auto; right: 24px; transform: rotate(-5deg); }
+html[data-theme="scrapbook"] .card:nth-of-type(5n)::before { background: rgba(142, 197, 255, .75); }
+@media (hover: hover) { html[data-theme="scrapbook"] .card:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 0 12px 24px rgba(90, 60, 20, .26); } }
+/* keep anything that opens full-screen from inside a card working (a transform would trap it) */
+html[data-theme="scrapbook"] .card:has(.sheet-back, .xr-full, .backbar) { transform: none; animation: none; }
+@keyframes sbIn { from { opacity: 0; transform: rotate(var(--tilt, 0deg)) translateY(16px); } to { opacity: 1; transform: rotate(var(--tilt, 0deg)); } }
+
+/* notebook-paper cards: questions, quotes, wishes */
+html[data-theme="scrapbook"] .card.quote, html[data-theme="scrapbook"] .q-card, html[data-theme="scrapbook"] .card.miss {
+  background-color: #fffdf6; background-image: linear-gradient(90deg, transparent 30px, rgba(226, 96, 110, .4) 30px 32px, transparent 32px), linear-gradient(rgba(110, 170, 230, .25) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 28px; padding-left: 44px;
+}
+html[data-theme="scrapbook"] .card.quote { font-family: var(--hand); font-size: 1.3rem; }
+/* special cards become a sticky note / ticket stub */
+html[data-theme="scrapbook"] .cd-card { background: #fff3a8; }
+html[data-theme="scrapbook"] .cd-card:has(.live) { background: #e3f6c8; }
+html[data-theme="scrapbook"] .points-card, html[data-theme="scrapbook"] .bonus-card { background: #fff3d6; outline: 2px dashed #d8a24a; outline-offset: -8px; }
+html[data-theme="scrapbook"] .points-card::before, html[data-theme="scrapbook"] .bonus-card::before { display: none; }
+
+/* top bar = the edge of a notebook; tab bar = a white card with a yellow highlighter tab */
+html[data-theme="scrapbook"] .topbar, html[data-theme="scrapbook"] .nav { background: rgba(255, 253, 246, .95); border-bottom: 2px dashed #d8b98a; }
+html[data-theme="scrapbook"] .tabbar { background: #fff; border: 0 !important; border-radius: 18px; box-shadow: 0 6px 18px rgba(90, 60, 20, .24); }
+html[data-theme="scrapbook"] .tab { font-family: var(--hand); font-size: .98rem; font-weight: 700; color: #8a6a4a; transition: background .2s, transform .2s; }
+html[data-theme="scrapbook"] .tab[aria-current="page"] { background: #ffe066; color: var(--ink); transform: rotate(-2deg); }
+html[data-theme="scrapbook"] .tab.main .ic { background: #ffe066; box-shadow: 0 4px 0 #d8a24a, 0 6px 14px rgba(90, 60, 20, .25); border-color: #fff; }
+html[data-theme="scrapbook"] .tab.main[aria-current="page"] { background: transparent; transform: none; }
+html[data-theme="scrapbook"] .tab.main[aria-current="page"] .ic { outline: 3px dashed var(--accent); }
+html[data-theme="scrapbook"] .pill { border-radius: 10px; border: 2px solid #e2cba6; background: #fffdf6; font-weight: 700; }
+html[data-theme="scrapbook"] .pts-pill { background: #fff3d6; border: 2px dashed #d8a24a; }
+html[data-theme="scrapbook"] .chat-fab { background: #e2668c; border-radius: 14px; transform: rotate(-4deg); box-shadow: 0 5px 14px rgba(178, 64, 95, .4); }
+
+/* buttons = stickers: chunky, handwritten, bouncy */
+html[data-theme="scrapbook"] .btn { font-family: var(--hand); font-weight: 700; font-size: 1.22rem; border-radius: 12px; padding: 9px 20px; box-shadow: 0 4px 0 var(--green-d), 0 6px 12px rgba(90, 60, 20, .18); transition: transform .2s cubic-bezier(.3, 1.7, .5, 1), box-shadow .12s; }
+html[data-theme="scrapbook"] .btn.big { font-size: 1.45rem; padding: 12px 24px; }
+html[data-theme="scrapbook"] .btn.sm { font-size: 1.05rem; padding: 5px 13px; }
+html[data-theme="scrapbook"] .btn.pink { background: #e2668c; color: #fff; box-shadow: 0 4px 0 #b2405f, 0 6px 12px rgba(90, 60, 20, .18); }
+html[data-theme="scrapbook"] .btn.brown { background: #6b4a2e; color: #fff7e8; box-shadow: 0 4px 0 #4a3423, 0 6px 12px rgba(90, 60, 20, .18); }
+html[data-theme="scrapbook"] .btn.ghost { background: #fffdf6; border: 2px dashed #d8b98a; box-shadow: none; }
+@media (hover: hover) { html[data-theme="scrapbook"] .btn:hover { animation: none; transform: translateY(-2px) rotate(-1.5deg); } }
+html[data-theme="scrapbook"] .chip, html[data-theme="scrapbook"] .tag { border-radius: 6px; font-weight: 700; }
+html[data-theme="scrapbook"] .chips button { border-radius: 8px; border-style: dashed; }
+html[data-theme="scrapbook"] .chips button[aria-pressed="true"] { background: #ffe066; color: var(--ink); border-color: #d8a24a; border-style: solid; }
+html[data-theme="scrapbook"] .field { border-radius: 8px; background: #fffdf6; border-color: #e2cba6; }
+html[data-theme="scrapbook"] .field:focus { border-color: #e2668c; box-shadow: 0 0 0 4px rgba(226, 102, 140, .2); }
+
+/* pop-up sheets = a notebook page torn out */
+html[data-theme="scrapbook"] .sheet {
+  border-top: 0; border-radius: 10px 10px 0 0; background-color: #fffdf6; background-image: linear-gradient(rgba(110, 170, 230, .2) 1px, transparent 1px); background-size: 100% 30px;
+}
+html[data-theme="scrapbook"] .sheet::before { content: ''; position: absolute; top: 6px; left: calc(50% - 40px); width: 80px; height: 18px; background: rgba(255, 180, 205, .85); transform: rotate(-2deg); }
+@media (min-width: 700px) { html[data-theme="scrapbook"] .sheet { border: 0; border-radius: 6px; box-shadow: 0 16px 40px rgba(60, 40, 20, .35); } }
+html[data-theme="scrapbook"] .toast { font-family: var(--hand); font-size: 1.15rem; border-radius: 10px; background: #4a3423; }
+
+/* falling paper bits */
+.tfx-paper i { animation: tFall linear infinite; opacity: .8; font-weight: 700; text-shadow: 0 1px 0 #fff, 0 0 3px rgba(255, 255, 255, .8); }
+
+/* chat = notes stuck on a notebook page */
+html[data-theme="scrapbook"] .dm-app { background-color: #fffdf6; background-image: linear-gradient(rgba(110, 170, 230, .2) 1px, transparent 1px); background-size: 100% 30px; }
+html[data-theme="scrapbook"] .dm-head { background: rgba(255, 253, 246, .96); border-bottom: 2px dashed #d8b98a; }
+html[data-theme="scrapbook"] .dm-who b { font-family: var(--hand); font-size: 1.3rem; font-weight: 700; }
+html[data-theme="scrapbook"] .dm-ava { border-radius: 4px; background: #fff; box-shadow: 0 3px 8px rgba(90, 60, 20, .25); transform: rotate(-6deg); border: 3px solid #fff; border-bottom-width: 8px; }
+html[data-theme="scrapbook"] .dm-back { color: #7a5a3a; }
+html[data-theme="scrapbook"] .dm-bubble:not(.big):not(.pic) { border-radius: 3px !important; box-shadow: 0 3px 8px rgba(90, 60, 20, .16); color: var(--ink) !important; }
+html[data-theme="scrapbook"] .dm-row .dm-bubble::after { display: none !important; }
+html[data-theme="scrapbook"] .dm-row.me .dm-bubble:not(.big):not(.pic) { background: #ffd6e2; transform: rotate(.8deg); }
+html[data-theme="scrapbook"] .dm-row.them .dm-bubble:not(.big):not(.pic) { background: #fff; transform: rotate(-.8deg); }
+html[data-theme="scrapbook"] .dm-row.me .dm-bubble a { color: var(--accent-ink); }
+html[data-theme="scrapbook"] .dm-row.them.first .dm-bubble:not(.big):not(.pic)::before { content: ''; position: absolute; left: 12px; top: -7px; width: 36px; height: 12px; background: rgba(150, 220, 120, .75); transform: rotate(-4deg); }
+html[data-theme="scrapbook"] .dm-row.me .dm-bubble.pic .dm-cap { background: #ffd6e2; color: var(--ink); }
+html[data-theme="scrapbook"] .dm-row.them .dm-bubble.pic .dm-cap { background: #fff; }
+html[data-theme="scrapbook"] .dm-bubble.pic img { border-radius: 2px; border: 6px solid #fff; border-bottom-width: 20px; box-shadow: 0 4px 12px rgba(90, 60, 20, .25); }
+html[data-theme="scrapbook"] .dm-row.me .dm-play { background: #e2668c; color: #fff; }
+html[data-theme="scrapbook"] .dm-compose { background: #fffdf6; border-top: 2px dashed #d8b98a; }
+html[data-theme="scrapbook"] .dm-compose textarea { font-family: var(--hand); font-size: 1.2rem; border-radius: 12px; border-color: #e2cba6; background: #fff; }
+html[data-theme="scrapbook"] .dm-send { background: #e2668c !important; border-radius: 12px !important; }
+html[data-theme="scrapbook"] .dm-time, html[data-theme="scrapbook"] .dm-empty { font-family: var(--hand); font-size: 1rem; }
+/* gift tiles = paper tags hanging under the parcels */
+html[data-theme="scrapbook"] .gift { border-radius: 4px 16px 16px 4px; background: #fffaf0; border: 1.5px solid #e2cba6; box-shadow: 0 5px 12px rgba(90, 60, 20, .18); transform: rotate(-.8deg); transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+html[data-theme="scrapbook"] .gift:nth-child(2n) { transform: rotate(.9deg); }
+@media (hover: hover) { html[data-theme="scrapbook"] .gift:hover { transform: rotate(0) translateY(-3px); } }
+html[data-theme="scrapbook"] .gift.ready, html[data-theme="scrapbook"] .gift.unlocked { outline: 3px dashed #e2668c; outline-offset: -7px; }
+html[data-theme="scrapbook"] .admin-pill { background: #4a3423; color: #fff7e8; border-color: #4a3423; }

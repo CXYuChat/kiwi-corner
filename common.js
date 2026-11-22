@@ -772,29 +772,25 @@
 
   // ------------------------------------------------------------ themes
   K.THEMES = [
-    ['kiwi', '🥝 Kiwi (normal)', ''], ['christmas', '🎄 Christmas', '❄️'], ['valentine', '💘 Valentine', '💕'], ['birthday', '🎂 Birthday', '🎈'],
-    ['sakura', '🌸 Sakura', '🌸'], ['ocean', '🌊 Ocean', '🫧'], ['autumn', '🍂 Autumn', '🍂'], ['night', '🌙 Starry night', '✨']
+    ['kiwi', '🥝 Kiwi (normal)', ''], ['scrapbook', '✂️ Scrapbook', '🌼'], ['christmas', '🎄 Christmas', '❄️']
   ];
-  K.HATS = { christmas: '🎅', birthday: '🥳', valentine: '💘', night: '🌙', ocean: '🐚', autumn: '🍁', sakura: '🌸' };
+  K.HATS = { christmas: '🎅', scrapbook: '🎀' };
+  // old saved themes (valentine, ocean…) were removed: anything unknown falls back to Kiwi
+  function knownTheme(t) { return K.THEMES.some(function (x) { return x[0] === t; }) ? t : 'kiwi'; }
   K.adminTheme = function () {
     var s = latestDue('theme'), st = DB.state;
-    if (s && s.at > (st.themeAt || 0)) return s.data.theme;
-    return st.theme || 'kiwi';
+    if (s && s.at > (st.themeAt || 0)) return knownTheme(s.data.theme);
+    return knownTheme(st.theme || 'kiwi');
   };
   K.theme = function () {
-    if (DB.state.themeChoice && DB.user && DB.user.role === 'livina' && DB.her.theme) return DB.her.theme;
+    if (DB.state.themeChoice && DB.user && DB.user.role === 'livina' && DB.her.theme) return knownTheme(DB.her.theme);
     return K.adminTheme();
   };
   var themeNow = null;
   // What each theme sprinkles on the screen: kind of particle, how many, and the strip at the top
   var THEME_FX = {
     christmas: { kind: 'snow', n: 110, ground: 'snow', tree: true },
-    valentine: { kind: 'fall', items: ['💕', '💖', '💘', '❤️', '💗'], n: 26, strip: '💕 💘 💖 💝 💗 💞 💕 💘 💖 💝' },
-    birthday: { kind: 'confetti', n: 50, items: ['🎈', '🎉'], strip: '🎈 🎉 🎂 🎁 🥳 🎈 🎉 🎂 🎁 🥳' },
-    sakura: { kind: 'petal', items: ['🌸', '🌸', '💮'], n: 28, strip: '🌸 💮 🌸 🌷 🌸 💮 🌸 🌷 🌸' },
-    ocean: { kind: 'bubble', n: 34, strip: '🌊 🐚 🐠 🐬 🫧 🐳 🌊 🐚 🐠 🫧', ground: 'wave' },
-    autumn: { kind: 'fall', items: ['🍂', '🍁', '🍂', '🌰'], n: 26, strip: '🍂 🍁 🎃 🍂 🌰 🍁 🍂 🎃 🍁' },
-    night: { kind: 'stars', n: 70, strip: '⭐ 🌙 ✨ 🌟 ⭐ 🌙 ✨ 🌟 ⭐' }
+    scrapbook: { kind: 'paper', n: 30, items: ['♡', '★', '✿', '♥', '✦'], cols: ['#ff9cb8', '#ffc21a', '#7cc576', '#8ec5ff', '#c9a7ff', '#ff8a5c'], tape: true }
   };
   function applyTheme() {
     var th = K.theme(); if (th === themeNow) return; themeNow = th;
@@ -817,6 +813,7 @@
       if (cfg.kind === 'snow') { var sz = 4 + r() * 9; p.style.width = p.style.height = sz + 'px'; p.style.opacity = 0.55 + r() * 0.45; p.style.setProperty('--drift', (r() * 60 - 30) + 'px'); if (r() < 0.28) { p.textContent = '❄️'; p.className = 'flake'; p.style.fontSize = (14 + r() * 16) + 'px'; } }
       else if (cfg.kind === 'confetti') { if (r() < 0.2) { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.className = 'emo'; p.style.fontSize = (16 + r() * 12) + 'px'; } else { p.style.background = ['#ff6f91', '#ffb703', '#8EE000', '#38b6d8', '#9b8cff'][Math.floor(r() * 5)]; p.style.setProperty('--spin', (r() * 720 - 360) + 'deg'); } }
       else if (cfg.kind === 'bubble') { var bs = 6 + r() * 18; p.style.width = p.style.height = bs + 'px'; }
+      else if (cfg.kind === 'paper') { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.color = cfg.cols[Math.floor(r() * cfg.cols.length)]; p.style.fontSize = (13 + r() * 15) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); p.style.animationDuration = (10 + r() * 10) + 's'; }
       else if (cfg.kind === 'stars') { p.style.top = (r() * 100) + '%'; var ss = 2 + r() * 3; p.style.width = p.style.height = ss + 'px'; if (r() < 0.15) { p.textContent = '✨'; p.className = 'emo'; p.style.fontSize = (10 + r() * 10) + 'px'; } }
       else { p.textContent = cfg.items[Math.floor(r() * cfg.items.length)]; p.style.fontSize = (14 + r() * 14) + 'px'; p.style.setProperty('--drift', (r() * 120 - 60) + 'px'); }
       (i < frontN ? front : back).appendChild(p);
@@ -1250,13 +1247,8 @@
 
   // ------------------------------------------------------------ 🎯 catchables: something flies across now and then; tap it for points (not on the plain Kiwi theme)
   K.CATCH = {
-    night: [['☄️', 'a shooting star'], ['🌟', 'a star'], ['✨', 'a sparkle']],
     christmas: [['🦌🛷', 'Santa\'s sleigh'], ['🎁', 'a present'], ['❄️', 'a snowflake']],
-    valentine: [['💛', 'a golden heart'], ['💌', 'a love letter'], ['💗', 'a little heart']],
-    birthday: [['🎂', 'the birthday cake'], ['🎈', 'a balloon'], ['🎉', 'confetti']],
-    sakura: [['🏵️', 'a lucky golden blossom'], ['🌸', 'a cherry blossom'], ['💮', 'a petal']],
-    ocean: [['💎', 'a treasure gem'], ['🐚', 'a pearl shell'], ['🫧', 'a bubble']],
-    autumn: [['🌰', 'a golden acorn'], ['🎃', 'a pumpkin'], ['🍂', 'a leaf']]
+    scrapbook: [['🌟', 'a gold star sticker'], ['💌', 'a love note'], ['🌼', 'a flower sticker']]
   };
   function startCatchables(page) {
     if (!DB.user || DB.user.role !== 'livina' || /^(chat|movie|login|admin)$/.test(page)) return;

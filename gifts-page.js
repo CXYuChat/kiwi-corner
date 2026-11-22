@@ -61,7 +61,7 @@ Kiwi.onReady(function () {
     box.hidden = !on; if (!on) { box.innerHTML = ''; box.dataset.sig = ''; return; }
     var sig = th + JSON.stringify(K.gifts().map(function (g) { return [g.id, g.opened, g.unlocked, g.color, g.ribbon]; }));
     if (box.dataset.sig === sig) return; box.dataset.sig = sig;
-    var sound = { christmas: 'fire', autumn: 'fire', ocean: 'waves' }[th];
+    var sound = { christmas: 'fire' }[th];
     box.innerHTML = K.giftScene(th, K.gifts()) + (sound ? '<button type="button" class="scene-sound" data-sound="' + sound + '" aria-label="Play sound">🔊 ' + (sound === 'fire' ? 'Crackling fire' : 'Waves') + '</button>' : '');
   }
   $('#xmas-scene') && $('#xmas-scene').addEventListener('click', function (e) {
