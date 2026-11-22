@@ -717,10 +717,29 @@
   })();
 
   // ------------------------------------------------------------ 📞 next call: he sets it in admin; a live countdown card on her Home + Week
+  // Regular calls: every weekday (her time) at set times. He can switch it off. Default: on, 5:30 pm + 9:30 pm.
+  K.callPlan = function () { return Object.assign({ on: true, days: [1, 2, 3, 4, 5], times: ['17:30', '21:30'], mins: 60 }, DB.state.callPlan || {}); };
+  // Every call from now on (regular + extra), soonest first. Skipped regular ones are kept but marked, so admin can undo.
+  K.upcomingCalls = function (days) {
+    var cp = K.callPlan(), T = window.KiwiTime, now = Date.now(), out = [], skips = DB.state.callSkips || [];
+    if (cp.on) {
+      for (var i = 0; i < (days || 9); i++) {
+        var day = T.startOfDay(now, K.HZ) + i * T.DAY + 12 * T.HOUR, p = T.parts(day, K.HZ);
+        if (cp.days.indexOf(T.weekday(day, K.HZ)) === -1) continue;
+        cp.times.forEach(function (t) {
+          var hm = t.split(':'), at = T.wall(p.y, p.m, p.d, +hm[0], +hm[1], K.HZ), end = at + cp.mins * 60000;
+          if (end > now) out.push({ at: at, end: end, mins: cp.mins, note: '', regular: true, skipped: skips.indexOf(at) !== -1 });
+        });
+      }
+    }
+    var extras = (DB.state.extraCalls || []).slice();
+    var old = DB.state.nextCall; if (old && old.at) extras.push(Object.assign({ id: 'old' }, old));   // from before extra calls were a list
+    extras.forEach(function (c) { var end = c.at + (c.mins || 60) * 60000; if (now <= end + 30 * 60000) out.push(Object.assign({ end: end, extra: true }, c)); });
+    return out.sort(function (x, y) { return x.at - y.at; });
+  };
   K.nextCall = function () {
-    var c = DB.state.nextCall; if (!c || !c.at) return null;
-    var end = c.at + (c.mins || 60) * 60000;
-    return Date.now() > end + 30 * 60000 ? null : Object.assign({ end: end }, c);
+    var now = Date.now();
+    return K.upcomingCalls().filter(function (c) { return !c.skipped && (c.regular ? c.end > now : true); })[0] || null;
   };
   (function () {
     var el = document.getElementById('call-card'); if (!el) return;

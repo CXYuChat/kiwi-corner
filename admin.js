@@ -107,16 +107,50 @@ Kiwi.onReady(function () {
       '<a class="btn sm ghost" href="fun.html#movies-card" style="text-decoration:none">🍿 Movie list</a>' + '<a class="btn sm ghost" href="index.html" style="text-decoration:none">👀 View her site</a></div></section>';
   }
 
-  // 📞 Next call: she sees a live countdown on Home and Week
+  // 📞 Calls: shown in HER time, with Singapore time in brackets. She sees a live countdown on Home and Week.
+  function bothTimes(at) { return T.fmtDay(at, HZ) + ', ' + T.fmtTime(at, HZ) + ' her time (' + T.fmtTime(at, 'Asia/Singapore') + (T.fmtDay(at, 'Asia/Singapore') !== T.fmtDay(at, HZ) ? ' ' + T.fmtDayShort(at, 'Asia/Singapore') : '') + ' Singapore time)'; }
+  function sgOfHerClock(hm) { var p = T.parts(Date.now(), HZ), x = hm.split(':'), at = T.wall(p.y, p.m, p.d, +x[0], +x[1], HZ); return T.fmtTime(at, 'Asia/Singapore'); }
   function callCard() {
-    var c = DB.state.nextCall, live = K.nextCall();
-    var val = c && c.at ? wallOf(c.at, VZ) : '';
-    return '<section class="card stack"><h3>📞 Next call</h3>' +
-      (live ? '<p class="help" style="margin:0">She sees: <b>' + esc(T.fmtDay(c.at, HZ) + ', ' + T.fmtTime(c.at, HZ)) + '</b> her time' + (c.note ? ' · "' + esc(c.note) + '"' : '') + '</p>' : '<p class="help" style="margin:0">Not set. She sees a countdown card on Home and Week once you add one.</p>') +
-      '<label>When (' + ZL + ' time)<input class="field" id="call-at" type="datetime-local" value="' + esc(val) + '"><span class="help sg"></span></label>' +
-      '<label>How long<select class="field" id="call-mins">' + [[30, '30 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours'], [180, '3 hours']].map(function (o) { return '<option value="' + o[0] + '"' + (((c && c.mins) || 60) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
-      '<label>Note (optional)<input class="field" id="call-note" maxlength="80" placeholder="e.g. bring snacks, movie after 🍿" value="' + esc((c && c.note) || '') + '"></label>' +
-      '<div class="btns"><button class="btn sm" id="call-save">📞 Save call</button>' + (c && c.at ? '<button class="btn sm ghost" id="call-clear">Clear</button>' : '') + '</div></section>';
+    var cp = K.callPlan(), nx = K.nextCall();
+    var DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']];
+    return '<section class="card stack"><h3>📞 Calls</h3>' +
+      '<p class="help" style="margin:0">' + (nx ? 'She sees the next one: <b>' + esc(bothTimes(nx.at)) + '</b>' + (nx.regular ? ' · regular call' : ' · extra call' + (nx.note ? ' "' + esc(nx.note) + '"' : '')) : 'Nothing set, so she sees no call card.') + '</p>' +
+      '<label class="switch"><span><b>Regular calls</b><br><span class="help">Repeats every week on these days, at these times (her time).</span></span><input type="checkbox" id="cp-on"' + (cp.on ? ' checked' : '') + '></label>' +
+      '<div class="chips" id="cp-days">' + DAYS.map(function (d) { return '<button type="button" data-cpday="' + d[0] + '" aria-pressed="' + (cp.days.indexOf(d[0]) !== -1) + '">' + d[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="stack" style="gap:6px">' + cp.times.map(function (t, i) {
+        return '<div class="row2" style="align-items:end"><label>Call ' + (i + 1) + ' (her time)<input class="field" type="time" data-cptime="' + i + '" value="' + esc(t) + '"><span class="help">= ' + esc(sgOfHerClock(t)) + ' Singapore time</span></label><button class="btn sm ghost" data-cpdel="' + i + '">Remove</button></div>';
+      }).join('') + '</div>' +
+      '<div class="btns"><button class="btn sm ghost" id="cp-add">＋ Add a time</button><button class="btn sm" id="cp-save">💾 Save regular calls</button></div>' +
+      '<h3 style="margin-top:10px;font-size:1.05rem">Coming up</h3>' +
+      (function () {
+        var list = K.upcomingCalls(8).slice(0, 8);
+        if (!list.length) return '<p class="muted">No calls coming up</p>';
+        return list.map(function (x) {
+          var btn = x.regular ? (x.skipped ? '<button class="btn sm ghost" data-cpunskip="' + x.at + '">↶ Undo skip</button>' : '<button class="btn sm ghost" data-cpskip="' + x.at + '">Skip this one</button>')
+            : '<button class="btn sm danger" data-xcdel="' + esc(x.id || '') + '">Remove</button>';
+          return '<div class="hist-row"' + (x.skipped ? ' style="opacity:.55"' : '') + '><div><b>' + (x.extra ? '⭐ ' : '📞 ') + esc(bothTimes(x.at)) + '</b><p class="help">' + (x.skipped ? 'Skipped, she won\'t see it' : x.extra ? 'Extra call' + (x.note ? ' · "' + esc(x.note) + '"' : '') : 'Regular call') + '</p></div>' + btn + '</div>';
+        }).join('');
+      })() +
+      '<h3 style="margin-top:10px;font-size:1.05rem">Add an extra call</h3>' +
+      '<p class="help" style="margin:0">A one-off on top of the regular ones (e.g. tomorrow, or to replace one you skipped).</p>' +
+      '<label>When (her time)<input class="field" id="call-at" type="datetime-local"><span class="help" id="call-sg"></span></label>' +
+      '<label>How long<select class="field" id="call-mins">' + [[30, '30 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours'], [180, '3 hours']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === 60 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label>Note (optional)<input class="field" id="call-note" maxlength="80" placeholder="e.g. bring snacks, movie after 🍿"></label>' +
+      '<div class="btns"><button class="btn sm" id="call-save">⭐ Add extra call</button></div></section>';
+  }
+  function wireCall(root) {
+    var tg = root.querySelector('#cp-on'); if (tg) tg.addEventListener('change', function () { var f = cpFromForm(); DB.setState({ callPlan: f }); toast(f.on ? 'Regular calls on 📞' : 'Regular calls off'); render(); });
+    var inp = root.querySelector('#call-at'), out = root.querySelector('#call-sg'); if (!inp || !out) return;
+    var upd = function () { try { out.textContent = inp.value ? '= ' + T.fmtDay(T.parse(inp.value, HZ), 'Asia/Singapore') + ', ' + T.fmtTime(T.parse(inp.value, HZ), 'Asia/Singapore') + ' Singapore time' : ''; } catch (e) { out.textContent = ''; } };
+    inp.addEventListener('input', upd); upd();
+  }
+  function cpFromForm() {
+    var cp = K.callPlan();
+    return {
+      on: !!($('#cp-on') && $('#cp-on').checked), mins: cp.mins,
+      days: [].slice.call(document.querySelectorAll('[data-cpday][aria-pressed="true"]')).map(function (b) { return +b.dataset.cpday; }),
+      times: [].slice.call(document.querySelectorAll('[data-cptime]')).map(function (i) { return i.value; }).filter(Boolean)
+    };
   }
   P.overview = function () {
     var st = DB.state, her = DB.her, gs = K.gifts(), f = K.featured();
@@ -138,7 +172,7 @@ Kiwi.onReady(function () {
       '<p>📥 Things from her waiting for you: <b>' + fromHer().filter(function (i) { return !i.done; }).length + '</b></p>' +
       '<p>📣 Status update: <b>' + (ov && ov.text && (!ov.until || Date.now() < ov.until) ? esc(ov.text) : 'none (using schedule)') + '</b></p>' +
 
-    '</section>';
+    '</section>' + '<p class="help" style="text-align:center">Site version ' + esc(((document.querySelector('script[src*="common.js"]') || {}).src || '').split('v=')[1] || 'unknown') + '</p>';
   };
 
   P.points = function () {
@@ -1257,7 +1291,7 @@ Kiwi.onReady(function () {
     panels.innerHTML = '<div class="panel stack">' + P[current]() + '</div>';
     restoreAdminDrafts();
     var pc = $('#push-card-admin'); if (pc) { var x = K.store.get('kiwi-push-x'); K.store.set('kiwi-push-x', '0'); K.pushCard(pc); if (x) K.store.set('kiwi-push-x', x); }
-    wireSgHints(panels);
+    wireSgHints(panels); wireCall(panels);
   }
   // ---- navigation: 5 groups, each with its own tabs
   var GROUPS = [
@@ -1322,11 +1356,22 @@ Kiwi.onReady(function () {
     var d = b.dataset, id = b.id;
     if (id === 'call-save') {
       var cv = $('#call-at').value; if (!cv) { toast('Pick a day and time first'); return; }
-      var cat; try { cat = T.parse(cv, VZ); } catch (e) { toast('That time doesn\'t look right'); return; }
-      DB.setState({ nextCall: { at: cat, mins: +$('#call-mins').value || 60, note: $('#call-note').value.trim() } });
-      toast('Call saved 📞 She can see it now'); return render();
+      var cat; try { cat = T.parse(cv, HZ); } catch (e) { toast('That time doesn\'t look right'); return; }
+      var xs = (DB.state.extraCalls || []).filter(function (c) { return c.at + (c.mins || 60) * 60000 > Date.now() - 864e5; });
+      xs.push({ id: 'c' + uid(), at: cat, mins: +$('#call-mins').value || 60, note: $('#call-note').value.trim() });
+      DB.setState({ extraCalls: xs }); toast('Extra call added ⭐'); return render();
     }
-    if (id === 'call-clear') { DB.setState({ nextCall: null }); toast('Call cleared'); return render(); }
+    if (d.xcdel !== undefined) {
+      if (d.xcdel === 'old') DB.setState({ nextCall: null });
+      else DB.setState({ extraCalls: (DB.state.extraCalls || []).filter(function (c) { return c.id !== d.xcdel; }) });
+      toast('Removed'); return render();
+    }
+    if (d.cpskip) { var sk = (DB.state.callSkips || []).filter(function (t) { return t > Date.now() - 864e5; }); sk.push(+d.cpskip); DB.setState({ callSkips: sk }); toast('Skipped. She won\'t see that one'); return render(); }
+    if (d.cpunskip) { DB.setState({ callSkips: (DB.state.callSkips || []).filter(function (t) { return t !== +d.cpunskip; }) }); toast('Back on 📞'); return render(); }
+    if (id === 'cp-save') { DB.setState({ callPlan: cpFromForm() }); toast('Regular calls saved 📞'); return render(); }
+    if (id === 'cp-add') { var f = cpFromForm(); f.times.push('12:00'); DB.setState({ callPlan: f }); return render(); }
+    if (d.cpdel !== undefined) { var f2 = cpFromForm(); f2.times.splice(+d.cpdel, 1); DB.setState({ callPlan: f2 }); toast('Removed'); return render(); }
+    if (d.cpday !== undefined) { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); return; }
     if (powerClick(b, d, id) || morePowerClick(b, d, id)) return;
     if (d.qr !== undefined) {
       var qtext = quickList()[+d.qr]; if (!qtext) return;
