@@ -566,7 +566,7 @@
     top.innerHTML = '<a class="brand" href="index.html"><span class="brand-slice">' + K.sliceSVG() + '</span><span class="brand-txt">Kiwi Corner</span></a>' +
       '<div class="top-right">' + (K.standalone() ? '<button type="button" class="pill acct" id="refresh-btn" aria-label="Refresh">🔄</button>' : '') + (!u
         ? '<a class="pill pts-pill" href="login.html?next=' + encodeURIComponent(location.pathname.split('/').pop() || 'index.html') + '">🔑 Log in</a>'
-        : (u.role === 'admin' && page !== 'admin' ? '<a class="pill admin-pill" href="admin.html">🔧<span class="ap-txt"> Admin</span><b id="admin-unread"></b></a>' : '') +
+        : (u.role === 'admin' ? '<a class="pill admin-pill" href="admin.html">🔧<span class="ap-txt"> Admin</span><b id="admin-unread"></b></a>' : '') +
           '<a class="pill chat-pill" href="chat.html" aria-label="Chat">💬<b id="chat-unread"></b></a>' +
           '<a class="pill pts-pill" href="gifts.html" title="Your points">⭐ <b id="pts-count">0</b></a>' +
           '<button type="button" class="pill acct" id="acct" aria-label="Account">' + (u.role === 'admin' ? '🥝' : '🌸') + '</button>') +

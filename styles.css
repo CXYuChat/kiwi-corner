@@ -1654,6 +1654,7 @@ html[data-theme="christmas"] body[data-page="home"] .xmas-tree-home.deco-christm
   .top-right { gap: 4px; }
   .topbar .pill { padding: 6px 9px; font-size: .9rem; }
   body.is-admin .brand-txt, body.is-admin .admin-pill .ap-txt { display: none; }
+  body.is-admin .chat-pill { display: none; }   /* his phone: 🔧 Admin instead of 💬 (chat is the round button in the corner) */
 }
 @media (max-width: 360px) { .brand-txt { display: none; } }
 /* Christmas: things that used the (now dark) background colour as their text colour */
