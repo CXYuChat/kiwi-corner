@@ -200,7 +200,21 @@ Kiwi.onReady(function () {
     if (on && !was && atBottom) scrollDown(true);
   }
   setInterval(function () { drawHead(); drawTyping(); }, 1000);
-  DB.subscribe(function () { drawOurs(); draw(); });
+  DB.subscribe(function () { drawOurs(); draw(); heal(); });
+  // Safety net: the "last message" note travels on a separate connection (the one that shows typing…).
+  // If it says there's a newer message than any we're showing, and it still hasn't arrived after a few
+  // seconds, reconnect the message feed — so the chat can never stay stuck until a refresh.
+  var healT = null, lastHeal = 0, healedFor = 0;   // only one reconnect per missing message (no loops, no extra cost)
+  function newestAt() { var n = 0; msgs.forEach(function (m) { if (m.at > n) n = m.at; }); return n; }
+  function heal() {
+    var l = meta().last; if (!l || !l.at || l.at <= newestAt() || healT || l.at === healedFor) return;
+    healT = setTimeout(function () {
+      healT = null; var l2 = meta().last;
+      if (l2 && l2.at > newestAt() && l2.at !== healedFor && Date.now() - lastHeal > 4000) { lastHeal = Date.now(); healedFor = l2.at; listen(); }
+    }, 3500);
+  }
+  setInterval(heal, 10000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) heal(); });
 
   // ---------------------------------------------------------------- composing + sending
   var lastTypingSent = 0;
