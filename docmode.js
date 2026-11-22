@@ -47,7 +47,7 @@ Kiwi.onReady(function () {
     '<div class="dc-row1"><button type="button" class="dc-icon" id="dc-exit" aria-label="Back to the normal chat"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="#4a7fe0"/><path d="M15 2v5h5" fill="#a9c4f5"/><path d="M9 12h8M9 15h8M9 18h5" stroke="#fff" stroke-width="1.4"/></svg></button>' +
       '<div class="dc-titlebox"><div class="dc-title">' + TITLE + '</div><div class="dc-menu"><span>File</span><span>Edit</span><span>View</span><span>Insert</span><span>Format</span><span>Tools</span><span>Help</span></div></div>' +
       '<span class="dc-saved" id="dc-saved">All changes saved</span><button type="button" class="dc-ava" id="dc-ava" title="Livina">L</button><span class="dc-share">Share</span></div>' +
-    '<div class="dc-tools"><span>↶</span><span>↷</span><span>🖨</span><i></i><span class="dc-drop">100%</span><i></i><span class="dc-drop">Normal text</span><i></i><span class="dc-drop">Arial</span><i></i><span>−</span><span class="dc-num">11</span><span>+</span><i></i><b>B</b><em>I</em><u>U</u><span>A</span><i></i><button type="button" class="dc-para" id="dc-ping" title="Ping her">Ping</button><button type="button" class="dc-para" id="dc-newest" title="Colour the newest message differently">Highlight newest</button><button type="button" class="dc-para" id="dc-hideme" title="Show only her messages">Hide mine</button><button type="button" class="dc-para" id="dc-clear" title="Clear the page (messages stay in the chat)">Clear</button><button type="button" class="dc-para" id="dc-para" title="Switch between one line per message and one flowing paragraph">¶ Lines</button><span>⋮</span></div>' +
+    '<div class="dc-tools"><span>↶</span><span>↷</span><span>🖨</span><i></i><span class="dc-drop">100%</span><i></i><span class="dc-drop">Normal text</span><i></i><span class="dc-drop">Arial</span><i></i><span>−</span><span class="dc-num">11</span><span>+</span><i></i><b>B</b><em>I</em><u>U</u><span>A</span><i></i><button type="button" class="dc-para" id="dc-ping" title="Ping her">Ping</button><button type="button" class="dc-para" id="dc-newest" title="Colour her newest message differently">Highlight newest</button><button type="button" class="dc-para" id="dc-hideme" title="Show only her messages">Hide mine</button><button type="button" class="dc-para" id="dc-clear" title="Clear the page (messages stay in the chat)">Clear</button><select class="dc-plen" id="dc-plen" title="Paragraph length"><option value="0">One paragraph</option><option value="5">New ¶ every 5</option><option value="10">New ¶ every 10</option><option value="20">New ¶ every 20</option><option value="day">New ¶ each day</option></select><button type="button" class="dc-para" id="dc-newp" title="Start a new paragraph from the next message">↵ New ¶</button><button type="button" class="dc-para" id="dc-para" title="Switch between one line per message and one flowing paragraph">¶ Lines</button><span>⋮</span></div>' +
     '<div class="dc-ruler" aria-hidden="true"><div class="dc-ruler-in">' + Array.apply(null, Array(15)).map(function (_, i) { return '<span>' + (i ? i : '') + '</span>'; }).join('') + '</div></div>';
   app.insertBefore(ch, app.firstChild);
 
@@ -129,7 +129,7 @@ Kiwi.onReady(function () {
   var NKEY = 'kiwi-docnewest', nb = $('#dc-newest');
   function markNewest() {
     if (!msgs) return;
-    var all = [].filter.call(msgs.querySelectorAll('.dm-wrap'), function (w) { return w.offsetParent !== null || getComputedStyle(w).display !== 'none'; });
+    var all = [].filter.call(msgs.querySelectorAll('.dm-wrap'), function (w) { return w.querySelector('.dm-row.them') && getComputedStyle(w).display !== 'none'; });   // her newest only
     [].forEach.call(msgs.querySelectorAll('.dc-newest'), function (w) { w.classList.remove('dc-newest'); });
     var last = all[all.length - 1]; if (last) last.classList.add('dc-newest');
   }
@@ -160,6 +160,36 @@ Kiwi.onReady(function () {
     if (e.target.closest('.dm-bubble, a, button, .dc-attmenu') || (window.getSelection && String(getSelection()))) return;
     txt.focus(); try { txt.selectionStart = txt.selectionEnd = txt.value.length; } catch (x) { /* */ }
   });
+  // Paragraph length + manual "new paragraph" breaks (One paragraph mode)
+  var LKEY = 'kiwi-docplen', BKEY = 'kiwi-docbreaks', sel = $('#dc-plen');
+  function getL() { try { return localStorage.getItem(LKEY) || '0'; } catch (e) { return '0'; } }
+  function getB() { try { return JSON.parse(localStorage.getItem(BKEY) || '[]'); } catch (e) { return []; } }
+  function markBreaks() {
+    if (!msgs) return;
+    var L = getL(), B = getB(), n = 0, prevDay = null, T = window.KiwiTime;
+    var vis = [].filter.call(msgs.querySelectorAll('.dm-wrap'), function (w) { return getComputedStyle(w).display !== 'none'; });
+    var prevAt = 0;
+    vis.forEach(function (w, i) {
+      var at = +w.dataset.at || 0, day = T ? T.fmtDay(at, K.VZ) : '', br = false;
+      if (i > 0) {
+        if (L === 'day') br = day !== prevDay;
+        else if (+L > 0) br = n % +L === 0;
+        if (B.some(function (b) { return b >= prevAt && b < at; })) br = true;
+      }
+      w.classList.toggle('dc-pbreak', br);
+      n++; prevDay = day; prevAt = at;
+    });
+  }
+  sel.value = getL();
+  sel.addEventListener('change', function () { try { localStorage.setItem(LKEY, sel.value); } catch (e) { /* */ } if (!root.classList.contains('docpara')) setPara(true); markBreaks(); });
+  $('#dc-newp').addEventListener('click', function () {
+    var B = getB(); B.push(Date.now()); try { localStorage.setItem(BKEY, JSON.stringify(B.slice(-200))); } catch (e) { /* */ }
+    if (!root.classList.contains('docpara')) setPara(true);
+    markBreaks(); if (txt) txt.focus(); var sv3 = $('#dc-saved'); if (sv3) sv3.textContent = 'All changes saved';
+  });
+  if (msgs && window.MutationObserver) new MutationObserver(function () { setTimeout(markBreaks, 0); }).observe(msgs, { childList: true });
+  [hb, $('#dc-clear')].forEach(function (b) { b.addEventListener('click', function () { setTimeout(markBreaks, 0); }); });
+  markBreaks();
   var on = false; try { on = localStorage.getItem(KEY) === '1'; } catch (e) { /* */ }
   set(on); applyClear();
   // "Saving…" flicker when he sends, like a real editor
