@@ -949,7 +949,6 @@ html[data-theme] body { background-color: var(--cream); }
 html[data-theme]:not([data-theme="kiwi"]) body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 12% 8%, rgba(var(--green-rgb), .16), transparent 45%), radial-gradient(circle at 88% 40%, rgba(var(--brown-rgb), .09), transparent 48%), radial-gradient(circle at 40% 100%, rgba(var(--green-rgb), .12), transparent 50%); }
 html[data-theme]:not([data-theme="kiwi"]) body { position: relative; isolation: isolate; }
 html[data-theme]:not([data-theme="kiwi"]) .card { border-top: 4px solid var(--accent); }
-html[data-theme="christmas"] .card:nth-of-type(even) { border-top-color: var(--green); }
 html[data-theme]:not([data-theme="kiwi"]) .tabbar { border-top: 3px solid var(--accent); }
 html[data-theme]:not([data-theme="kiwi"]) .chat-fab { background: linear-gradient(135deg, var(--me1), var(--me2)); box-shadow: 0 6px 18px rgba(var(--greend-rgb), .45); }
 .draft-pill { position: fixed; right: 14px; bottom: 18px; z-index: 80; background: var(--dark); color: #fff; font-size: .78rem; padding: 6px 12px; border-radius: 999px; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
@@ -1567,3 +1566,102 @@ html[data-theme="zen"] .dm-row.them.last .dm-bubble:not(.big):not(.pic)::after {
 html[data-theme="zen"] .dm-compose textarea { border-width: 1px; border-color: #e6e5dc; }
 html[data-theme="zen"] .xcap { color: #5e6355; text-shadow: none; }
 html[data-theme="mochi"] .xcap { color: #7d7a9c; text-shadow: none; }
+
+/* ===================== 🎄 CHRISTMAS v2 (cozy night: navy-to-pine sky, cream cards, swinging lights, knitted red) ===================== */
+html[data-theme="christmas"] {
+  --cream: #16283a; --card: #fff7e8; --ink: #3a2614; --muted: #8a6a4a; --brown: #8c1f2a; --brown-d: #5e1219;
+  --green: #2f9e5a; --green-d: #1d6e3c; --accent: #c62f3a; --accent-d: #8c1f2a; --gold: #e0b23a; --gold-bg: #fff1c4;
+  --radius: 22px; --shadow: 0 12px 26px rgba(0, 0, 0, .32); --xm-light: #fff7e8; --xm-gold: #ffd77a;
+}
+html[data-theme="christmas"] body { color: var(--xm-light); background: radial-gradient(ellipse at 75% 0%, #2c4a6b 0%, transparent 55%), linear-gradient(180deg, #13243a 0%, #1b3a33 70%, #224a3a 100%) fixed; }
+html[data-theme="christmas"] body::before { background: none; }
+html[data-theme="christmas"] .card, html[data-theme="christmas"] .gift, html[data-theme="christmas"] .sheet { color: var(--ink); }
+html[data-theme="christmas"] .card { border: 0; border-top: 0 !important; border-radius: 22px; box-shadow: var(--shadow); animation: xmIn .6s cubic-bezier(.3, 1.3, .5, 1) both; }
+html[data-theme="christmas"] .card:nth-of-type(2) { animation-delay: .06s; } html[data-theme="christmas"] .card:nth-of-type(3) { animation-delay: .12s; } html[data-theme="christmas"] .card:nth-of-type(n+4) { animation-delay: .18s; }
+html[data-theme="christmas"] .card:has(.sheet-back, .xr-full, .backbar) { animation: none; }
+@keyframes xmIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+html[data-theme="christmas"] h1, html[data-theme="christmas"] h2, html[data-theme="christmas"] .brand, html[data-theme="christmas"] .big-cd .digits, html[data-theme="christmas"] .call-card .call-big, html[data-theme="christmas"] .sheet h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; letter-spacing: 0; }
+html[data-theme="christmas"] .card h2, html[data-theme="christmas"] .card h3 { color: var(--ink); }
+/* text sitting straight on the night sky */
+html[data-theme="christmas"] .hero h1, html[data-theme="christmas"] main > h2, html[data-theme="christmas"] .wrap > h2 { color: var(--xm-light); }
+html[data-theme="christmas"] .hero h1 .k, html[data-theme="christmas"] .hero h1 em { color: #ff8a8a; }
+html[data-theme="christmas"] .hero .tagline, html[data-theme="christmas"] .tap-hint, html[data-theme="christmas"] main > p, html[data-theme="christmas"] .wrap > p, html[data-theme="christmas"] .footer, html[data-theme="christmas"] .wrap > .help { color: #cdd9cf; }
+html[data-theme="christmas"] .status-pill { background: rgba(255, 247, 232, .1); color: var(--xm-light); border-color: rgba(255, 215, 122, .45); }
+/* the countdown = a knitted red jumper */
+html[data-theme="christmas"] .cd-card, html[data-theme="christmas"] .cd-card:has(.live) { position: relative; overflow: hidden; color: #fff7e8; background: linear-gradient(160deg, #b8323a, #8c1f2a); padding-top: 30px; }
+html[data-theme="christmas"] .cd-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 16px; background: repeating-linear-gradient(135deg, #fff7e8 0 6px, transparent 6px 12px), repeating-linear-gradient(45deg, #fff7e8 0 6px, transparent 6px 12px); opacity: .85; -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); }
+html[data-theme="christmas"] .cd-card::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: radial-gradient(circle at 6px 10px, #fff7e8 4px, transparent 4.5px) 0 0 / 12px 10px repeat-x; opacity: .75; }
+html[data-theme="christmas"] .cd-card .digits, html[data-theme="christmas"] .cd-card .label, html[data-theme="christmas"] .cd-card .sub, html[data-theme="christmas"] .cd-card h2, html[data-theme="christmas"] .cd-card * { color: #fff7e8; }
+html[data-theme="christmas"] .cd-card .all { background: rgba(0, 0, 0, .2); }
+html[data-theme="christmas"] .points-card { background: #fff1c4; }
+html[data-theme="christmas"] .call-card { background: linear-gradient(160deg, #2a5a44, #1d4535); color: #fff7e8; }
+html[data-theme="christmas"] .call-card .call-big, html[data-theme="christmas"] .call-card .call-when, html[data-theme="christmas"] .call-card .call-k { color: #fff7e8; }
+html[data-theme="christmas"] .call-card .call-note { color: var(--xm-gold); }
+/* bars */
+html[data-theme="christmas"] .topbar, html[data-theme="christmas"] .nav { background: rgba(19, 36, 58, .82); border-bottom: 1px solid rgba(255, 215, 122, .2); }
+html[data-theme="christmas"] .brand { color: var(--xm-light); }
+html[data-theme="christmas"] .pill { background: rgba(255, 247, 232, .1); color: var(--xm-light); border-color: rgba(255, 247, 232, .2); }
+html[data-theme="christmas"] .pts-pill { background: rgba(255, 215, 122, .15); color: var(--xm-gold); border-color: rgba(255, 215, 122, .5); }
+html[data-theme="christmas"] .admin-pill { background: #fff7e8; color: #3a2614; }
+html[data-theme="christmas"] .tabbar { background: rgba(255, 247, 232, .97); border: 0 !important; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+html[data-theme="christmas"] .tab { color: #7a5a3a; font-weight: 700; }
+html[data-theme="christmas"] .tab[aria-current="page"] { background: #b8323a; color: #fff; }
+html[data-theme="christmas"] .tab.main .ic { background: #2f9e5a; box-shadow: 0 4px 0 #1d6e3c, 0 6px 14px rgba(0, 0, 0, .3); }
+html[data-theme="christmas"] .tab.main[aria-current="page"] { background: transparent; color: #7a5a3a; }
+html[data-theme="christmas"] .btn.pink { background: #c62f3a; box-shadow: 0 5px 0 #8c1f2a; }
+html[data-theme="christmas"] .chat-fab { background: linear-gradient(135deg, #c62f3a, #8c1f2a); }
+html[data-theme="christmas"] .tabbar ~ #theme-ground, html[data-theme="christmas"] #theme-ground { opacity: .9; }
+/* swinging lights */
+#xmas-lights { position: sticky; top: 0; z-index: 24; height: 34px; margin-bottom: -34px; pointer-events: none; }
+body:has(.topbar) #xmas-lights { top: 60px; }
+#xmas-lights svg { width: 100%; height: 34px; display: block; overflow: visible; }
+.xl-bulb { animation: xlSwing 3s ease-in-out infinite; }
+.xl-glow { animation: xlGlow 1.8s ease-in-out infinite; }
+@keyframes xlSwing { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes xlGlow { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px currentColor); } 50% { opacity: .45; filter: none; } }
+/* Home: step into the room */
+.xh-card { display: flex; gap: 14px; align-items: center; text-decoration: none; color: #fff7e8 !important; background: linear-gradient(160deg, #2a5a44, #1d4535) !important; transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+.xh-card:hover { transform: translateY(-3px); }
+.xh-card:active { transform: scale(.98); }
+.xh-tree { flex: none; width: 96px; }
+.xh-tree svg { width: 100%; height: auto; display: block; }
+.xh-body { flex: 1; min-width: 0; }
+.xh-k { font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #bfe6cf; }
+.xh-cd { font-family: 'Fraunces', Georgia, serif; font-size: 1.6rem; font-weight: 600; color: #ffd77a; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.xh-title { font-family: 'Fraunces', Georgia, serif; font-size: 1.25rem; font-weight: 600; margin-top: 6px; line-height: 1.1; }
+.xh-sub { font-size: .85rem; color: #bfe6cf; }
+.xh-sec { display: flex; justify-content: space-between; font-size: .8rem; margin-top: 8px; }
+.xh-sec b { color: #ffd77a; }
+.xh-bar { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, .15); overflow: hidden; margin-top: 4px; }
+.xh-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e0b23a, #ffd77a); }
+.xh-go { display: inline-block; margin-top: 10px; padding: 5px 12px; border-radius: 999px; background: #ffd77a; color: #3a2614; font-weight: 700; font-size: .85rem; }
+html[data-theme="christmas"] body[data-page="home"] .xmas-tree-home.deco-christmas { display: none; }
+/* the room screen */
+.xr-full { background: radial-gradient(ellipse at 70% 0%, #2c4a6b 0%, transparent 55%), linear-gradient(180deg, #13243a, #1a1220 60%); }
+.xr-top b { font-family: 'Fraunces', Georgia, serif; font-size: 1.3rem; font-weight: 600; }
+.xr-top span { color: #ffd77a; }
+.xr-x { background: rgba(255, 247, 232, .12); }
+.xr-svg { box-shadow: 0 16px 40px rgba(0, 0, 0, .45); }
+.xr-btns button { border-radius: 14px; padding: 9px 13px; background: rgba(255, 247, 232, .1); border: 1px solid rgba(255, 215, 122, .22); font-weight: 600; transition: transform .25s cubic-bezier(.3, 1.7, .5, 1), background .2s; }
+.xr-btns button:hover { transform: translateY(-2px); background: rgba(255, 215, 122, .22); }
+.xr-btns button:active { transform: scale(.94); }
+.xr-orn button { border-radius: 50%; }
+/* phones: the top bar must never be wider than the screen (his bar has more buttons than hers) */
+.topbar { min-width: 0; }
+.top-right { flex-shrink: 0; }
+@media (max-width: 480px) {
+  .topbar { padding-left: 10px; padding-right: 10px; }
+  .top-right { gap: 4px; }
+  .topbar .pill { padding: 6px 9px; font-size: .9rem; }
+  body.is-admin .brand-txt, body.is-admin .admin-pill .ap-txt { display: none; }
+}
+@media (max-width: 360px) { .brand-txt { display: none; } }
+/* Christmas: things that used the (now dark) background colour as their text colour */
+html[data-theme="christmas"] .btn.brown, html[data-theme="christmas"] .banner, html[data-theme="christmas"] .days button[aria-pressed="true"], html[data-theme="christmas"] .me .face, html[data-theme="christmas"] .kid.busy { color: #fff7e8; }
+html[data-theme="christmas"] .game { background: linear-gradient(#e9f7cf, #fff7e8); }
+html[data-theme="christmas"] .solo.unknown { background: repeating-linear-gradient(-45deg, #fff7e8 0 10px, #f6eedb 10px 20px); }
+html[data-theme="christmas"] .phone iframe, html[data-theme="christmas"] .dm-reply { background: #fff7e8; }
+html[data-theme="christmas"] .admin-groups, html[data-theme="christmas"] .admin-tabs { background: #16283a; }
+html[data-theme="christmas"] main > h1, html[data-theme="christmas"] .wrap > h1 { color: #fff7e8; }
+html[data-theme="christmas"] .dm-app { background: #fff7e8; color: var(--ink); }
+html[data-theme="christmas"] #demo-warn, html[data-theme="christmas"] .warn, html[data-theme="christmas"] .note { color: var(--ink); }

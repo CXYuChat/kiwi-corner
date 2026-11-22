@@ -563,10 +563,10 @@
     var u = DB.user;
     var top = document.createElement('header');
     top.className = 'topbar';
-    top.innerHTML = '<a class="brand" href="index.html"><span class="brand-slice">' + K.sliceSVG() + '</span>Kiwi Corner</a>' +
+    top.innerHTML = '<a class="brand" href="index.html"><span class="brand-slice">' + K.sliceSVG() + '</span><span class="brand-txt">Kiwi Corner</span></a>' +
       '<div class="top-right">' + (K.standalone() ? '<button type="button" class="pill acct" id="refresh-btn" aria-label="Refresh">🔄</button>' : '') + (!u
         ? '<a class="pill pts-pill" href="login.html?next=' + encodeURIComponent(location.pathname.split('/').pop() || 'index.html') + '">🔑 Log in</a>'
-        : (u.role === 'admin' ? '<a class="pill admin-pill" href="admin.html">🔧 Admin<b id="admin-unread"></b></a>' : '') +
+        : (u.role === 'admin' && page !== 'admin' ? '<a class="pill admin-pill" href="admin.html">🔧<span class="ap-txt"> Admin</span><b id="admin-unread"></b></a>' : '') +
           '<a class="pill chat-pill" href="chat.html" aria-label="Chat">💬<b id="chat-unread"></b></a>' +
           '<a class="pill pts-pill" href="gifts.html" title="Your points">⭐ <b id="pts-count">0</b></a>' +
           '<button type="button" class="pill acct" id="acct" aria-label="Account">' + (u.role === 'admin' ? '🥝' : '🌸') + '</button>') +
@@ -820,6 +820,7 @@
   K.THEMES = [
     ['kiwi', '🥝 Kiwi (normal)', ''], ['scrapbook', '✂️ Scrapbook', '🌼'], ['mochi', '🍡 Mochi', '✨'], ['zen', '🍃 Zen', '🍃'], ['christmas', '🎄 Christmas', '❄️']
   ];
+  K.XMAS_SECRETS = 19;   // number of secrets in the Christmas room (xmas.js SECRETS)
   K.HATS = { christmas: '🎅', scrapbook: '🎀', mochi: '🍡', zen: '🍃' };
   // old saved themes (valentine, ocean…) were removed: anything unknown falls back to Kiwi
   function knownTheme(t) { return K.THEMES.some(function (x) { return x[0] === t; }) ? t : 'kiwi'; }
@@ -893,6 +894,31 @@
       var t = document.createElement(th === 'christmas' ? 'a' : 'div'); t.className = 'xmas-tree-home deco-' + th;
       if (th === 'christmas') { t.href = 'gifts.html#xmas'; t.setAttribute('aria-label', 'Go into the Christmas room'); t.innerHTML = deco + '<span class="deco-tip">tap me 🎄</span>'; } else { t.setAttribute('aria-hidden', 'true'); t.innerHTML = deco; }
       hero.appendChild(t);
+    }
+    // 🎄 Christmas extras: a string of swinging lights along the top, and a "step into the room" card on Home
+    ['xmas-lights', 'xmas-home-card'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
+    clearInterval(applyTheme.xhT);
+    if (th === 'christmas' && document.body.dataset.page !== 'admin') {
+      var cols = ['#ff5a5a', '#ffd77a', '#5ac8ff', '#ff8ad8', '#7dff9a'], bulbs = '';
+      for (var b = 0; b < 16; b++) { var bx = 12 + b * 25, by = 6 + Math.sin(b / 15 * Math.PI) * 14; bulbs += '<g class="xl-bulb" style="transform-origin:' + bx + 'px ' + by + 'px;animation-delay:-' + (b * .37 % 3).toFixed(2) + 's"><rect x="' + (bx - 2) + '" y="' + by + '" width="4" height="5" fill="#3a3a3a"/><ellipse class="xl-glow" cx="' + bx + '" cy="' + (by + 11) + '" rx="4.5" ry="7" fill="' + cols[b % 5] + '" style="color:' + cols[b % 5] + ';animation-delay:' + (b * .21).toFixed(2) + 's"/></g>'; }
+      var lt = document.createElement('div'); lt.id = 'xmas-lights'; lt.setAttribute('aria-hidden', 'true');
+      lt.innerHTML = '<svg viewBox="0 0 400 34" preserveAspectRatio="none"><path d="M0 4 Q200 44 400 4" stroke="#2a4a2a" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/>' + bulbs + '</svg>';
+      var tb2 = document.querySelector('.topbar'); if (tb2) tb2.after(lt); else document.body.prepend(lt);
+      var hero2 = document.querySelector('.hero');
+      if (hero2 && document.body.dataset.page === 'home' && DB.user) {
+        var hc = document.createElement('a'); hc.id = 'xmas-home-card'; hc.className = 'card xh-card'; hc.href = 'gifts.html#xmas';
+        var drawHC = function () {
+          var found = Object.keys(((DB.dmMeta || {}).xmas || {}).found || {}).length, tot = K.XMAS_SECRETS || 19;
+          var eve = window.KiwiTime.wall(new Date().getFullYear(), 12, 24, 0, 0, K.HZ), ms = eve - Date.now();
+          var cd = ms > 0 ? Math.floor(ms / 864e5) + 'd ' + Math.floor(ms % 864e5 / 36e5) + 'h ' + Math.floor(ms % 36e5 / 6e4) + 'm' : 'it\'s Christmas! 🎄';
+          hc.innerHTML = '<div class="xh-tree">' + K.xmasTreeSVG() + '</div><div class="xh-body"><div class="xh-k">Christmas Eve in</div><div class="xh-cd">' + cd + '</div>' +
+            '<div class="xh-title">Step into the Christmas room</div><div class="xh-sub">the fire\'s crackling, the cat is asleep</div>' +
+            '<div class="xh-sec"><span>🔑 secrets found</span><b>' + Math.min(found, tot) + ' / ' + tot + '</b></div><div class="xh-bar"><i style="width:' + Math.round(Math.min(found, tot) / tot * 100) + '%"></i></div>' +
+            '<span class="xh-go">go inside →</span></div>';
+        };
+        drawHC(); applyTheme.xhT = setInterval(drawHC, 30000);
+        hero2.after(hc);
+      }
     }
     if (cfg.ground) { var g = document.createElement('div'); g.id = 'theme-ground'; g.className = 'tg-' + cfg.ground; g.setAttribute('aria-hidden', 'true'); document.body.appendChild(g); }
   }
